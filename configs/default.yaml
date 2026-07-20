@@ -1,0 +1,70 @@
+seed: 1337
+
+paths:
+  raw_dir: data/raw/nsclc_radiogenomics
+  processed_dir: data/processed
+  radgenome_dir: data/raw/radgenome_chest_ct   # optional grounding pretraining
+  runs_dir: runs
+  ckpt_dir: checkpoints
+
+data:
+  modality: CT                 # CT | PET_CT
+  target_genes: [EGFR, KRAS]
+  roi_margin_mm: 12            # dilation around seg mask before crop
+  slice_strategy: tumor_bbox   # tumor_bbox | max_area | all
+  n_slices: 16                 # slices sampled through the tumor extent
+  image_size: 224
+  hu_window: [-600, 1500]      # lung window: center, width
+  min_tumor_voxels: 50
+
+split:
+  scheme: stratified_kfold     # patient-level, stratified on EGFR
+  n_folds: 5
+  stratify_on: EGFR
+
+model:
+  vision_encoder: biomedclip   # biomedclip | timm_vit_b16 | open_clip_vit_b16
+  vision_dim: 512
+  freeze_vision: false
+  lm_name: microsoft/BioGPT    # generation head backbone (swap for LLaVA-Med LM)
+  lm_max_new_tokens: 96
+  grounding_tokens: 8          # learned region queries for the grounding head
+  classifier_hidden: 256
+  dropout: 0.1
+
+lora:
+  enabled: true
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules: [q_proj, v_proj]   # adjust to the chosen LM
+
+train:
+  epochs: 40
+  batch_size: 8
+  grad_accum: 2
+  lr: 2.0e-4
+  weight_decay: 0.01
+  warmup_ratio: 0.05
+  amp: true
+  loss_weights:
+    cls: 1.0
+    gen: 1.0
+    ground: 0.5
+  early_stop_patience: 8
+  monitor: egfr_auc          # must match a key emitted by engine/evaluate.py
+
+grounding_pretrain:
+  enabled: false               # set true to pretrain grounding on RadGenome first
+  epochs: 3
+  lr: 1.0e-4
+
+eval:
+  bootstrap_n: 2000            # CI on AUC
+  grounding_iou_thresh: 0.1
+
+reader_study:
+  n_cases: 32
+  readers: 3
+  blind: true
+  arms: [theia_full, label_only, ground_truth]

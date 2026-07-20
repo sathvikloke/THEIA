@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.env
+.venv/
+venv/
+data/raw/
+data/processed/
+runs/
+checkpoints/
+*.ckpt
+*.pt
+*.log
+.DS_Store
+reader_study/cases/

@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THEIA — Grounded Radiogenomic Inference</title>
+<style>
+  :root {
+    --bg:        #0a0e14;
+    --panel:     #121821;
+    --panel-2:   #1a2230;
+    --panel-3:   #212c3d;
+    --border:    rgba(255,255,255,0.08);
+    --border-2:  rgba(255,255,255,0.14);
+    --ink:       #f2f5f8;
+    --ink-2:     #9fb0c3;
+    --muted:     #64748b;
+    --brand:     #2fd4c6;   /* Theia — light / vision */
+    --brand-dim: #1c8b83;
+    --blue:      #3987e5;   /* confidence (sequential) */
+    --heat-lo:   #fab219;   /* attention ramp low  */
+    --heat-mid:  #eb6834;   /* attention ramp mid  */
+    --heat-hi:   #e34948;   /* attention ramp high */
+    --good:      #0ca30c;
+    --warn:      #fab219;
+    --crit:      #d03b3b;
+    --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(47,212,198,0.06), transparent 60%),
+      var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  a { color: var(--brand); }
+
+  /* ---------- Header ---------- */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 20px; flex-wrap: wrap;
+    padding: 20px 28px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+  }
+  .brand-lock { display: flex; align-items: center; gap: 14px; }
+  .mark {
+    width: 42px; height: 42px; flex: 0 0 auto;
+    display: grid; place-items: center;
+  }
+  .mark svg { width: 42px; height: 42px; display: block; }
+  .wordmark { display: flex; flex-direction: column; }
+  .wordmark .name {
+    font-size: 22px; font-weight: 700; letter-spacing: 0.22em;
+    background: linear-gradient(90deg, #ffffff, var(--brand));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .wordmark .tag { font-size: 11.5px; color: var(--ink-2); letter-spacing: 0.04em; }
+  .header-meta { text-align: right; font-size: 11.5px; color: var(--muted); }
+  .header-meta b { color: var(--ink-2); font-weight: 600; }
+  .pill {
+    display: inline-block; padding: 3px 9px; border-radius: 999px;
+    border: 1px solid var(--border-2); font-size: 10.5px; letter-spacing: 0.05em;
+    color: var(--ink-2); text-transform: uppercase;
+  }
+
+  /* ---------- Layout ---------- */
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 22px 28px 40px; }
+  .cases { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+  .case-btn {
+    appearance: none; cursor: pointer;
+    background: var(--panel); color: var(--ink-2);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 14px; font-family: var(--font); font-size: 12.5px;
+    display: flex; align-items: center; gap: 9px; transition: all .15s ease;
+  }
+  .case-btn:hover { border-color: var(--border-2); color: var(--ink); }
+  .case-btn.active {
+    border-color: var(--brand-dim); background: var(--panel-2); color: var(--ink);
+    box-shadow: 0 0 0 1px var(--brand-dim), 0 6px 20px rgba(0,0,0,0.35);
+  }
+  .case-btn .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+  .case-btn .cid { font-weight: 700; letter-spacing: 0.03em; }
+  .case-btn .cdesc { color: var(--muted); font-size: 11.5px; }
+
+  .grid { display: grid; grid-template-columns: minmax(0,1.05fr) minmax(0,0.95fr); gap: 20px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden;
+  }
+  .card-h {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 16px; border-bottom: 1px solid var(--border);
+  }
+  .card-h .t { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; }
+  .card-h .s { font-size: 11px; color: var(--muted); }
+  .card-b { padding: 16px; }
+
+  /* ---------- Scan viewer ---------- */
+  .scan-shell { position: relative; background: #05070b; }
+  .scan-shell svg { width: 100%; height: auto; display: block; }
+  .scan-frame-label {
+    position: absolute; font-size: 10px; color: #4b5b6e; letter-spacing: 0.08em;
+    font-variant-numeric: tabular-nums; pointer-events: none;
+  }
+  .region { cursor: pointer; transition: opacity .18s ease; }
+  .region .heat { opacity: 0.42; transition: opacity .2s ease, transform .2s ease; }
+  .region .ring { opacity: 0; transition: opacity .18s ease; }
+  .region .rlabel { opacity: 0; transition: opacity .18s ease; }
+  .region.active .heat { opacity: 0.82; }
+  .region.active .ring { opacity: 1; }
+  .region.active .rlabel { opacity: 1; }
+  .scan-dim .region:not(.active) .heat { opacity: 0.14; }
+
+  .heat-legend { display: flex; align-items: center; gap: 8px; padding: 10px 16px 14px; }
+  .heat-legend .bar {
+    height: 8px; width: 130px; border-radius: 4px;
+    background: linear-gradient(90deg, var(--heat-lo), var(--heat-mid), var(--heat-hi));
+  }
+  .heat-legend span { font-size: 10.5px; color: var(--muted); letter-spacing: 0.03em; }
+
+  /* ---------- Prediction ---------- */
+  .pred-row { margin-bottom: 16px; }
+  .pred-row:last-child { margin-bottom: 4px; }
+  .pred-top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 7px; }
+  .gene { font-size: 14px; font-weight: 700; letter-spacing: 0.04em; }
+  .gene small { font-weight: 500; color: var(--muted); font-size: 11px; letter-spacing: 0.02em; }
+  .call { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+  .call .cdot { width: 9px; height: 9px; border-radius: 50%; }
+  .call .pct { font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
+  .call .lab { color: var(--ink-2); }
+  .meter { height: 9px; border-radius: 5px; background: var(--panel-3); overflow: hidden; position: relative; }
+  .meter .fill { height: 100%; border-radius: 5px; width: 0; transition: width .6s cubic-bezier(.2,.7,.2,1); }
+  .conf-note { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+  /* ---------- Report ---------- */
+  .report { font-size: 13.5px; line-height: 1.85; color: var(--ink-2); }
+  .report .g {
+    color: var(--ink); border-bottom: 1.5px dashed rgba(47,212,198,0.5);
+    cursor: pointer; padding: 1px 2px; border-radius: 3px; transition: all .15s ease;
+  }
+  .report .g:hover, .report .g.active {
+    background: rgba(47,212,198,0.14); border-bottom-color: var(--brand); color: #fff;
+  }
+  .report .tagn {
+    font-size: 9.5px; vertical-align: super; color: var(--brand);
+    font-variant-numeric: tabular-nums; margin-left: 1px; font-weight: 700;
+  }
+  .report-foot {
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
+    font-size: 11px; color: var(--muted); display: flex; gap: 16px; flex-wrap: wrap;
+  }
+  .report-foot b { color: var(--ink-2); font-weight: 600; }
+
+  /* ---------- How it works ---------- */
+  .how { margin-top: 22px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  @media (max-width: 780px) { .how { grid-template-columns: 1fr 1fr; } }
+  .how .step { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  .how .n { font-size: 11px; color: var(--brand); font-weight: 700; letter-spacing: 0.1em; }
+  .how .st { font-size: 13px; font-weight: 600; margin: 6px 0 4px; }
+  .how .sd { font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+
+  .disclaimer {
+    margin-top: 20px; padding: 12px 16px; border: 1px solid var(--border);
+    border-radius: 10px; background: rgba(250,178,25,0.05);
+    font-size: 11.5px; color: var(--ink-2);
+  }
+  .disclaimer b { color: var(--warn); }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand-lock">
+    <div class="mark">
+      <svg viewBox="0 0 44 44" fill="none" aria-hidden="true">
+        <circle cx="22" cy="22" r="20" stroke="#2fd4c6" stroke-opacity="0.35" stroke-width="1.5"/>
+        <ellipse cx="22" cy="22" rx="19" ry="11" stroke="#2fd4c6" stroke-opacity="0.7" stroke-width="1.6"/>
+        <circle cx="22" cy="22" r="6.5" fill="#2fd4c6" fill-opacity="0.18" stroke="#2fd4c6" stroke-width="1.6"/>
+        <circle cx="22" cy="22" r="2.4" fill="#2fd4c6"/>
+        <circle cx="22" cy="22" r="10.5" stroke="#2fd4c6" stroke-opacity="0.25" stroke-width="1"/>
+      </svg>
+    </div>
+    <div class="wordmark">
+      <div class="name">THEIA</div>
+      <div class="tag">Grounded radiogenomic inference · NSCLC</div>
+    </div>
+  </div>
+  <div class="header-meta">
+    <span class="pill">Research prototype</span><br>
+    <span style="display:inline-block;margin-top:7px;">EGFR / KRAS from CT · <b>predicts + localizes + explains</b></span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="cases" id="cases"></div>
+
+  <div class="grid">
+    <!-- LEFT: scan -->
+    <div class="card">
+      <div class="card-h">
+        <span class="t">Axial CT · attention grounding</span>
+        <span class="s" id="scanMeta">—</span>
+      </div>
+      <div class="scan-shell" id="scanShell">
+        <span class="scan-frame-label" style="top:8px; left:10px;">THEIA·v0 · schematic</span>
+        <span class="scan-frame-label" style="bottom:8px; right:10px;" id="scanWL">WL -600 / WW 1500</span>
+        <svg viewBox="0 0 400 400" id="scanSvg" role="img" aria-label="Schematic axial CT with model attention regions">
+          <defs>
+            <radialGradient id="body" cx="50%" cy="46%" r="60%">
+              <stop offset="0%" stop-color="#232a33"/>
+              <stop offset="72%" stop-color="#161b22"/>
+              <stop offset="100%" stop-color="#0a0e14"/>
+            </radialGradient>
+            <radialGradient id="lung" cx="50%" cy="50%" r="60%">
+              <stop offset="0%" stop-color="#0c1016"/>
+              <stop offset="100%" stop-color="#05070b"/>
+            </radialGradient>
+            <filter id="soft"><feGaussianBlur stdDeviation="6"/></filter>
+            <filter id="softer"><feGaussianBlur stdDeviation="11"/></filter>
+            <radialGradient id="heatG">
+              <stop offset="0%" stop-color="#e34948"/>
+              <stop offset="45%" stop-color="#eb6834"/>
+              <stop offset="100%" stop-color="#fab219" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="nod">
+              <stop offset="0%" stop-color="#dfe7ef"/>
+              <stop offset="60%" stop-color="#9aa8b8"/>
+              <stop offset="100%" stop-color="#3a4653" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+
+          <!-- body cross section -->
+          <ellipse cx="200" cy="205" rx="150" ry="128" fill="url(#body)" stroke="#2b333d" stroke-width="1.5"/>
+          <!-- lungs -->
+          <ellipse cx="138" cy="200" rx="58" ry="86" fill="url(#lung)"/>
+          <ellipse cx="262" cy="200" rx="58" ry="86" fill="url(#lung)"/>
+          <!-- mediastinum / spine -->
+          <ellipse cx="200" cy="205" rx="20" ry="40" fill="#20272f"/>
+          <circle cx="200" cy="278" r="13" fill="#232b34"/>
+          <path d="M182 210 Q200 196 218 210" stroke="#2c343d" stroke-width="2" fill="none"/>
+
+          <!-- dynamic regions injected here -->
+          <g id="regions"></g>
+        </svg>
+      </div>
+      <div class="heat-legend">
+        <span>low attention</span>
+        <div class="bar"></div>
+        <span>high</span>
+        <span style="margin-left:auto; color:#4b5b6e;">hover a report clause ↔ region</span>
+      </div>
+    </div>
+
+    <!-- RIGHT: prediction + report -->
+    <div style="display:flex; flex-direction:column; gap:20px;">
+      <div class="card">
+        <div class="card-h">
+          <span class="t">Molecular status prediction</span>
+          <span class="s">non-invasive · from imaging</span>
+        </div>
+        <div class="card-b" id="predBody"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <span class="t">Generated rationale</span>
+          <span class="s">grounded to regions</span>
+        </div>
+        <div class="card-b">
+          <div class="report" id="report"></div>
+          <div class="report-foot" id="reportFoot"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="how">
+    <div class="step"><div class="n">01</div><div class="st">See</div><div class="sd">Vision encoder reads the axial CT volume and attends to tumor sub-regions.</div></div>
+    <div class="step"><div class="n">02</div><div class="st">Predict</div><div class="sd">Classifier head calls EGFR / KRAS status with a calibrated confidence.</div></div>
+    <div class="step"><div class="n">03</div><div class="st">Localize</div><div class="sd">Each claim is tied to the image regions that drove it — the grounding step.</div></div>
+    <div class="step"><div class="n">04</div><div class="st">Explain</div><div class="sd">Generation head writes a structured rationale a clinician can audit.</div></div>
+  </div>
+
+  <div class="disclaimer">
+    <b>Prototype notice.</b> This interface uses <b>synthetic schematic scans and mock predictions</b> to demonstrate the intended THEIA experience — the linkage between a predicted mutation, the image regions behind it, and a grounded written rationale. No real patient data, no trained model. It is the front end that the NSCLC-RADIOGENOMICS pipeline plugs into, and the same layout adapts directly into the blinded reader-study tool.
+  </div>
+</div>
+
+<script>
+const CASES = {
+  A: {
+    label: "EGFR-mutant", color: "#2fd4c6",
+    meta: "Case A · RUL adenocarcinoma · 62F",
+    egfr: { call: "Mutant", p: 0.88, status: "pos" },
+    kras: { call: "Wild-type", p: 0.79, status: "neg" },
+    confNote: "High-confidence EGFR call. Ground-glass + spiculation pattern favors EGFR mutation.",
+    nodule: { cx: 150, cy: 168, r: 15 },
+    regions: [
+      { id: 1, cx: 150, cy: 168, rx: 26, ry: 24, w: "high",  name: "Spiculated margin" },
+      { id: 2, cx: 128, cy: 150, rx: 20, ry: 17, w: "mid",   name: "Ground-glass halo" },
+      { id: 3, cx: 172, cy: 196, rx: 15, ry: 13, w: "low",   name: "Pleural tag" },
+    ],
+    report: [
+      { t: "A ", },
+      { t: "spiculated solid nodule in the right upper lobe", g: 1 },
+      { t: " shows a ", },
+      { t: "peripheral ground-glass component", g: 2 },
+      { t: " and a ", },
+      { t: "pleural tag toward the costal surface", g: 3 },
+      { t: ". The mixed solid–ground-glass morphology and margin spiculation are features associated with EGFR-mutant adenocarcinoma; KRAS-typical solid lobulation is not dominant." },
+    ],
+    foot: ["Attends 3 regions", "Top driver: <b>spiculated margin</b>", "Hallucination check: <b>clear</b>"],
+  },
+  B: {
+    label: "KRAS-mutant", color: "#eb6834",
+    meta: "Case B · LLL adenocarcinoma · 68M",
+    egfr: { call: "Wild-type", p: 0.83, status: "neg" },
+    kras: { call: "Mutant", p: 0.71, status: "pos" },
+    confNote: "Moderate-confidence KRAS call. Solid, lobulated, well-marginated mass.",
+    nodule: { cx: 250, cy: 232, r: 17 },
+    regions: [
+      { id: 1, cx: 250, cy: 232, rx: 28, ry: 25, w: "high", name: "Solid lobulated core" },
+      { id: 2, cx: 272, cy: 214, rx: 18, ry: 15, w: "mid",  name: "Lobulated border" },
+      { id: 3, cx: 232, cy: 252, rx: 14, ry: 12, w: "low",  name: "Vascular convergence" },
+    ],
+    report: [
+      { t: "A ", },
+      { t: "solid, lobulated mass in the left lower lobe", g: 1 },
+      { t: " has a ", },
+      { t: "well-defined lobulated border", g: 2 },
+      { t: " with ", },
+      { t: "adjacent vascular convergence", g: 3 },
+      { t: ". The dense solid composition without a ground-glass component is more consistent with KRAS-mutant than EGFR-mutant morphology; confidence is moderate and molecular confirmation is advised." },
+    ],
+    foot: ["Attends 3 regions", "Top driver: <b>solid lobulated core</b>", "Hallucination check: <b>clear</b>"],
+  },
+  C: {
+    label: "Wild-type (uncertain)", color: "#9fb0c3",
+    meta: "Case C · RML nodule · 57F",
+    egfr: { call: "Wild-type", p: 0.64, status: "neg" },
+    kras: { call: "Wild-type", p: 0.61, status: "neg" },
+    confNote: "Low confidence on both. Ambiguous morphology — THEIA flags for molecular assay rather than over-committing.",
+    nodule: { cx: 168, cy: 232, r: 12 },
+    regions: [
+      { id: 1, cx: 168, cy: 232, rx: 22, ry: 20, w: "mid", name: "Ill-defined nodule" },
+      { id: 2, cx: 150, cy: 246, rx: 15, ry: 13, w: "low", name: "Fibrotic band" },
+    ],
+    report: [
+      { t: "An ", },
+      { t: "ill-defined nodule in the right middle lobe", g: 1 },
+      { t: " abuts a ", },
+      { t: "band of parenchymal fibrosis", g: 2 },
+      { t: ". Morphologic features are non-specific and do not clearly favor EGFR- or KRAS-mutant disease; THEIA returns low confidence and recommends tissue-based molecular testing rather than an imaging-only call." },
+    ],
+    foot: ["Attends 2 regions", "Top driver: <b>none dominant</b>", "Action: <b>defer to assay</b>"],
+  },
+};
+
+const HEAT_R = { low: 20, mid: 26, high: 33 };
+const HEAT_OP = { low: 0.30, mid: 0.42, high: 0.55 };
+
+let current = "A";
+
+function statusColor(s){ return s === "pos" ? "var(--brand)" : "var(--muted)"; }
+
+function renderCases(){
+  const el = document.getElementById("cases");
+  el.innerHTML = "";
+  Object.entries(CASES).forEach(([k,c])=>{
+    const b = document.createElement("button");
+    b.className = "case-btn" + (k===current ? " active":"");
+    b.innerHTML = `<span class="dot" style="background:${c.color}"></span>
+      <span class="cid">Case ${k}</span><span class="cdesc">${c.label}</span>`;
+    b.onclick = ()=>{ current = k; renderAll(); };
+    el.appendChild(b);
+  });
+}
+
+function renderScan(){
+  const c = CASES[current];
+  document.getElementById("scanMeta").textContent = c.meta;
+  const g = document.getElementById("regions");
+  const NS = "http://www.w3.org/2000/svg";
+  g.innerHTML = "";
+
+  // nodule base
+  const nod = document.createElementNS(NS,"ellipse");
+  nod.setAttribute("cx", c.nodule.cx); nod.setAttribute("cy", c.nodule.cy);
+  nod.setAttribute("rx", c.nodule.r); nod.setAttribute("ry", c.nodule.r*0.9);
+  nod.setAttribute("fill","url(#nod)"); nod.setAttribute("filter","url(#soft)");
+  g.appendChild(nod);
+
+  c.regions.forEach(r=>{
+    const grp = document.createElementNS(NS,"g");
+    grp.setAttribute("class","region");
+    grp.setAttribute("data-region", r.id);
+
+    const heat = document.createElementNS(NS,"ellipse");
+    heat.setAttribute("class","heat");
+    heat.setAttribute("cx", r.cx); heat.setAttribute("cy", r.cy);
+    heat.setAttribute("rx", HEAT_R[r.w]); heat.setAttribute("ry", HEAT_R[r.w]*0.9);
+    heat.setAttribute("fill","url(#heatG)"); heat.setAttribute("filter","url(#softer)");
+    heat.style.opacity = HEAT_OP[r.w];
+    grp.appendChild(heat);
+
+    const ring = document.createElementNS(NS,"ellipse");
+    ring.setAttribute("class","ring");
+    ring.setAttribute("cx", r.cx); ring.setAttribute("cy", r.cy);
+    ring.setAttribute("rx", HEAT_R[r.w]*0.86); ring.setAttribute("ry", HEAT_R[r.w]*0.78);
+    ring.setAttribute("fill","none"); ring.setAttribute("stroke","#ffffff");
+    ring.setAttribute("stroke-width","1.4"); ring.setAttribute("stroke-dasharray","3 3");
+    grp.appendChild(ring);
+
+    const lab = document.createElementNS(NS,"text");
+    lab.setAttribute("class","rlabel");
+    lab.setAttribute("x", r.cx); lab.setAttribute("y", r.cy - HEAT_R[r.w]*0.9 - 6);
+    lab.setAttribute("text-anchor","middle");
+    lab.setAttribute("fill","#ffffff"); lab.setAttribute("font-size","10.5");
+    lab.setAttribute("font-family","system-ui, sans-serif");
+    lab.textContent = "R"+r.id+" · "+r.name;
+    grp.appendChild(lab);
+
+    grp.addEventListener("mouseenter", ()=>setActive(r.id, true));
+    grp.addEventListener("mouseleave", ()=>setActive(r.id, false));
+    g.appendChild(grp);
+  });
+}
+
+function renderPred(){
+  const c = CASES[current];
+  const body = document.getElementById("predBody");
+  const row = (gene, d) => {
+    const col = d.status === "pos" ? "var(--brand)" : "var(--muted)";
+    return `<div class="pred-row">
+      <div class="pred-top">
+        <span class="gene">${gene} <small>mutation</small></span>
+        <span class="call"><span class="cdot" style="background:${col}"></span>
+          <span class="lab">${d.call}</span><span class="pct">${(d.p*100).toFixed(0)}%</span></span>
+      </div>
+      <div class="meter"><div class="fill" data-w="${(d.p*100).toFixed(0)}"
+        style="background:${d.status==='pos'?'linear-gradient(90deg,var(--brand-dim),var(--brand))':'linear-gradient(90deg,#2b3947,#3987e5)'}"></div></div>
+    </div>`;
+  };
+  body.innerHTML = row("EGFR", c.egfr) + row("KRAS", c.kras) +
+    `<div class="conf-note">${c.confNote}</div>`;
+  requestAnimationFrame(()=>{
+    body.querySelectorAll(".fill").forEach(f=> f.style.width = f.dataset.w + "%");
+  });
+}
+
+function renderReport(){
+  const c = CASES[current];
+  const rep = document.getElementById("report");
+  rep.innerHTML = "";
+  c.report.forEach(seg=>{
+    if(seg.g){
+      const s = document.createElement("span");
+      s.className = "g"; s.dataset.region = seg.g;
+      s.innerHTML = seg.t + `<span class="tagn">R${seg.g}</span>`;
+      s.addEventListener("mouseenter", ()=>setActive(seg.g, true));
+      s.addEventListener("mouseleave", ()=>setActive(seg.g, false));
+      rep.appendChild(s);
+    } else {
+      rep.appendChild(document.createTextNode(seg.t));
+    }
+  });
+  const foot = document.getElementById("reportFoot");
+  foot.innerHTML = c.foot.map(f=>`<span>${f}</span>`).join("");
+}
+
+function setActive(id, on){
+  const shell = document.getElementById("scanShell");
+  document.querySelectorAll('.region').forEach(r=>{
+    r.classList.toggle("active", on && r.dataset.region == id);
+  });
+  document.querySelectorAll('.report .g').forEach(s=>{
+    s.classList.toggle("active", on && s.dataset.region == id);
+  });
+  shell.classList.toggle("scan-dim", on);
+}
+
+function renderAll(){
+  renderCases();
+  renderScan();
+  renderPred();
+  renderReport();
+}
+renderAll();
+</script>
+</body>
+</html>
