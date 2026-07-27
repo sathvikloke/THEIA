@@ -206,6 +206,14 @@ def grounding_metrics(attn_maps: torch.Tensor, roi: torch.Tensor,
         out[f"grounding_pointing{name}"] = _pointing(u, target)
         out[f"grounding_iou{name}"] = _area_matched_iou(u, target)
     out["grounding_roi_frac"] = (target.mean(dim=1)).tolist()
+    # Peak-to-mean of the attention union. At 1.0 the map is uniform, the model
+    # is pointing nowhere, and every localization number above is meaningless —
+    # the argmax then falls wherever float noise puts it (in practice cell 0,
+    # which reads as a confident, reproducible pointing score of exactly 0.000).
+    # Measured 1.03 on an untrained head, so treat anything under ~1.5 as "no
+    # localization yet" rather than "localizes badly".
+    out["grounding_peak_ratio"] = (
+        union.amax(dim=1) / union.mean(dim=1).clamp_min(EPS)).tolist()
     return out
 
 

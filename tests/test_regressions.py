@@ -90,6 +90,7 @@ def test_grounding_metric_separates_signal_from_noise():
     from theia.engine.evaluate import grounding_metrics
     from theia.engine.losses import roi_to_grid
 
+    torch.manual_seed(0)
     roi = _roi_with_fraction(0.5)
     target = roi_to_grid(roi, 14, 14, torch.device("cpu"))
     perfect = target.unsqueeze(1).repeat(1, 8, 1, 1)
@@ -108,6 +109,9 @@ def test_grounding_metric_ships_a_chance_baseline():
     """Random attention must score at ~its own shuffled baseline (lift ~ 0)."""
     from theia.engine.evaluate import grounding_metrics
 
+    # Seeded: the assertion is a statistical one, so leaving it on whatever
+    # global RNG state the previous test happened to leave behind makes it flaky.
+    torch.manual_seed(0)
     roi = _roi_with_fraction(0.5)
     m = grounding_metrics(torch.rand(roi.shape[0], 8, 14, 14), roi)
     for key in ("grounding_mass", "grounding_pointing", "grounding_iou"):
@@ -467,3 +471,20 @@ def test_total_loss_parts_stay_detached_tensors():
     for k, v in parts.items():
         assert torch.is_tensor(v), f"{k} was eagerly converted to float"
         assert not v.requires_grad, f"{k} still holds a graph reference"
+
+
+# --------------------------------------------------------------------------
+# BUG: make_collate returned a closure, which DataLoader cannot pickle to its
+#      workers (num_workers>0 on macOS spawn) — the run died at the first batch
+# --------------------------------------------------------------------------
+def test_collate_fn_is_picklable_for_dataloader_workers():
+    import pickle
+
+    from theia.data.dataset import make_collate
+
+    fn = make_collate(["EGFR", "KRAS"])
+    restored = pickle.loads(pickle.dumps(fn))       # what DataLoader does per worker
+    a = dict(images=torch.rand(2, 1, 8, 8), roi=torch.rand(2, 1, 8, 8),
+             report="r", patient_id="a", egfr=torch.tensor(1), kras=torch.tensor(0))
+    out = restored([a, a])
+    assert out["egfr"].shape[0] == 2 and "kras" in out

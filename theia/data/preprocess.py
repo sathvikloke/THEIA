@@ -28,6 +28,7 @@ Three corrections
 """
 from __future__ import annotations
 
+import glob
 import json
 import os
 from pathlib import Path
@@ -67,6 +68,24 @@ def window_hu(vol: np.ndarray, center: float, width: float) -> np.ndarray:
     """HU window -> [0,1]. Lung window default is center -600, width 1500."""
     lo, hi = center - width / 2.0, center + width / 2.0
     return np.clip((vol - lo) / (hi - lo), 0.0, 1.0)
+
+
+def load_segmentation(seg_dir: str):
+    """Read a DICOM SEG.
+
+    These are a single multi-frame object (one file, N frames, one per source
+    slice), not a series of files. `ImageSeriesReader` mishandles that — it wants
+    one file per slice. SimpleITK reads the file directly and recovers the
+    correct geometry, which is what `resample_mask_to` then needs to align it to
+    the CT grid.
+    """
+    sitk = _sitk()
+    files = sorted(glob.glob(os.path.join(seg_dir, "*.dcm")))
+    if not files:
+        raise FileNotFoundError(f"no DICOM in {seg_dir}")
+    if len(files) == 1:
+        return sitk.ReadImage(files[0])
+    return load_series(seg_dir)
 
 
 def resample_mask_to(ct, seg) -> np.ndarray:
@@ -272,7 +291,7 @@ def process_patient(pid, ct_dir, seg_dir, clinical_row, cfg, ann=None) -> dict |
 
     mask = None
     try:
-        seg = load_series(seg_dir)
+        seg = load_segmentation(seg_dir)
         m = resample_mask_to(ct, seg)
         if m.sum() >= cfg.data.min_tumor_voxels:
             mask = m

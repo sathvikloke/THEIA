@@ -293,3 +293,30 @@ def test_config_accepts_aim_crop_mm():
 
     cfg = load_config("configs/default.yaml")
     assert float(cfg.data.aim_crop_mm) > 0
+
+
+def test_flat_attention_is_flagged_not_silently_scored():
+    """Uniform attention must be visible as 'no localization', not a 0.000 score.
+
+    Measured on the real untrained model: union values spanned 0.00510-0.00598
+    (all ~1/196), the argmax landed on cell 0 for every patient, and pointing
+    read exactly 0.000 -- which looks like a confident negative result rather
+    than an attention map that says nothing.
+    """
+    from theia.engine.evaluate import grounding_metrics
+
+    roi = _roi_flat_helper()
+    flat = torch.full((4, 8, 14, 14), 1 / 196.0) + torch.rand(4, 8, 14, 14) * 1e-5
+    peaked = torch.zeros(4, 8, 14, 14)
+    peaked[:, :, 7, 7] = 1.0
+
+    m_flat = grounding_metrics(flat, roi)
+    m_peak = grounding_metrics(peaked, roi)
+    assert np.mean(m_flat["grounding_peak_ratio"]) < 1.5, "uniform map not flagged as flat"
+    assert np.mean(m_peak["grounding_peak_ratio"]) > 10, "peaked map not flagged as concentrated"
+
+
+def _roi_flat_helper():
+    roi = torch.zeros(4, 4, 1, 224, 224)
+    roi[:, :, :, 90:150, 90:150] = 1.0
+    return roi

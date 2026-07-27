@@ -23,6 +23,7 @@ Two things here used to be silently wrong and are now enforced:
 from __future__ import annotations
 
 import json
+from functools import partial
 from typing import Iterator, Sequence
 
 import numpy as np
@@ -114,10 +115,14 @@ def collate(batch: list[dict], genes: Sequence[str] | None = None) -> dict:
 
 
 def make_collate(genes: Sequence[str]):
-    """Bind the gene panel for use as a DataLoader collate_fn."""
-    def _collate(batch: list[dict]) -> dict:
-        return collate(batch, genes=genes)
-    return _collate
+    """Bind the gene panel for use as a DataLoader collate_fn.
+
+    Must return a *picklable* callable. A closure is not: with num_workers > 0 the
+    DataLoader pickles collate_fn to hand it to each worker, and on macOS (spawn)
+    that fails with "Can't get local object 'make_collate.<locals>._collate'".
+    functools.partial over a module-level function pickles cleanly.
+    """
+    return partial(collate, genes=list(genes))
 
 
 def _load_labels(rows_jsonl: str, stratify_on: str) -> np.ndarray:
