@@ -196,11 +196,40 @@ Note: BLEU and ROUGE on the rationale are a sanity check only. The real rational
 
 ---
 
+## Cohort reality (measured, NSCLC-RADIOGENOMICS)
+
+Counts pulled from the TCIA API and the clinical spreadsheet, not estimated:
+
+| | patients | EGFR +/− | KRAS +/− |
+|---|---|---|---|
+| has CT | 211 | 43 / 129 | 38 / 133 |
+| **has CT + SEG** (grounding supervised) | **144** | 23 / 94 | 27 / 88 |
+| **has CT + (SEG or AIM)** — what THEIA uses | **191** | **41 / 118** | 34 / 124 |
+
+Only 144 of 211 subjects have a segmentation, but 190 have an AIM annotation
+carrying a lesion centroid. Including the AIM-only tier takes EGFR positives from
+23 to 41. Those patients get a fixed-size crop centred on the annotated lesion,
+their ROI is written as zeros, and the grounding term skips them — no mask is
+invented. See `data.aim_crop_mm`.
+
+**ALK has 2 positives.** It cannot be modelled. Config validation will not stop
+you, because 2 is a legal number.
+
+**Report the pooled out-of-fold AUC, not the mean of per-fold AUCs.** With ~23
+positives across 5 folds, a single held-out fold holds ~5, and an AUC from 5
+positives has a 95% CI near ±0.27 even when the model is genuinely good — an
+interval that includes chance. Pooling every fold's out-of-fold prediction into
+one ranking gives ±0.12 at the same sample size. `train.py` prints the pooled
+figure as the headline and rank-normalises within fold first, because each fold
+is a different model and their probability scales are not comparable.
+
 ## Known limitations
 
 State these before a reviewer does.
 
-**The rationale does not explain the mutation call.** The generation head is supervised on `build_pseudo_report`, which renders TCIA's controlled-vocabulary semantic annotations — margin, density, location, size, pleural attachment, vascular convergence — into a sentence. Those are radiologists describing the *image*. Nothing in that supervision signal carries genomic reasoning, so the head learns to caption a nodule, not to justify an EGFR prediction. Calling the output "a rationale a clinician can audit" overstates what it is. Fixing this properly means a supervision signal that ties imaging evidence to the molecular call, and that is a design problem, not a code change.
+**The rationale does not explain the mutation call.** The generation head is supervised on the AIM semantic annotations — margin, attenuation, shape, location, associated findings. Those are radiologists describing the *image*. Nothing in that supervision signal carries genomic reasoning, so the head learns to caption a nodule, not to justify an EGFR prediction. Calling the output "a rationale a clinician can audit" overstates what it is. Fixing this properly means a supervision signal that ties imaging evidence to the molecular call, and that is a design problem, not a code change.
+
+**You must unzip the AIM archive to `data/raw/<cohort>/aim/`.** `build_pseudo_report` reads six columns (`Surface`, `Density`, `Location`, `SizeCategory`, `PleuralAttachment`, `VascularConvergence`) that **do not exist** in the TCIA clinical spreadsheet — that file holds demographics, staging, treatment and outcome. Without the AIM files every patient falls through to identical defaults, the generation head trains on ~190 copies of one sentence, converges to a constant, and reports an excellent loss. `preprocess` now counts distinct rationales and warns, but the archive is the fix.
 
 **Grounding is measured on a tumor-centred crop.** At `context_factor: 1.0` the lesion fills most of the frame, so the chance baseline for every localization metric is high and the achievable lift is compressed. The `*_shuffled` columns make this visible rather than hidden. Raising `context_factor` to 2.0–3.0 makes grounding a real task at the cost of a smaller lesion in the input; it changes the science, so decide deliberately.
 

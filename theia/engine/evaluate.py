@@ -93,6 +93,87 @@ def evaluate(model, loader, cfg, device, full: bool = False) -> dict:
     return metrics
 
 
+@torch.no_grad()
+def collect_predictions(model, loader, cfg, device, fold: int = 0) -> list[dict]:
+    """Per-patient predictions, for pooling out-of-fold across folds.
+
+    Averaging per-fold AUCs is the wrong estimator at this cohort size. With ~23
+    EGFR positives spread over 5 folds, a held-out fold holds ~5 positives, and an
+    AUC from 5 positives has a 95% CI of roughly +/-0.27 even when the model is
+    genuinely good — an interval that includes chance. Averaging those hides the
+    instability behind a tidy mean.
+
+    Pooling every fold's out-of-fold prediction into ONE ranking and bootstrapping
+    that gives a single estimate over the whole cohort (+/-0.12 at the same
+    sample size). Each patient still appears exactly once, and always from a model
+    that never saw them in training, so it stays honest.
+    """
+    model.eval()
+    genes = [g.lower() for g in cfg.data.target_genes]
+    rows: list[dict] = []
+    for batch in loader:
+        out = model(batch, device)
+        probs = {g: torch.softmax(out["logits"][g].float(), dim=1)[:, 1].cpu().numpy()
+                 for g in genes if g in out["logits"]}
+        for i, pid in enumerate(batch["patient_id"]):
+            rec = {"patient_id": pid, "fold": fold}
+            for g in genes:
+                if g in probs and g in batch:
+                    rec[f"{g}_prob"] = float(probs[g][i])
+                    rec[f"{g}_true"] = int(batch[g][i])
+            rows.append(rec)
+    return rows
+
+
+def _rank_normalize_by_fold(rows: list[dict], key: str) -> np.ndarray:
+    """Map each fold's scores to within-fold ranks in [0,1] before pooling.
+
+    Every fold is a different model, and their probability scales are not
+    comparable — one may output 0.4-0.6 while another spans 0.1-0.9. Concatenating
+    the raw numbers into one ranking mixes those scales and can drag the pooled
+    AUC well below what any individual fold achieved, which looks like a real
+    performance drop but is an artefact of the merge.
+
+    AUC only depends on ordering, so converting to within-fold ranks preserves
+    exactly what each model got right and makes the folds commensurable.
+    """
+    out = np.zeros(len(rows))
+    folds: dict[object, list[int]] = {}
+    for i, r in enumerate(rows):
+        folds.setdefault(r.get("fold", 0), []).append(i)
+    for idx in folds.values():
+        vals = np.array([rows[i][key] for i in idx], dtype=float)
+        order = vals.argsort().argsort().astype(float)      # 0..n-1 ties broken stably
+        denom = max(len(idx) - 1, 1)
+        for j, i in enumerate(idx):
+            out[i] = order[j] / denom
+    return out
+
+
+def pooled_metrics(rows: list[dict], genes: list[str], bootstrap_n: int = 2000) -> dict:
+    """One AUC per gene over the pooled out-of-fold predictions, with a CI."""
+    out: dict[str, float] = {"n_patients": float(len(rows))}
+    for g in [x.lower() for x in genes]:
+        keep = [r for r in rows if r.get(f"{g}_true", -1) != -1 and f"{g}_prob" in r]
+        if not keep:
+            out[f"{g}_n"] = 0.0
+            out[f"{g}_auc"] = float("nan")
+            continue
+        y = np.array([r[f"{g}_true"] for r in keep])
+        p = _rank_normalize_by_fold(keep, f"{g}_prob")
+        out[f"{g}_n"] = float(len(y))
+        out[f"{g}_n_pos"] = float(y.sum()) if len(y) else 0.0
+        if len(set(y.tolist())) < 2:
+            out[f"{g}_auc"] = float("nan")
+            continue
+        out[f"{g}_auc"] = float(roc_auc_score(y, p))
+        lo, hi = _bootstrap_auc(y, p, bootstrap_n)
+        out[f"{g}_auc_lo"], out[f"{g}_auc_hi"] = float(lo), float(hi)
+        sens, spec = _sens_spec(y, p)
+        out[f"{g}_sens"], out[f"{g}_spec"] = sens, spec
+    return out
+
+
 def grounding_metrics(attn_maps: torch.Tensor, roi: torch.Tensor,
                       seed: int = 0) -> dict[str, list[float]]:
     """Per-sample grounding statistics, each paired with a shuffled baseline.

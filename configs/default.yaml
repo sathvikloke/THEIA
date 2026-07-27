@@ -22,6 +22,13 @@ data:
   # of a smaller lesion in the input. Changing this changes the science — decide
   # deliberately, do not drift.
   context_factor: 1.0
+  # Patients with an AIM annotation but no SEG get a fixed-size crop centred on
+  # the annotated lesion centroid. AIM marks a location, not an extent, so there
+  # is no bounding box to scale from. ~48 patients in NSCLC-RADIOGENOMICS are in
+  # this tier and they carry mutation labels; including them takes EGFR positives
+  # from 23 to 41. Their ROI is written as zeros and grounding is masked off for
+  # them — no mask is invented.
+  aim_crop_mm: 50.0
   slice_strategy: tumor_bbox   # tumor_bbox | max_area | all
   n_slices: 16                 # slices sampled through the tumor extent
   image_size: 224

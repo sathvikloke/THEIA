@@ -176,8 +176,11 @@ def test_full_run_reports_held_out_metrics(tmp_path, stub_model, monkeypatch, ca
     monkeypatch.setattr("sys.argv", ["train", "--device", "cpu"])
     train_mod.main()
 
-    summary = json.load(open(tmp_path / "runs" / "cv_summary.json"))
+    blob = json.load(open(tmp_path / "runs" / "cv_summary.json"))
+    summary = blob["folds"]
     assert len(summary) == 3
     assert all("test" in s for s in summary)
+    # the headline estimate is pooled across folds, not a mean of per-fold AUCs
+    assert "pooled" in blob and blob["pooled"]["egfr_n"] > 0
     out = capsys.readouterr().out
-    assert "held-out" in out
+    assert "POOLED OUT-OF-FOLD" in out

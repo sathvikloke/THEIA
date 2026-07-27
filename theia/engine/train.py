@@ -36,7 +36,7 @@ from tqdm import tqdm
 from theia.config import load_config
 from theia.data.dataset import (RadiogenomicsDataset, kfold_indices, make_collate,
                                 nested_kfold_indices)
-from theia.engine.evaluate import evaluate
+from theia.engine.evaluate import collect_predictions, evaluate, pooled_metrics
 from theia.engine.losses import total_loss
 from theia.models.theia_model import Theia
 from theia.runtime import amp_settings, autocast, describe, make_grad_scaler, resolve_device
@@ -163,6 +163,8 @@ def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
         test_metrics["split"] = "outer_test"
         log.append(test_metrics)
         result["test"] = test_metrics
+        # Kept per-patient so the folds can be pooled into one ranking later.
+        result["oof"] = collect_predictions(model, testl, cfg, device, fold=fold)
 
     with open(ckpt_dir / "log.jsonl", "w") as fh:
         for row in log:
@@ -176,8 +178,33 @@ def _summarize(summary: list[dict], monitor: str) -> str:
     if not vals:
         return f"[train] no fold produced a finite {monitor}"
     spread = f" ± {stdev(vals):.3f} (sd)" if len(vals) > 1 else ""
-    return (f"[train] held-out {monitor}: {mean(vals):.3f}{spread} "
+    return (f"[train] per-fold {monitor}: {mean(vals):.3f}{spread} "
             f"over {len(vals)}/{len(summary)} folds")
+
+
+def _report_pooled(summary: list[dict], cfg) -> dict:
+    """Pool every fold's out-of-fold predictions into one estimate and print it.
+
+    This is the headline number, not the per-fold mean. Each patient contributes
+    exactly one prediction, made by a model that never trained on them.
+    """
+    rows = [r for s in summary for r in (s.get("oof") or [])]
+    if not rows:
+        return {}
+    pooled = pooled_metrics(rows, cfg.data.target_genes, cfg.eval.bootstrap_n)
+    print(f"\n[train] POOLED OUT-OF-FOLD over {int(pooled['n_patients'])} patients:")
+    for g in [x.lower() for x in cfg.data.target_genes]:
+        auc = pooled.get(f"{g}_auc", float("nan"))
+        n, npos = int(pooled.get(f"{g}_n", 0)), int(pooled.get(f"{g}_n_pos", 0))
+        if math.isnan(auc):
+            print(f"[train]   {g.upper():6s} n={n:4d} pos={npos:3d}  AUC undefined "
+                  "(single-class)")
+            continue
+        lo, hi = pooled.get(f"{g}_auc_lo", float("nan")), pooled.get(f"{g}_auc_hi", float("nan"))
+        warn = "  <-- CI includes chance" if lo <= 0.5 else ""
+        print(f"[train]   {g.upper():6s} n={n:4d} pos={npos:3d}  "
+              f"AUC {auc:.3f}  95% CI [{lo:.3f}, {hi:.3f}]{warn}")
+    return pooled
 
 
 def main() -> None:
@@ -210,9 +237,10 @@ def main() -> None:
         summary.append(train_fold(cfg, fold, tr, va, te, device))
 
     Path(cfg.paths.runs_dir).mkdir(parents=True, exist_ok=True)
-    with open(os.path.join(cfg.paths.runs_dir, "cv_summary.json"), "w") as fh:
-        json.dump(summary, fh, indent=2)
     print(_summarize(summary, cfg.train.monitor))
+    pooled = _report_pooled(summary, cfg)
+    with open(os.path.join(cfg.paths.runs_dir, "cv_summary.json"), "w") as fh:
+        json.dump({"folds": summary, "pooled": pooled}, fh, indent=2)
 
 
 if __name__ == "__main__":

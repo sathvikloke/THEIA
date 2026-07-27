@@ -57,6 +57,9 @@ class RadiogenomicsDataset(Dataset):
             roi=roi,
             report=r["report"],
             patient_id=r["patient_id"],
+            # False for patients located from an AIM annotation with no pixel
+            # mask. Their ROI is all zeros and the grounding term skips them.
+            has_mask=torch.tensor(bool(r.get("has_mask", True))),
         )
         labels = {str(k).lower(): v for k, v in r["labels"].items()}
         for g in self.genes:
@@ -83,6 +86,7 @@ def collate(batch: list[dict], genes: Sequence[str] | None = None) -> dict:
         gene_keys = [
             k for k, v in batch[0].items()
             if torch.is_tensor(v) and v.ndim == 0 and v.dtype == torch.long
+            and k != "has_mask"
         ]
     else:
         gene_keys = [g.lower() for g in genes]
@@ -101,6 +105,7 @@ def collate(batch: list[dict], genes: Sequence[str] | None = None) -> dict:
         patient_id=[b["patient_id"] for b in batch],
         n_slices=n_slices,
         slice_mask=slice_mask,
+        has_mask=torch.stack([b.get("has_mask", torch.tensor(True)) for b in batch]),
     )
     for g in gene_keys:
         if g in batch[0]:
