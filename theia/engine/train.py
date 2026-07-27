@@ -2,23 +2,44 @@
 
 Run: python -m theia.engine.train --config configs/default.yaml
 Trains one model per fold and writes checkpoints + a metrics log per fold.
+
+Fixed here:
+  * Device selection was `cuda if available else cpu`, which ignored Apple
+    Silicon entirely. Now goes through theia.runtime (cuda > mps > cpu).
+  * `torch.cuda.amp` was requested unconditionally; off CUDA it disables itself
+    with a warning, so `amp: true` was quietly a lie. AMP is now device-aware and
+    the resolved state is printed.
+  * A NaN monitor (single-class validation fold) made `nan > best` False for every
+    epoch, so `best.pt` was NEVER written for that fold, `best` stayed -1.0 and
+    polluted the CV mean, and run_eval.sh died on a missing checkpoint. NaN is now
+    handled explicitly and a checkpoint is always written.
+  * The scheduler stepped even when the GradScaler skipped the optimizer step.
+  * The CV summary printed (max-min)/2 as "±", which is a half-range, not a
+    standard deviation or a confidence interval.
+  * Model selection ran on the same split that was reported. Nested splits are
+    now the default: early stopping uses an inner validation set, and the outer
+    fold is scored once, after the model is frozen.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 from pathlib import Path
+from statistics import mean, stdev
 
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from theia.config import load_config
-from theia.data.dataset import RadiogenomicsDataset, collate, kfold_indices
+from theia.data.dataset import (RadiogenomicsDataset, kfold_indices, make_collate,
+                                nested_kfold_indices)
 from theia.engine.evaluate import evaluate
 from theia.engine.losses import total_loss
 from theia.models.theia_model import Theia
+from theia.runtime import amp_settings, autocast, describe, make_grad_scaler, resolve_device
 
 
 def set_seed(seed: int) -> None:
@@ -32,20 +53,34 @@ def set_seed(seed: int) -> None:
     torch.cuda.manual_seed_all(seed)
 
 
-def make_loaders(cfg, train_idx, val_idx):
+def _loader(cfg, rows, genes, idx, shuffle: bool, drop_last: bool) -> DataLoader:
+    ds = RadiogenomicsDataset(rows, genes, idx)
+    workers = int(getattr(cfg.train, "num_workers", 2))
+    return DataLoader(
+        ds, batch_size=cfg.train.batch_size, shuffle=shuffle,
+        collate_fn=make_collate(genes), num_workers=workers,
+        drop_last=drop_last and len(ds) > cfg.train.batch_size,
+        persistent_workers=workers > 0,
+    )
+
+
+def make_loaders(cfg, train_idx, val_idx, test_idx=None):
     rows = os.path.join(cfg.paths.processed_dir, "rows.jsonl")
     genes = cfg.data.target_genes
-    tr = RadiogenomicsDataset(rows, genes, train_idx)
-    va = RadiogenomicsDataset(rows, genes, val_idx)
-    tl = DataLoader(tr, batch_size=cfg.train.batch_size, shuffle=True,
-                    collate_fn=collate, num_workers=4, drop_last=True)
-    vl = DataLoader(va, batch_size=cfg.train.batch_size, shuffle=False,
-                    collate_fn=collate, num_workers=4)
-    return tl, vl
+    tl = _loader(cfg, rows, genes, train_idx, shuffle=True, drop_last=True)
+    vl = _loader(cfg, rows, genes, val_idx, shuffle=False, drop_last=False)
+    testl = _loader(cfg, rows, genes, test_idx, shuffle=False, drop_last=False) if test_idx else None
+    return tl, vl, testl
 
 
-def train_fold(cfg, fold: int, train_idx, val_idx, device) -> dict:
-    tl, vl = make_loaders(cfg, train_idx, val_idx)
+def _is_better(candidate: float, best: float) -> bool:
+    """NaN is 'no signal', never an improvement — and never a permanent block."""
+    return not math.isnan(candidate) and candidate > best
+
+
+def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
+    tl, vl, testl = make_loaders(cfg, train_idx, val_idx, test_idx)
+    amp_on, amp_dtype = amp_settings(device, cfg.train.amp)
     model = Theia(cfg).to(device)
     opt = torch.optim.AdamW(model.trainable_parameters(), lr=cfg.train.lr,
                             weight_decay=cfg.train.weight_decay)
@@ -56,72 +91,128 @@ def train_fold(cfg, fold: int, train_idx, val_idx, device) -> dict:
     sched = torch.optim.lr_scheduler.OneCycleLR(
         opt, max_lr=cfg.train.lr, total_steps=steps,
         pct_start=cfg.train.warmup_ratio)
-    scaler = torch.cuda.amp.GradScaler(enabled=cfg.train.amp)
+    scaler = make_grad_scaler(device, amp_on)
 
-    best, best_epoch, patience = -1.0, 0, 0
+    best, best_epoch, patience = -float("inf"), -1, 0
     ckpt_dir = Path(cfg.paths.ckpt_dir) / f"fold{fold}"
     ckpt_dir.mkdir(parents=True, exist_ok=True)
     log = []
+
+    def save(path: Path, metrics: dict) -> None:
+        torch.save({"model": model.state_dict(), "cfg": dict(cfg), "metrics": metrics,
+                    "fold": fold, "lora_applied": model.lora_applied}, path)
 
     for epoch in range(cfg.train.epochs):
         model.train()
         opt.zero_grad()
         pbar = tqdm(tl, desc=f"fold{fold} ep{epoch}")
+        running, seen = None, 0
         for step, batch in enumerate(pbar):
-            with torch.cuda.amp.autocast(enabled=cfg.train.amp):
+            with autocast(device, amp_on, amp_dtype):
                 out = model(batch, device)
                 loss, parts = total_loss(out, batch, cfg.train.loss_weights, device)
                 loss = loss / cfg.train.grad_accum
             scaler.scale(loss).backward()
             if (step + 1) % cfg.train.grad_accum == 0:
+                prev_scale = scaler.get_scale()
                 scaler.step(opt)
                 scaler.update()
                 opt.zero_grad()
-                sched.step()
-            pbar.set_postfix(parts)
+                # A skipped step (inf/nan gradients) must not advance the LR
+                # schedule, or OneCycleLR drifts out of sync with real progress.
+                if scaler.get_scale() >= prev_scale:
+                    sched.step()
+            # parts are detached tensors; converting every step would force a
+            # host sync per iteration. Accumulate and format occasionally.
+            running = parts if running is None else {k: running[k] + parts[k] for k in parts}
+            seen += 1
+            if step % 20 == 0:
+                pbar.set_postfix({k: f"{float(v) / seen:.3f}" for k, v in running.items()})
 
         metrics = evaluate(model, vl, cfg, device)
         metrics["epoch"] = epoch
+        metrics["split"] = "inner_val"
         log.append(metrics)
-        monitor = metrics.get(cfg.train.monitor, -1.0)
-        if monitor > best:
+        monitor = metrics.get(cfg.train.monitor, float("nan"))
+        if _is_better(monitor, best):
             best, best_epoch, patience = monitor, epoch, 0
-            torch.save({"model": model.state_dict(), "cfg": dict(cfg), "metrics": metrics},
-                       ckpt_dir / "best.pt")
+            save(ckpt_dir / "best.pt", metrics)
         else:
             patience += 1
             if patience >= cfg.train.early_stop_patience:
                 print(f"[train] early stop fold{fold} @ ep{epoch} (best ep{best_epoch})")
                 break
 
+    # Always leave a usable checkpoint. If the monitor was NaN every epoch
+    # (single-class validation split) there is no "best", but downstream tools
+    # still need weights to load rather than a FileNotFoundError.
+    save(ckpt_dir / "last.pt", log[-1] if log else {})
+    if best_epoch < 0:
+        print(f"[train] fold{fold}: monitor '{cfg.train.monitor}' was NaN every epoch "
+              f"(validation split likely single-class); using last.pt as best.pt")
+        save(ckpt_dir / "best.pt", log[-1] if log else {})
+
+    result = dict(fold=fold, best_inner=None if best_epoch < 0 else best, best_epoch=best_epoch)
+
+    # The outer fold is scored exactly once, here, after the model is frozen.
+    if testl is not None:
+        ckpt = torch.load(ckpt_dir / "best.pt", map_location=device, weights_only=False)
+        model.load_state_dict(ckpt["model"])
+        test_metrics = evaluate(model, testl, cfg, device, full=True)
+        test_metrics["epoch"] = best_epoch
+        test_metrics["split"] = "outer_test"
+        log.append(test_metrics)
+        result["test"] = test_metrics
+
     with open(ckpt_dir / "log.jsonl", "w") as fh:
         for row in log:
             fh.write(json.dumps(row) + "\n")
-    return dict(fold=fold, best=best, best_epoch=best_epoch)
+    return result
+
+
+def _summarize(summary: list[dict], monitor: str) -> str:
+    vals = [s["test"][monitor] for s in summary
+            if s.get("test") and not math.isnan(s["test"].get(monitor, float("nan")))]
+    if not vals:
+        return f"[train] no fold produced a finite {monitor}"
+    spread = f" ± {stdev(vals):.3f} (sd)" if len(vals) > 1 else ""
+    return (f"[train] held-out {monitor}: {mean(vals):.3f}{spread} "
+            f"over {len(vals)}/{len(summary)} folds")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/default.yaml")
+    ap.add_argument("--device", default=None, help="override cfg.train.device")
     args = ap.parse_args()
     cfg = load_config(args.config)
     set_seed(cfg.seed)
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    if device == "cpu":
-        print("[train] WARNING: no CUDA. This is a scaffold run, not a real train.")
+
+    device = resolve_device(args.device or getattr(cfg.train, "device", "auto"))
+    amp_on, _ = amp_settings(device, cfg.train.amp)
+    print(f"[train] {describe(device, amp_on)}")
+    if device.type == "cpu":
+        print("[train] WARNING: no GPU backend. This is a scaffold run, not a real train.")
 
     rows = os.path.join(cfg.paths.processed_dir, "rows.jsonl")
+    nested = bool(getattr(cfg.split, "nested", True))
+    if nested:
+        folds = nested_kfold_indices(rows, cfg.split.stratify_on, cfg.split.n_folds,
+                                     cfg.seed, float(getattr(cfg.split, "inner_val_frac", 0.2)))
+    else:
+        print("[train] WARNING: split.nested is false — the checkpoint is selected on "
+              "the same split that gets reported, which biases the result upward.")
+        folds = ((tr, va, None) for tr, va in
+                 kfold_indices(rows, cfg.split.stratify_on, cfg.split.n_folds, cfg.seed))
+
     summary = []
-    for fold, (tr, va) in enumerate(kfold_indices(
-            rows, cfg.split.stratify_on, cfg.split.n_folds, cfg.seed)):
-        summary.append(train_fold(cfg, fold, tr, va, device))
+    for fold, (tr, va, te) in enumerate(folds):
+        summary.append(train_fold(cfg, fold, tr, va, te, device))
 
     Path(cfg.paths.runs_dir).mkdir(parents=True, exist_ok=True)
     with open(os.path.join(cfg.paths.runs_dir, "cv_summary.json"), "w") as fh:
         json.dump(summary, fh, indent=2)
-    aucs = [s["best"] for s in summary]
-    print(f"[train] CV {cfg.train.monitor}: {sum(aucs)/len(aucs):.3f} "
-          f"± {(max(aucs)-min(aucs))/2:.3f} over {len(aucs)} folds")
+    print(_summarize(summary, cfg.train.monitor))
 
 
 if __name__ == "__main__":

@@ -5,6 +5,20 @@ JSONL. No patient identity or arm label is ever sent to the browser — only the
 opaque token. Analysis joins scores to KEY_do_not_open.json afterward.
 
 Run: python -m theia.reader_study.serve --cases theia/reader_study/cases --reader R1
+
+Fixed here:
+  * The gene row was hard-coded to EGFR and KRAS, so any other gene in the panel
+    was invisible to the reader.
+  * Every arm was asked all three questions, including "the rationale is
+    clinically plausible" and "the highlighted region is anatomically sensible"
+    for the label_only and ground_truth arms, which show neither a rationale nor
+    an image. Two of the three arms were collecting noise. Each presentation now
+    carries the questions it can support.
+  * Submissions were accepted with no answers at all, silently advancing.
+  * Restarting the server reset the position to 0 while the scores file stayed in
+    append mode, duplicating every earlier case. Progress is now recovered from
+    the scores file.
+  * Model-generated text went through innerHTML.
 """
 from __future__ import annotations
 
@@ -18,6 +32,12 @@ from flask import Flask, jsonify, request, send_from_directory
 app = Flask(__name__)
 STATE: dict = {}
 
+QUESTION_TEXT = {
+    "plausible": "Rationale is clinically plausible",
+    "grounded": "Highlighted region is anatomically sensible",
+    "useful": "I would find this useful in practice",
+}
+
 
 PAGE = """<!doctype html><meta charset=utf-8>
 <title>THEIA reader study</title>
@@ -30,39 +50,65 @@ PAGE = """<!doctype html><meta charset=utf-8>
    padding:8px 12px;margin:3px;cursor:pointer}
  button:hover{background:#22303f} .status{font-size:20px;font-weight:700;color:#2fd4c6}
  .rat{color:#cdd;line-height:1.7;margin:10px 0}
+ .err{color:#ff9b9b;font-size:13px;margin-top:10px;min-height:18px}
+ .prog{color:#6b7889;font-size:12px;margin-bottom:10px}
 </style>
 <div class=card id=app>loading…</div>
 <script>
-let cur=null;
-async function load(){
- const r=await fetch('/next'); cur=await r.json();
- if(cur.done){document.getElementById('app').innerHTML='<h3>Done. Thank you.</h3>';return;}
- let h=`<div>Case <b>${cur.token}</b></div>`;
- const p=cur.arm_payload;
- if(p.image) h+=`<img src="/img/${p.image}">`;
- h+=`<p class=status>EGFR: ${label(p.status.egfr)} · KRAS: ${label(p.status.kras)}</p>`;
- if(p.rationale) h+=`<div class=rat>${p.rationale}</div>`;
- h+=scale('plausible','Rationale is clinically plausible');
- h+=scale('grounded','Highlighted region is anatomically sensible');
- h+=scale('useful','I would find this useful in practice');
- h+=`<div style=margin-top:16px><button onclick=submit()>Submit &rarr;</button></div>`;
- document.getElementById('app').innerHTML=h;
-}
+let cur=null, ans={};
+const QT=%QUESTION_TEXT%;
 function label(v){return v===1?'Mutant':(v===0?'Wild-type':'—');}
-function scale(k,q){let s=`<div class=q>${q}</div><div>`;
- for(let i=1;i<=5;i++) s+=`<button onclick="pick('${k}',${i},this)">${i}</button>`;
- return s+'</div>';}
-let ans={};
-function pick(k,v,el){ans[k]=v;
- [...el.parentNode.children].forEach(b=>b.style.background='#1a2230');
- el.style.background='#22303f';}
+
+async function load(){
+ ans={};
+ const r=await fetch('/next'); cur=await r.json();
+ const app=document.getElementById('app');
+ app.textContent='';
+ if(cur.done){app.innerHTML='<h3>Done. Thank you.</h3>';return;}
+ const p=cur.arm_payload;
+
+ const prog=document.createElement('div'); prog.className='prog';
+ prog.textContent=`Case ${cur.index+1} of ${cur.total}`; app.appendChild(prog);
+ const hdr=document.createElement('div'); hdr.textContent='Case '+cur.token; app.appendChild(hdr);
+
+ if(p.image){const im=document.createElement('img'); im.src='/img/'+encodeURIComponent(p.image); app.appendChild(im);}
+
+ const st=document.createElement('p'); st.className='status';
+ st.textContent=Object.keys(p.status||{}).map(g=>g.toUpperCase()+': '+label(p.status[g])).join(' · ');
+ app.appendChild(st);
+
+ if(p.rationale){const d=document.createElement('div'); d.className='rat';
+  d.textContent=p.rationale;            // model output is data, never markup
+  app.appendChild(d);}
+
+ (p.questions||[]).forEach(k=>{
+  const q=document.createElement('div'); q.className='q'; q.textContent=QT[k]||k; app.appendChild(q);
+  const row=document.createElement('div');
+  for(let i=1;i<=5;i++){const b=document.createElement('button');
+   b.textContent=i; b.onclick=()=>pick(k,i,b,row); row.appendChild(b);}
+  app.appendChild(row);
+ });
+
+ const err=document.createElement('div'); err.className='err'; err.id='err'; app.appendChild(err);
+ const wrap=document.createElement('div'); wrap.style.marginTop='16px';
+ const sub=document.createElement('button'); sub.textContent='Submit →'; sub.onclick=submit;
+ wrap.appendChild(sub); app.appendChild(wrap);
+}
+function pick(k,v,el,row){ans[k]=v;
+ [...row.children].forEach(b=>b.style.background='#1a2230');
+ el.style.background='#22303f'; document.getElementById('err').textContent='';}
 async function submit(){
- await fetch('/score',{method:'POST',headers:{'Content-Type':'application/json'},
+ const need=cur.arm_payload.questions||[];
+ const missing=need.filter(k=>!(k in ans));
+ if(missing.length){document.getElementById('err').textContent=
+   'Please answer all '+need.length+' question(s) before submitting.'; return;}
+ const r=await fetch('/score',{method:'POST',headers:{'Content-Type':'application/json'},
   body:JSON.stringify({token:cur.token,scores:ans})});
- ans={}; load();
+ if(!r.ok){document.getElementById('err').textContent='Server rejected the submission.'; return;}
+ load();
 }
 load();
-</script>"""
+</script>""".replace("%QUESTION_TEXT%", json.dumps(QUESTION_TEXT))
 
 
 @app.route("/")
@@ -81,16 +127,49 @@ def nxt():
     pres = STATE["presentations"]
     if i >= len(pres):
         return jsonify(done=True)
-    return jsonify(pres[i])
+    return jsonify(dict(pres[i], index=i, total=len(pres)))
 
 
 @app.route("/score", methods=["POST"])
 def score():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
+    token, scores = data.get("token"), data.get("scores") or {}
+    pres = STATE["presentations"]
+    if STATE["pos"] >= len(pres):
+        return jsonify(error="all cases already scored"), 400
+    expected = pres[STATE["pos"]]
+    if token != expected["token"]:
+        return jsonify(error="token mismatch; reload the page"), 409
+    required = set(expected["arm_payload"].get("questions", []))
+    if not required.issubset(scores):
+        return jsonify(error=f"missing answers: {sorted(required - set(scores))}"), 400
+    if not all(isinstance(v, int) and 1 <= v <= 5 for v in scores.values()):
+        return jsonify(error="scores must be integers 1-5"), 400
+
     with open(STATE["out"], "a") as fh:
-        fh.write(json.dumps(dict(reader=STATE["reader"], **data)) + "\n")
+        fh.write(json.dumps(dict(reader=STATE["reader"], token=token, scores=scores)) + "\n")
     STATE["pos"] += 1
     return jsonify(ok=True)
+
+
+def _resume_position(out_path: str, presentations: list[dict]) -> int:
+    """Skip past tokens this reader already scored, so a restart is safe."""
+    if not os.path.exists(out_path):
+        return 0
+    done = set()
+    with open(out_path) as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                done.add(json.loads(line).get("token"))
+            except json.JSONDecodeError:
+                continue
+    pos = 0
+    while pos < len(presentations) and presentations[pos]["token"] in done:
+        pos += 1
+    return pos
 
 
 def main() -> None:
@@ -100,9 +179,12 @@ def main() -> None:
     ap.add_argument("--port", type=int, default=7860)
     a = ap.parse_args()
     with open(Path(a.cases) / "presentations.json") as fh:
-        STATE.update(cases=a.cases, presentations=json.load(fh), pos=0,
-                     reader=a.reader, out=str(Path(a.cases) / f"scores_{a.reader}.jsonl"))
-    print(f"[reader] serving {len(STATE['presentations'])} cases for {a.reader} "
+        presentations = json.load(fh)
+    out = str(Path(a.cases) / f"scores_{a.reader}.jsonl")
+    pos = _resume_position(out, presentations)
+    STATE.update(cases=a.cases, presentations=presentations, pos=pos, reader=a.reader, out=out)
+    resumed = f" (resuming at {pos})" if pos else ""
+    print(f"[reader] serving {len(presentations)} cases for {a.reader}{resumed} "
           f"at http://127.0.0.1:{a.port}")
     app.run(port=a.port)
 

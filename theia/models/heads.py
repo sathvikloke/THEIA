@@ -55,8 +55,19 @@ class GroundingHead(nn.Module):
         return dict(region_emb=region_emb, attn_maps=maps)
 
     @staticmethod
-    def pooled_from_regions(region_emb: torch.Tensor) -> torch.Tensor:
-        return region_emb.mean(dim=1)                            # [B, D]
+    def pooled_from_regions(region_emb: torch.Tensor, mode: str = "mean") -> torch.Tensor:
+        """Pool the Q region embeddings into one vector for the classifier.
+
+        "mean" is the original behaviour. "max" matches what the grounding loss
+        supervises (an element-wise max over queries), which is the only setting
+        under which the "cannot decide from one place and point at another"
+        claim actually holds.
+        """
+        if mode == "max":
+            return region_emb.amax(dim=1)                        # [B, D]
+        if mode == "mean":
+            return region_emb.mean(dim=1)                        # [B, D]
+        raise ValueError(f"unknown region_pooling: {mode!r} (expected 'mean' or 'max')")
 
 
 class GenerationHead(nn.Module):
@@ -73,7 +84,15 @@ class GenerationHead(nn.Module):
 
         self.tokenizer = AutoTokenizer.from_pretrained(lm_name)
         if self.tokenizer.pad_token is None:
-            self.tokenizer.pad_token = self.tokenizer.eos_token
+            fallback = self.tokenizer.eos_token or self.tokenizer.unk_token
+            if fallback is None:
+                raise ValueError(
+                    f"{lm_name} has no pad/eos/unk token; cannot batch the generation head."
+                )
+            self.tokenizer.pad_token = fallback
+        # Labels mask the padding, so right-padding is correct for the teacher-forced
+        # forward; generate() runs off inputs_embeds and never sees a pad.
+        self.tokenizer.padding_side = "right"
         self.lm = AutoModelForCausalLM.from_pretrained(lm_name)
         self.max_new_tokens = max_new_tokens
         lm_dim = self.lm.get_input_embeddings().embedding_dim
@@ -106,5 +125,6 @@ class GenerationHead(nn.Module):
             attention_mask=attn,
             max_new_tokens=self.max_new_tokens,
             do_sample=False,
+            pad_token_id=self.tokenizer.pad_token_id,
         )
         return self.tokenizer.batch_decode(out, skip_special_tokens=True)

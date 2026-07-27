@@ -17,3 +17,7 @@ nltk>=3.9
 rouge-score>=0.1.2
 python-dotenv>=1.0
 flask>=3.0
+matplotlib>=3.8      # reader-study attention overlays
+requests>=2.31       # TCIA REST client
+pytest>=8.0
+psutil>=5.9          # file-handle leak regression test
