@@ -4,18 +4,36 @@ paths:
   raw_dir: data/raw/nsclc_radiogenomics
   processed_dir: data/processed
   radgenome_dir: data/raw/radgenome_chest_ct   # optional grounding pretraining
+  pathology_dir: data/raw/tcga_wsi             # roadmap (Q2): H&E whole-slide images
   runs_dir: runs
   ckpt_dir: checkpoints
 
 data:
-  modality: CT                 # CT | PET_CT
-  target_genes: [EGFR, KRAS]
+  modalities: [CT]             # roadmap: [CT, PATH] once the pathology branch lands
+  modality_dropout: 0.0        # roadmap (Q2): prob of dropping one modality in training
+  headline_genes: [EGFR, KRAS] # well-powered, carry the paper
+  exploratory_genes: []        # roadmap: [ALK, MET, BRAF, STK11, TP53] as prevalence allows
+  target_genes: [EGFR, KRAS]   # = headline + exploratory once the panel is locked in Q1
   roi_margin_mm: 12            # dilation around seg mask before crop
   slice_strategy: tumor_bbox   # tumor_bbox | max_area | all
   n_slices: 16                 # slices sampled through the tumor extent
   image_size: 224
   hu_window: [-600, 1500]      # lung window: center, width
   min_tumor_voxels: 50
+
+# Multi-cohort training + sealed external test (roadmap Q1-Q3).
+# Internal cohorts are pooled and k-folded; external stays unseen until the model freezes.
+cohorts:
+  internal: [nsclc_radiogenomics, tcga_luad, tcga_lusc, nsclc_radiomics]
+  external: [collaborator_private]   # held out for generalization; never trained on
+
+# Pathology branch (roadmap Q2). Frozen foundation-model backbone + MIL over tiles.
+pathology:
+  enabled: false
+  backbone: uni                # uni | conch
+  tile_size: 256
+  tiles_per_slide: 256
+  mil: attention               # attention-based multiple-instance aggregation
 
 split:
   scheme: stratified_kfold     # patient-level, stratified on EGFR

@@ -1,78 +1,84 @@
-# Grounded Generative Radiogenomics: 4-Month Project Plan
+# THEIA: 12-Month Project Plan
 
-## The idea
+**Multi-modal, interpretable, externally-validated molecular profiling for NSCLC.**
 
-Build a vision-language model that predicts EGFR and KRAS mutation status from CT scans in non-small cell lung cancer (NSCLC), and generates a structured, visually-grounded rationale for each prediction instead of just a probability score. The model points to the image regions it used and explains its reasoning in report-style text.
+## The reframe
 
-**Updated novelty framing, checked against the two closest papers as of mid-2026.** The right comparison set is no longer MAIRA-2/CheXagent/LLaVA-Rad, those are chest X-ray findings, not radiogenomics. It's these two:
+The earlier 4-month plan optimized for "finishable." This one optimizes for "worth doing." With a year, THEIA stops being a single-cohort CT proof of concept and becomes a unified system for non-invasive molecular profiling that a clinician could actually audit and trust.
 
-**Glio-LLaMA-Vision** (npj Digital Medicine, 2026): BiomedCLIP vision encoder plus LLaMA 3.1 8B, a classifier head for IDH mutation status in glioma and a generation head for free-text reports, trained jointly. Validated on four cohorts including TCGA (AUC 0.87), reader study with three neuroradiologists (91% clinically acceptable), hallucination-checked (5.1% rate). This is classification plus generation, done well, on MRI/glioma. It does not do spatial grounding, the paper explicitly names that as future work, not something implemented.
+The shift is in the claim, not just the data volume. Today, imaging-based molecular prediction is black-box, single-modality, single-institution, and unaware of its own limits, which is exactly why none of it enters clinical workflow. THEIA's thesis is that a trustworthy system has to be interpretable (grounded), multi-modal (reason across CT and tissue), generalizable (validated across institutions), and calibrated (know when to defer to biopsy). Building and validating that system, and showing its grounding recovers reproducible radiogenomic associations, is the contribution.
 
-**NEVA** (Nature Communications, 2026): vision-language model for neuroblastoma, predicts molecular alterations (NMYC amplification, 1p36 deletion) from histopathology, and does have grounding, interpretable attention maps tied to specific tissue regions. What it doesn't have is free-text generation, it's classification plus attention maps, no report text. It's also pathology imaging, not radiology.
+## What THEIA is now
 
-So: generation-plus-classification exists (Glio-LLaMA-Vision, radiology, no grounding). Classification-plus-grounding exists (NEVA, grounding, but pathology, no generation). Nobody has put all three together, classification, free-text generation, and spatial grounding, in the same model, and nobody has done grounding at all in radiology-modality imaging for biomarker prediction. That's the actual open square, and it's narrower and more defensible than "first VLM for radiogenomics." Position the paper against these two by name in related work, don't skip that, a reviewer who's seen either paper will read an unaddressed comparison as either sloppy or evasive.
+Five pillars, each a deliberate step up from v1:
 
-One practical upside from checking this space: RadGenome-Chest CT (Scientific Data, 2025) is a public dataset of 665K grounded reports and 1.2M grounded VQA pairs tied to segmentation masks on chest CT, no genomic labels, pure radiological findings. Use it to pretrain the grounding mechanism before fine-tuning on the 211-patient NSCLC-RADIOGENOMICS set. That directly offsets the small-N problem for the grounding component specifically.
+1. **Multi-modal.** A CT encoder and an H&E pathology encoder feed shared grounding, classification, and generation heads. TCGA provides both modalities with matched mutation calls, and mutation-from-H&E is an established large-N task (Coudray et al., 2018, predicted EGFR, STK11 and others from lung histology). The model handles patients with one modality or both, trained with modality dropout so it degrades gracefully.
 
-Also expect more papers like Glio-LLaMA-Vision and NEVA to land during your 4 months, this subfield has a named survey now ("Large language models in radiogenomics," The Visual Computer, 2026) which means it's actively being worked, not a quiet corner. Build the paper's identity around the specific mechanism, radiology-modality grounding tied to structured semantic-annotation supervision, not around being first to combine VLMs and biomarkers in general. That general claim has an expiration date measured in months right now.
+2. **Multi-gene.** An actionable NSCLC panel (EGFR, KRAS, and, as prevalence allows, ALK, MET, BRAF, STK11, TP53). Well-powered genes carry the headline; the rest are exploratory. Positive counts are reported honestly per gene.
 
-Clinical stakes are real too, not synthetic. EGFR and KRAS mutation status directly changes NSCLC treatment choice (targeted therapy eligibility). A model that's wrong here isn't an academic curiosity, so the clinical validation piece has actual weight, not just a checkbox.
+3. **Externally validated.** Trained on pooled cohorts, tested on a held-out collaborator/private cohort that is never seen in training. This single lever is what separates mid-tier from top-tier, and it was impossible in 4 months.
+
+4. **Uncertainty-aware.** Calibrated confidence with an abstention threshold. The headline clinical figure becomes "biopsies safely avoided at a given error tolerance," which is far stronger than a bare AUC.
+
+5. **Discovery-generating.** Aggregated grounding maps form a data-driven radiogenomic atlas: reproducible imaging phenotypes linked to molecular alterations, cross-checked against known associations and mined for novel candidates.
+
+## Positioning (why this clears the bar)
+
+| Model | Classify | Generate | Ground | Multi-modal | External val | Discovery |
+|-------|:--------:|:--------:|:------:|:-----------:|:------------:|:---------:|
+| Glio-LLaMA-Vision (2026) | yes | yes | no | no | yes | no |
+| NEVA (2026) | yes | no | yes | no | partial | no |
+| **THEIA v2** | **yes** | **yes** | **yes** | **yes (CT + path)** | **yes** | **yes** |
+
+Two contributions in one paper: a methodological and clinical result (the unified, grounded, multi-modal, externally-validated, calibrated system), and a scientific result (the radiogenomic atlas). That pairing is what Nature-family reviewers reward.
 
 ## Data
 
-**NSCLC-RADIOGENOMICS** (The Cancer Imaging Archive). 211 patients. CT and PET/CT imaging, tumor segmentation masks, gene mutation labels (EGFR, KRAS, others), an RNA-seq subset (~130 patients), and semantic annotations, radiologist-generated structured descriptions of tumor appearance using a controlled vocabulary. Public, Creative Commons BY 3.0, access is registration plus the TCIA Data Usage Policy, not a lengthy approval process. Get this started day one.
+| Cohort | Role | Modalities | Notes |
+|--------|------|-----------|-------|
+| NSCLC-RADIOGENOMICS (TCIA) | train / internal | CT, PET | 211 patients, semantic annotations for generation supervision |
+| TCGA-LUAD | train / internal | CT, H&E WSI | matched mutation calls, main pathology source |
+| TCGA-LUSC | train / internal | CT, H&E WSI | squamous complement |
+| NSCLC-Radiomics | train / internal | CT | additional CT volume |
+| **Collaborator / private cohort** | **external test (held out)** | CT (+ path if available) | never trained on, load-bearing for the top-tier claim |
+| RadGenome-Chest CT | grounding pretraining | CT | 665K grounded reports, no genomic labels |
 
-The semantic annotations matter more than they look. They're effectively pre-existing structured "reports" you can use as supervision for the text-generation side, without writing any of them yourself.
+Harmonize mutation-call formats across cohorts early. Patient-level splits, no leakage, and the external cohort stays sealed until the model is frozen.
 
-**Known limitation, be upfront about it in the paper**: 211 patients is small for deep learning. Plan for cross-validation, not a single train/test split, and don't oversell statistical power in the writeup. Reviewers will check this.
+## The 12-month plan
 
-## Model approach
+### Q1 (Months 1-3): Foundation and single-modality baseline
+- Assemble and harmonize all cohorts. Compute per-gene positive counts across the pool and lock the headline vs exploratory gene split.
+- Reproduce THEIA v1 (CT-only, grounded) as the internal baseline. The existing repo already does this, so Q1 is mostly data engineering plus running what exists.
+- Start IRB determinations for the reader studies and the private-cohort data use agreement, plus de-identification. This is load-bearing, do not defer it.
+- **Checkpoint:** harmonized multi-cohort dataset, working CT-only baseline with cross-validated AUC and grounding IoU.
 
-Don't train a foundation model from scratch, not feasible in 4 months. Start from an open-source medical LVLM, **LLaVA-Med** (Microsoft, GitHub) is the obvious base, already biomedical-pretrained, and LoRA fine-tuning it is documented and runs on a single high-end GPU, not a cluster. Confirm GPU access before week 1, this is your single biggest resource risk, not the science.
+### Q2 (Months 4-6): Pathology branch and multi-modal fusion
+- Pathology encoder: tile the WSIs, use a frozen pathology foundation-model backbone (UNI or CONCH) with multiple-instance aggregation. Reproduce a Coudray-style mutation-from-H&E baseline as a sanity check.
+- Multi-modal architecture: CT ROI tokens and WSI tile tokens both feed the shared grounding queries, the multi-gene classifier, and the generation head. Train with modality dropout so single-modality inference works.
+- **Checkpoint:** multi-modal model beats each single-modality model on internal cross-validation, with grounding functioning in both modalities.
 
-Two-head setup: a prediction head (EGFR/KRAS mutation status), and a generation head producing grounded rationale text, supervised in part by the semantic annotations. For the grounding mechanism itself, tying generated claims to specific image regions, pretrain on RadGenome-Chest CT (665K grounded reports, 1.2M grounded VQA pairs on chest CT, public, no genomic labels) before fine-tuning on your 211-patient NSCLC-RADIOGENOMICS set. This gives the grounding component a real pretraining signal instead of trying to learn it from 211 patients alone, which is otherwise the weakest part of the plan.
+### Q3 (Months 7-9): Generalization, uncertainty, discovery
+- External validation on the collaborator cohort and held-out public cohorts. Report the internal-to-external performance drop honestly. This is the make-or-break result.
+- Uncertainty and deferral: calibration, abstention threshold, and the "biopsies safely avoided at X% error" curve.
+- Discovery: aggregate grounding into the radiogenomic atlas, test cross-cohort reproducibility, cross-check known associations, flag novel candidates.
+- Subgroup and fairness analysis by site, scanner, stage, and demographics.
+- **Checkpoint:** external validation holds (or you learn exactly where it breaks), a deferral curve, and the first atlas.
 
-## Baselines and related work to cite (don't skip these)
+### Q4 (Months 10-12): Clinical validation, writeup, submission
+- Full multi-reader blinded study across cohorts: plausibility, grounding sensibility, usefulness, and whether THEIA's output changes reader decisions. Report inter-rater agreement.
+- Complete ablations (grounding on/off, generation on/off, single vs multi-modal, with/without RadGenome pretraining), robustness, and fairness.
+- Manuscript, preprint (arXiv and medRxiv the day results freeze), and submit. A single revision round inside 12 months is tight, so the submission itself lands by month 12.
+- **Target venues:** Nature Communications, npj Precision Oncology, npj Digital Medicine, or Medical Image Analysis (methods-heavy framing). Nature Medicine or Nature Cancer are a reach that becomes real if external validation and the deferral result are both strong.
 
-**Quantitative baselines**: multiple 2025 papers already do classical radiomics/deep learning EGFR and KRAS prediction on CT, some on this exact dataset. Reimplement or cite their reported AUCs (roughly 0.83-0.89 range across the recent literature) as your comparison point. Your paper's contribution is not "better AUC than these," necessarily, it's "same or comparable predictive performance, plus interpretable grounded output these baselines don't have." Chasing a pure AUC win against tuned radiomics pipelines in 4 months is a losing bet, don't make that your headline claim.
+## Risks and mitigations
 
-**Related work, cite by name, address head-on**: Glio-LLaMA-Vision and NEVA (see above). Don't frame them as beaten or obsolete, frame them accurately, one has generation without grounding, the other has grounding without generation, in different modalities and diseases than yours. Your related-work section needs to make clear you know exactly where those two papers stop and where yours starts.
+- **Pathology compute.** Gigapixel WSIs are the main new cost. A frozen foundation-model backbone plus tiling keeps it on one strong GPU. Confirm GPU and storage in Q1.
+- **External cohort access.** Load-bearing. You have collaborator access, so lock the data use agreement and de-identification in Q1, not Q3.
+- **Multi-gene underpowering.** Some genes will have too few positives. Restrict the headline to well-powered genes and label the rest exploratory.
+- **Modality missingness.** Many patients have only one modality. Modality dropout during training handles it.
+- **Scope creep over a year.** The quarterly checkpoints are the guardrail. Each quarter must produce a standalone result, so if the full vision slips you still have a paper. The multi-modal internal result alone (end of Q2) is publishable on its own.
 
-## The 16-week plan
+## What the repo already supports
 
-**Weeks 1-2, setup**
-Register for TCIA access, download imaging, mutation labels, semantic annotations, RNA-seq subset. Get GPU access confirmed and working. Pick and stand up LLaVA-Med locally. Freeze your baseline comparison list, pull the exact numbers from the published radiomics/DL papers on EGFR/KRAS prediction you'll cite. Start recruiting reader-study clinicians NOW, not in week 12, this is the step people always leave too late and it kills timelines.
-
-Also this week: your collaborator checks with their IRB office whether a reader study using only public, de-identified data and no new patient contact needs a determination. Get this in writing early. Don't assume it's exempt just because the data's public, confirm it.
-
-**Weeks 3-5, data pipeline**
-Preprocess CT/PET, extract tumor ROIs using the provided segmentation masks. Build the paired dataset: image, semantic annotation as pseudo-report, mutation label. Handle class imbalance (mutation-positive cases will be a minority). Set up proper stratified cross-validation splits, leak-check patient-level (make sure the same patient's slices never span train and test).
-
-**Weeks 6-9, model build**
-Fine-tune LLaVA-Med with LoRA on the prediction task first, get a working classifier before adding generation complexity. Add the grounded rationale generation head. Run ablations: with vs without semantic-annotation supervision, with vs without grounding. This is the core engineering block, expect it to eat the most time and have the most slippage, buffer accordingly.
-
-**Weeks 10-11, retrospective quantitative validation**
-Evaluate mutation prediction (AUC, sensitivity/specificity) against your frozen baseline numbers, same or comparable dataset conditions. Evaluate grounding quality, overlap between the model's attended regions and the ground-truth tumor segmentation masks. Evaluate generated rationale text against the semantic annotations, structured accuracy on specific claims, not just BLEU/ROUGE (reviewers increasingly call out NLG-only evaluation as weak, don't rely on it alone).
-
-**Weeks 12-13, clinical validation (reader study)**
-This is the actual clinical validation piece. Present cases to your recruited clinicians blind, model output vs baseline (no explanation, just the label) vs ground truth. Have them score: clinical plausibility of the rationale, whether the grounding makes anatomical sense, trust/usefulness on a Likert scale. Aim for at least 2-3 independent readers, more if you can get them, and report inter-rater agreement. Realistically this needs readers already lined up from week 1, don't start recruiting here.
-
-**Weeks 14-15, writeup**
-Draft the manuscript. Lead with the method and the interpretability/grounding contribution, not a raw performance claim. Grounding visualizations (heatmaps over tumor regions tied to specific generated claims) are your strongest figures, invest time here. Get your collaborator's clinical read on the framing before it's "done." Prep a code and data availability statement, most imaging journals in this tier expect or require open-sourcing your model/code.
-
-**Week 16, finalize and submit target**
-Polish, format to whichever venue you land on. Post a preprint (arXiv or medRxiv) the same week you submit, don't wait on journal review to make the work citable and public.
-
-## Where this can slip, and what to do about it
-
-GPU access is the most likely hard blocker, not the ML itself. Confirm this in week 1, not week 6.
-
-211 patients is a small N. If your cross-validated results are noisy, that's expected, don't chase a bigger effect size than the data supports, report honestly with confidence intervals.
-
-Reader recruitment is the second most common failure point on plans like this. People agree in principle and then don't show up when it's time to actually score 30 cases. Line up more readers than you need, and start now.
-
-The IRB/exempt determination for the reader study is a paperwork risk, not a science risk, but it can stall you for weeks if you leave it until week 12. Handle it in week 1-2 in parallel with everything else.
-
-## On publication timing, restated plainly since it matters for how you plan
-
-This plan gets you a finished, validated, written paper by end of month 4. It does not get you a MedIA acceptance by month 4, their average review alone runs about 5 months after submission, with roughly 1 in 4 submissions accepted. Treat month 4 as "preprint plus submit," and month 9-14 as the realistic window for an actual acceptance, if it's accepted at all. Plan the next phase of your work assuming that timeline, not a faster one.
+The current codebase (grounding, generation, classification, k-fold, evaluation, reader study) is the CT-only core, which is Q1. The multi-modal branch (pathology encoder, fusion, modality dropout, multi-gene panel, external-cohort evaluation, the atlas aggregation) is the Q2 to Q3 build. Config keys for the gene panel, pathology, modality handling, and external cohorts are stubbed in `configs/default.yaml` so the scope is visible even before the code lands.

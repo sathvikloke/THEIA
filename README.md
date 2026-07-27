@@ -4,9 +4,9 @@
 
 <br>
 
-**Predict EGFR / KRAS mutation status from lung CT, localize the evidence, and explain the call.**
+**Non-invasive molecular profiling for NSCLC: predict actionable mutations from CT and pathology, localize the evidence, explain the call, and know when to defer to biopsy.**
 
-One vision-language model that does three jobs at once: classify, ground, generate.
+One multi-modal vision-language model that classifies, grounds, and generates, validated across institutions.
 
 <br>
 
@@ -30,7 +30,7 @@ One vision-language model that does three jobs at once: classify, ground, genera
 - [The pipeline, step by step](#the-pipeline-step-by-step)
 - [Configuration](#configuration)
 - [Data](#data)
-- [Scaling beyond 211](#scaling-beyond-211)
+- [The 12-month program](#the-12-month-program)
 - [Reader study](#reader-study)
 - [Interactive demo](#interactive-demo)
 - [Citation](#citation)
@@ -40,29 +40,32 @@ One vision-language model that does three jobs at once: classify, ground, genera
 
 ## What THEIA does
 
-THEIA takes an axial lung CT and returns three things in one forward pass:
+THEIA takes lung imaging (CT, and H&E pathology in the multi-modal build) and returns four things in one forward pass:
 
 | Output | Head | What you get |
 |--------|------|--------------|
-| **Prediction** | classifier | EGFR and KRAS mutation status, with a calibrated confidence |
-| **Localization** | grounding | attention maps that point at the tumor sub-regions behind the call |
+| **Prediction** | classifier | actionable mutation panel (EGFR, KRAS, and more), with calibrated confidence |
+| **Localization** | grounding | attention maps that point at the sub-regions behind the call, in either modality |
 | **Explanation** | generation | a short, structured rationale a clinician can audit |
+| **Deferral** | uncertainty | an honest "defer to biopsy" when the imaging call is not confident enough |
 
 The name is the Greek titaness of sight and light: the model *sees* (vision) and *illuminates* what it saw (grounding). That linkage between a prediction, the pixels behind it, and a written rationale is the whole point.
+
+> **Scope note.** This repo is the CT-only core (classify + ground + generate on a single cohort), which is phase one of a 12-month program. The multi-modal branch (pathology, multi-gene, cross-institution external validation, uncertainty-aware deferral, and a radiogenomic discovery atlas) is the larger build. See [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) for the full plan.
 
 ---
 
 ## Why it is novel
 
-As of mid-2026 the two closest published models each stop one step short:
+As of mid-2026 the two closest published models each stop several steps short:
 
-| Model | Classify | Generate | Ground | Modality |
-|-------|:--------:|:--------:|:------:|----------|
-| Glio-LLaMA-Vision (npj Digital Medicine, 2026) | yes | yes | **no** | MRI, glioma |
-| NEVA (Nature Communications, 2026) | yes | **no** | yes | pathology, neuroblastoma |
-| **THEIA (this repo)** | **yes** | **yes** | **yes** | **radiology (CT), NSCLC** |
+| Model | Classify | Generate | Ground | Multi-modal | External val | Discovery |
+|-------|:--------:|:--------:|:------:|:-----------:|:------------:|:---------:|
+| Glio-LLaMA-Vision (npj Digital Medicine, 2026) | yes | yes | **no** | no | yes | no |
+| NEVA (Nature Communications, 2026) | yes | **no** | yes | no | partial | no |
+| **THEIA** | **yes** | **yes** | **yes** | **yes (CT + path)** | **yes** | **yes** |
 
-Nobody has put classification, generation, and grounding in one model, and nobody has done grounding at all for radiology-modality biomarker prediction. Frame the paper around that mechanism, radiology grounding tied to structured semantic-annotation supervision, rather than the general "VLM for radiogenomics" claim, which has a short shelf life.
+Nobody has put classification, generation, and grounding in one model, nobody has done grounding for radiology-modality biomarker prediction, and nobody has combined CT and pathology into a single externally-validated system that also surfaces reproducible imaging-to-genotype associations. Frame the paper around that combination and the discovery output, not the general "VLM for radiogenomics" claim, which has a short shelf life.
 
 ---
 
@@ -208,23 +211,33 @@ Ablations that the paper needs are one-line config changes, not code changes:
 
 ## Data
 
-**Primary:** [NSCLC-RADIOGENOMICS](https://www.cancerimagingarchive.net/collection/nsclc-radiogenomics/) (TCIA). 211 patients, CT and PET/CT, tumor segmentation masks, EGFR/KRAS labels, an RNA-seq subset, and radiologist semantic annotations used as generation supervision. Access is registration plus a data-use agreement, not a lengthy approval.
+Multi-cohort by design. Internal cohorts are pooled and k-folded; the external cohort stays sealed until the model is frozen.
 
-**Optional grounding pretraining:** [RadGenome-Chest CT](https://www.nature.com/articles/s41597-025-05922-9). 665K grounded reports and 1.2M grounded VQA pairs on chest CT, no genomic labels. Pretrain the grounding head here before the small fine-tune.
+| Cohort | Role | Modalities | Notes |
+|--------|------|-----------|-------|
+| [NSCLC-RADIOGENOMICS](https://www.cancerimagingarchive.net/collection/nsclc-radiogenomics/) (TCIA) | train / internal | CT, PET | 211 patients, semantic annotations for generation supervision |
+| TCGA-LUAD | train / internal | CT, H&E WSI | matched mutation calls, main pathology source |
+| TCGA-LUSC | train / internal | CT, H&E WSI | squamous complement |
+| NSCLC-Radiomics | train / internal | CT | additional CT volume |
+| Collaborator / private cohort | **external test (sealed)** | CT (+ path) | never trained on, the generalization result rides on this |
+| [RadGenome-Chest CT](https://www.nature.com/articles/s41597-025-05922-9) | grounding pretraining | CT | 665K grounded reports, no genomic labels |
 
-> 211 patients is small. This repo defaults to patient-level stratified k-fold, not a single split, and reports confidence intervals. Do not oversell statistical power.
+Harmonize mutation-call formats across cohorts early, and keep splits patient-level so nothing leaks.
 
 ---
 
-## Scaling beyond 211
+## The 12-month program
 
-n=211 is the honest floor, not the ceiling. The bigger, more defensible version scales the **data**, not the framing. Three levers, in rough order of effort:
+THEIA is a year-long build with quarterly checkpoints, each producing a standalone result so the project is de-risked at every stage. The short version:
 
-1. **Pool radiology cohorts.** NSCLC-RADIOGENOMICS + TCGA-LUAD + TCGA-LUSC + NSCLC-Radiomics share CT and EGFR/KRAS calls. Harmonize the labels and you reach low thousands. `dataset.py` indexes from `rows.jsonl`, so a merged index plus a `cohort` field per row is the whole change.
-2. **Add a histopathology branch.** TCGA lung whole-slide images with matched mutation status number in the thousands, and mutation-from-H&E is an established large-N task. A second vision encoder feeding the same grounding and generation heads makes THEIA the first grounded, generative, radiology-plus-pathology biomarker model, a materially bigger claim than radiology alone. This is the multi-modal fork, and it adds months.
-3. **Grounding pretraining at scale.** Use RadGenome-Chest CT to pretrain grounding before the small fine-tune (already a config flag).
+| Quarter | Focus | Checkpoint |
+|---------|-------|-----------|
+| Q1 | Harmonize cohorts, reproduce the CT-only grounded baseline (this repo) | working internal baseline |
+| Q2 | Add the pathology branch and multi-modal fusion (modality dropout) | multi-modal beats single-modality internally |
+| Q3 | External validation, uncertainty and deferral, the discovery atlas | generalization result + deferral curve |
+| Q4 | Multi-reader blinded study, ablations, writeup, submission | preprint + submission |
 
-Honest tradeoff: a paradigm-shifting multi-modal build and a 4-month, high-impact timeline are in tension. Ship the tight radiology paper on the single cohort first, or commit to the multi-modal effort on a longer clock. Do not half-do both.
+The full plan, including the data harmonization, the pathology backbone choice, the "biopsies safely avoided" analysis, risks, and target venues, is in [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md). The single biggest lever for a top-tier acceptance is the external validation on the sealed collaborator cohort, which is why it is planned from day one, not bolted on at the end.
 
 ---
 
