@@ -15,6 +15,20 @@ data:
   exploratory_genes: []        # roadmap: [ALK, MET, BRAF, STK11, TP53] as prevalence allows
   target_genes: [EGFR, KRAS]   # = headline + exploratory once the panel is locked in Q1
   roi_margin_mm: 12            # dilation around seg mask before crop
+  # Square crop side = (tumor bbox + 2*margin) * context_factor. At 1.0 the tumor
+  # fills most of the frame, which caps how much any localization metric can mean:
+  # watch grounding_*_shuffled in the eval output, since that chance baseline rises
+  # with the tumor's area fraction. 2.0-3.0 makes grounding a real task, at the cost
+  # of a smaller lesion in the input. Changing this changes the science — decide
+  # deliberately, do not drift.
+  context_factor: 1.0
+  # Patients with an AIM annotation but no SEG get a fixed-size crop centred on
+  # the annotated lesion centroid. AIM marks a location, not an extent, so there
+  # is no bounding box to scale from. ~48 patients in NSCLC-RADIOGENOMICS are in
+  # this tier and they carry mutation labels; including them takes EGFR positives
+  # from 23 to 41. Their ROI is written as zeros and grounding is masked off for
+  # them — no mask is invented.
+  aim_crop_mm: 50.0
   slice_strategy: tumor_bbox   # tumor_bbox | max_area | all
   n_slices: 16                 # slices sampled through the tumor extent
   image_size: 224
@@ -39,6 +53,12 @@ split:
   scheme: stratified_kfold     # patient-level, stratified on EGFR
   n_folds: 5
   stratify_on: EGFR
+  # Nested splits: early stopping and checkpoint selection use an inner validation
+  # set carved from the training portion, and the outer fold is scored once after
+  # the model is frozen. Setting this false selects the checkpoint on the very
+  # split it then reports, which biases every headline number upward.
+  nested: true
+  inner_val_frac: 0.2
 
 model:
   vision_encoder: biomedclip   # biomedclip | timm_vit_b16 | open_clip_vit_b16
@@ -49,22 +69,29 @@ model:
   grounding_tokens: 8          # learned region queries for the grounding head
   classifier_hidden: 256
   dropout: 0.1
+  # How the Q region embeddings collapse into the classifier's input.
+  # The grounding loss supervises the element-wise MAX over queries, so only
+  # "max" makes prediction and localization share the same evidence. "mean" is
+  # the original behaviour and lets an unsupervised query feed the classifier.
+  region_pooling: mean         # mean | max
 
 lora:
   enabled: true
   r: 16
   alpha: 32
   dropout: 0.05
-  target_modules: [q_proj, v_proj]   # adjust to the chosen LM
+  target_modules: [q_proj, v_proj]   # must match the chosen LM's attention names
 
 train:
+  device: auto                 # auto (cuda > mps > cpu) | cuda | mps | cpu
+  num_workers: 2
   epochs: 40
-  batch_size: 8
+  batch_size: 8                # 128 imgs/step at n_slices=16; drop to 2 on <32GB
   grad_accum: 2
   lr: 2.0e-4
   weight_decay: 0.01
   warmup_ratio: 0.05
-  amp: true
+  amp: true                    # honoured on CUDA only; reported at startup
   loss_weights:
     cls: 1.0
     gen: 1.0
@@ -78,8 +105,7 @@ grounding_pretrain:
   lr: 1.0e-4
 
 eval:
-  bootstrap_n: 2000            # CI on AUC
-  grounding_iou_thresh: 0.1
+  bootstrap_n: 2000            # CI on AUC; final evaluation only, not per epoch
 
 reader_study:
   n_cases: 32
