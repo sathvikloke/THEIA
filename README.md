@@ -96,7 +96,9 @@ Nobody has put classification, generation, and grounding in one model, nobody ha
                                                     └────────────────────────────────┘
 ```
 
-The classifier pools from the **grounded** region embeddings, not a separate global token, so the prediction and the localization share one representation. The model cannot decide from one place and point at another.
+The classifier pools from the **grounded** region embeddings, not a separate global token, so the prediction and the localization share one representation.
+
+How tight that coupling actually is depends on `model.region_pooling`. The grounding loss supervises the element-wise **max** over the Q region queries, so only `region_pooling: max` makes the classifier consume exactly what grounding supervises. Under the default `mean`, a query that attends off-tumor still feeds the prediction and is never penalised, as long as some other query covers the tumor. Say which one you used.
 
 Loss is a weighted sum:
 
@@ -145,7 +147,7 @@ THEIA/
 
 ## Quickstart
 
-**Requirements:** Python 3.10+, one CUDA GPU with 24 GB or more for training. CPU is fine for the smoke tests.
+**Requirements:** Python 3.10+, one CUDA GPU with 24 GB or more for training. Apple Silicon (MPS) runs the CT-only build but is slow and memory-tight — the shipped `batch_size: 8` at `n_slices: 16` is 128 images per step and will drive a 24 GB machine into swap; drop to 2 and raise `grad_accum`. CPU is fine for the tests. The device is chosen automatically (cuda > mps > cpu) and printed at startup along with whether AMP is really on; override with `--device` or `train.device`.
 
 ```bash
 git clone https://github.com/sathvikloke/THEIA.git
@@ -183,12 +185,57 @@ For each patient: load the CT and the tumor segmentation, resample the mask onto
 Patient-level stratified k-fold. Each fold trains the three-head model with LoRA on the language model, AMP, one-cycle schedule, and early stopping on validation EGFR AUC. Checkpoints and per-epoch metrics land in `checkpoints/foldN/`.
 
 **4. Evaluate** (`theia/engine/evaluate.py`)
-ROC-AUC per gene with bootstrap confidence intervals, sensitivity and specificity, and grounding IoU (overlap between the attention union and the tumor mask). Note: BLEU and ROUGE on the rationale are a sanity check only. The real rationale evaluation is the reader study, because text-overlap metrics do not measure clinical correctness.
+ROC-AUC per gene with bootstrap confidence intervals, sensitivity and specificity, and three grounding measures — attention mass inside the ROI, a pointing game, and an area-matched IoU.
+
+**Read the grounding numbers against their baselines.** Every grounding metric ships beside a `*_shuffled` twin: the same statistic computed on a spatially permuted copy of the model's own attention. That is the chance level for *your* crop geometry, and it rises as the tumor fills more of the frame. `grounding_*_lift` is the gap, and the gap is the result — a raw IoU of 0.74 means nothing if shuffling scores 0.73. Report the lift, not the bare number. (The earlier fixed-threshold IoU could not tell trained attention from random noise; see `tests/test_regressions.py::test_grounding_metric_separates_signal_from_noise`.)
+
+Note: BLEU and ROUGE on the rationale are a sanity check only. The real rationale evaluation is the reader study, because text-overlap metrics do not measure clinical correctness.
 
 **5. Reader study** (`theia/reader_study/`)
 `build_cases.py` produces blinded, randomized presentations across three arms (full THEIA output, prediction only, and ground truth). `serve.py` is a small Flask app where clinicians score plausibility, grounding, and usefulness. Arm identity stays in a held-back key file until scoring is done.
 
 ---
+
+## Cohort reality (measured, NSCLC-RADIOGENOMICS)
+
+Counts pulled from the TCIA API and the clinical spreadsheet, not estimated:
+
+| | patients | EGFR +/− | KRAS +/− |
+|---|---|---|---|
+| has CT | 211 | 43 / 129 | 38 / 133 |
+| **has CT + SEG** (grounding supervised) | **144** | 23 / 94 | 27 / 88 |
+| **has CT + (SEG or AIM)** — what THEIA uses | **191** | **41 / 118** | 34 / 124 |
+
+Only 144 of 211 subjects have a segmentation, but 190 have an AIM annotation
+carrying a lesion centroid. Including the AIM-only tier takes EGFR positives from
+23 to 41. Those patients get a fixed-size crop centred on the annotated lesion,
+their ROI is written as zeros, and the grounding term skips them — no mask is
+invented. See `data.aim_crop_mm`.
+
+**ALK has 2 positives.** It cannot be modelled. Config validation will not stop
+you, because 2 is a legal number.
+
+**Report the pooled out-of-fold AUC, not the mean of per-fold AUCs.** With ~23
+positives across 5 folds, a single held-out fold holds ~5, and an AUC from 5
+positives has a 95% CI near ±0.27 even when the model is genuinely good — an
+interval that includes chance. Pooling every fold's out-of-fold prediction into
+one ranking gives ±0.12 at the same sample size. `train.py` prints the pooled
+figure as the headline and rank-normalises within fold first, because each fold
+is a different model and their probability scales are not comparable.
+
+## Known limitations
+
+State these before a reviewer does.
+
+**The rationale does not explain the mutation call.** The generation head is supervised on the AIM semantic annotations — margin, attenuation, shape, location, associated findings. Those are radiologists describing the *image*. Nothing in that supervision signal carries genomic reasoning, so the head learns to caption a nodule, not to justify an EGFR prediction. Calling the output "a rationale a clinician can audit" overstates what it is. Fixing this properly means a supervision signal that ties imaging evidence to the molecular call, and that is a design problem, not a code change.
+
+**You must unzip the AIM archive to `data/raw/<cohort>/aim/`.** `build_pseudo_report` reads six columns (`Surface`, `Density`, `Location`, `SizeCategory`, `PleuralAttachment`, `VascularConvergence`) that **do not exist** in the TCIA clinical spreadsheet — that file holds demographics, staging, treatment and outcome. Without the AIM files every patient falls through to identical defaults, the generation head trains on ~190 copies of one sentence, converges to a constant, and reports an excellent loss. `preprocess` now counts distinct rationales and warns, but the archive is the fix.
+
+**Grounding is measured on a tumor-centred crop.** At `context_factor: 1.0` the lesion fills most of the frame, so the chance baseline for every localization metric is high and the achievable lift is compressed. The `*_shuffled` columns make this visible rather than hidden. Raising `context_factor` to 2.0–3.0 makes grounding a real task at the cost of a smaller lesion in the input; it changes the science, so decide deliberately.
+
+**Statistical power.** NSCLC-RADIOGENOMICS is ~211 patients and EGFR-mutant prevalence in Western NSCLC cohorts is well under a third. Pull the actual positive counts from the clinical sheet before building on them — `evaluate` reports `<gene>_n` and `<gene>_n_pos` per fold for exactly this reason. Bootstrap CIs on an AUC computed from single-digit positives will be wide enough to be uninformative, and that belongs in the paper.
+
+**Every reported metric comes from the epoch your monitor picked.** `train.monitor` selects the checkpoint. Monitoring `egfr_auc` and then reporting grounding means the grounding number is from whichever epoch won on AUC, which may be before grounding converged at all.
 
 ## Configuration
 

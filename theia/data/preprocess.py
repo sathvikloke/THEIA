@@ -5,27 +5,56 @@ Pipeline per patient:
   2. resample SEG onto the CT grid, threshold to a binary tumor mask
   3. HU-window the CT, take the slices spanning the tumor bounding box
   4. crop a square ROI around the (margin-dilated) tumor
-  5. attach the EGFR/KRAS labels and build the semantic-annotation pseudo-report
+  5. attach the mutation labels and build the semantic-annotation pseudo-report
   6. write one .npz per patient + a rows.jsonl index
 
 The pseudo-report is the controlled-vocabulary semantic annotation rendered as a
 sentence. It is the supervision signal for the generation head — you never write
 free-text reports by hand.
+
+Three corrections
+-----------------
+1. THE IMAGE AND ITS GROUNDING MASK WERE IN DIFFERENT COORDINATE FRAMES. The old
+   code cropped the image tightly around the tumor via `crop_roi`, but built the
+   ROI mask with a bare `_resize` of the *entire* slice. So the network saw a
+   zoomed-in tumor crop while the grounding loss compared its attention against a
+   downsampled whole-slice mask. The grounding supervision was misaligned for
+   every patient. Image and mask now share one crop box.
+2. The crop was not square, and was then resized to a square 224, so anatomy was
+   stretched by a different amount for every patient. The box is now square and
+   zero-padded at the image edge instead of being clipped.
+3. `slice_strategy: all` was documented in the config but never implemented; it
+   fell through to the tumor_bbox branch.
 """
 from __future__ import annotations
 
+import glob
 import json
 import os
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import SimpleITK as sitk
 from scipy import ndimage
 from tqdm import tqdm
 
+from theia.data.aim import build_report, load_all as load_aim
 
-def load_series(dicom_dir: str) -> sitk.Image:
+
+def _sitk():
+    """Import SimpleITK lazily.
+
+    The geometry helpers below (roi_box, crop_box, _resize, tumor_slices) are pure
+    numpy and are worth unit-testing on machines that have no DICOM stack
+    installed. A module-level import would make that impossible.
+    """
+    import SimpleITK as sitk
+
+    return sitk
+
+
+def load_series(dicom_dir: str):
+    sitk = _sitk()
     reader = sitk.ImageSeriesReader()
     ids = reader.GetGDCMSeriesIDs(dicom_dir)
     if not ids:
@@ -41,7 +70,26 @@ def window_hu(vol: np.ndarray, center: float, width: float) -> np.ndarray:
     return np.clip((vol - lo) / (hi - lo), 0.0, 1.0)
 
 
-def resample_mask_to(ct: sitk.Image, seg: sitk.Image) -> np.ndarray:
+def load_segmentation(seg_dir: str):
+    """Read a DICOM SEG.
+
+    These are a single multi-frame object (one file, N frames, one per source
+    slice), not a series of files. `ImageSeriesReader` mishandles that — it wants
+    one file per slice. SimpleITK reads the file directly and recovers the
+    correct geometry, which is what `resample_mask_to` then needs to align it to
+    the CT grid.
+    """
+    sitk = _sitk()
+    files = sorted(glob.glob(os.path.join(seg_dir, "*.dcm")))
+    if not files:
+        raise FileNotFoundError(f"no DICOM in {seg_dir}")
+    if len(files) == 1:
+        return sitk.ReadImage(files[0])
+    return load_series(seg_dir)
+
+
+def resample_mask_to(ct, seg) -> np.ndarray:
+    sitk = _sitk()
     seg_r = sitk.Resample(
         seg, ct, sitk.Transform(), sitk.sitkNearestNeighbor, 0, seg.GetPixelID()
     )
@@ -57,6 +105,17 @@ def tumor_slices(mask: np.ndarray, n_slices: int, strategy: str) -> list[int]:
         center = int(present[np.argmax(per_slice[present])])
         lo, hi = center - n_slices // 2, center + n_slices // 2
         return [int(np.clip(i, 0, mask.shape[0] - 1)) for i in range(lo, hi)]
+    if strategy == "all":
+        # Every slice the tumor touches, resampled to exactly n_slices so the
+        # batch stays rectangular.
+        idx = present.tolist()
+        if len(idx) == n_slices:
+            return [int(i) for i in idx]
+        picks = np.linspace(0, len(idx) - 1, n_slices).round().astype(int)
+        return [int(idx[p]) for p in picks]
+    if strategy != "tumor_bbox":
+        raise ValueError(f"unknown slice_strategy: {strategy!r} "
+                         "(expected 'tumor_bbox', 'max_area', or 'all')")
     lo, hi = int(present.min()), int(present.max())
     if hi - lo + 1 <= n_slices:
         idx = list(range(lo, hi + 1))
@@ -64,22 +123,59 @@ def tumor_slices(mask: np.ndarray, n_slices: int, strategy: str) -> list[int]:
     return list(np.linspace(lo, hi, n_slices).round().astype(int))
 
 
-def crop_roi(img2d: np.ndarray, mask2d: np.ndarray, margin_px: int, size: int) -> np.ndarray:
+def roi_box(mask2d: np.ndarray, shape: tuple[int, int], margin_px: int,
+            context_factor: float = 1.0) -> tuple[int, int, int, int]:
+    """Square crop box (y0, y1, x0, x1) centred on the tumor.
+
+    Returned coordinates may fall outside the image; `crop_box` zero-pads rather
+    than clipping, so the box stays square and the aspect ratio is preserved.
+    """
+    h, w = shape
     if mask2d.sum() == 0:
-        ys, xs = np.array([img2d.shape[0] // 2]), np.array([img2d.shape[1] // 2])
+        cy, cx = h / 2.0, w / 2.0
+        half = max(margin_px, 1)
     else:
         ys, xs = np.where(mask2d > 0)
-    y0, y1 = max(ys.min() - margin_px, 0), min(ys.max() + margin_px, img2d.shape[0])
-    x0, x1 = max(xs.min() - margin_px, 0), min(xs.max() + margin_px, img2d.shape[1])
-    patch = img2d[y0:y1, x0:x1]
-    return _resize(patch, size)
+        y0, y1 = int(ys.min()), int(ys.max()) + 1
+        x0, x1 = int(xs.min()), int(xs.max()) + 1
+        cy, cx = (y0 + y1) / 2.0, (x0 + x1) / 2.0
+        side = max(y1 - y0, x1 - x0) + 2 * margin_px
+        half = max(side * context_factor / 2.0, 1.0)
+    half = int(round(half))
+    cyi, cxi = int(round(cy)), int(round(cx))
+    return cyi - half, cyi + half, cxi - half, cxi + half
+
+
+def crop_box(img2d: np.ndarray, box: tuple[int, int, int, int]) -> np.ndarray:
+    """Crop with zero padding for any part of the box outside the image."""
+    y0, y1, x0, x1 = box
+    h, w = img2d.shape
+    out = np.zeros((y1 - y0, x1 - x0), dtype=img2d.dtype)
+    sy0, sy1 = max(y0, 0), min(y1, h)
+    sx0, sx1 = max(x0, 0), min(x1, w)
+    if sy0 < sy1 and sx0 < sx1:
+        out[sy0 - y0:sy1 - y0, sx0 - x0:sx1 - x0] = img2d[sy0:sy1, sx0:sx1]
+    return out
+
+
+def crop_roi(img2d: np.ndarray, mask2d: np.ndarray, margin_px: int, size: int,
+             context_factor: float = 1.0) -> np.ndarray:
+    """Convenience wrapper: derive the box from the mask and crop the image."""
+    box = roi_box(mask2d, img2d.shape, margin_px, context_factor)
+    return _resize(crop_box(img2d, box), size)
 
 
 def _resize(patch: np.ndarray, size: int) -> np.ndarray:
     if patch.size == 0:
         return np.zeros((size, size), dtype=np.float32)
     zoom = (size / patch.shape[0], size / patch.shape[1])
-    return ndimage.zoom(patch, zoom, order=1).astype(np.float32)
+    out = ndimage.zoom(patch, zoom, order=1).astype(np.float32)
+    if out.shape != (size, size):  # guard against zoom's rounding
+        fixed = np.zeros((size, size), dtype=np.float32)
+        k = min(out.shape[0], size), min(out.shape[1], size)
+        fixed[:k[0], :k[1]] = out[:k[0], :k[1]]
+        out = fixed
+    return out
 
 
 SEMANTIC_TEMPLATE = (
@@ -89,7 +185,16 @@ SEMANTIC_TEMPLATE = (
 
 
 def build_pseudo_report(row: pd.Series) -> str:
-    """Render the TCIA controlled-vocabulary semantic annotation as a sentence."""
+    """DEPRECATED fallback. Prefer theia.data.aim.build_report.
+
+    These six columns do NOT exist in the TCIA clinical spreadsheet — that file
+    carries demographics, staging, treatment and outcome. The semantic
+    annotations live in the AIM XML archive. Every lookup here therefore fell
+    through to its default and produced the SAME sentence for every patient, so
+    the generation head trained on ~190 copies of one string, converged to a
+    constant, and reported an excellent loss. Kept only for cohorts that really
+    do supply these columns.
+    """
     fields = dict(
         margin=row.get("Surface", "ill-defined"),
         density=row.get("Density", "solid"),
@@ -123,60 +228,196 @@ def label_of(row: pd.Series, gene: str) -> int:
     return -1
 
 
-def process_patient(pid, ct_dir, seg_dir, clinical_row, cfg) -> dict | None:
+def sop_uid_index(ct_dir: str) -> dict[str, int]:
+    """Map each slice's SOPInstanceUID to its index in the loaded volume.
+
+    AIM markup references a slice by SOP instance UID. Matching on that is exact;
+    matching on `referencedFrameNumber` is not, because it is an acquisition-time
+    frame number and need not equal the array index after sorting.
+    """
+    import pydicom
+
+    sitk = _sitk()
+    reader = sitk.ImageSeriesReader()
+    ids = reader.GetGDCMSeriesIDs(ct_dir)
+    if not ids:
+        return {}
+    files = reader.GetGDCMSeriesFileNames(ct_dir, ids[0])
+    out = {}
+    for i, f in enumerate(files):
+        try:
+            ds = pydicom.dcmread(f, stop_before_pixels=True)
+            out[str(ds.SOPInstanceUID)] = i
+        except Exception:  # noqa: BLE001
+            continue
+    return out
+
+
+def _slices_around(center: int, n: int, depth: int) -> list[int]:
+    lo = max(0, min(center - n // 2, depth - n))
+    return [int(np.clip(lo + i, 0, depth - 1)) for i in range(n)]
+
+
+def process_patient(pid, ct_dir, seg_dir, clinical_row, cfg, ann=None) -> dict | None:
+    """Build one patient's tensors.
+
+    Two supervision tiers:
+      * SEG present  -> pixel mask drives the crop AND supervises grounding.
+      * AIM only     -> the lesion centroid drives a fixed-size crop, the ROI is
+                        written as zeros, and grounding is masked off for this
+                        patient (the loss already skips empty targets). This
+                        recovers ~48 patients that have mutation labels but no
+                        segmentation, nearly doubling the positive count, without
+                        inventing a mask nobody drew.
+    """
+    sitk = _sitk()
     try:
         ct = load_series(ct_dir)
-        seg = load_series(seg_dir)
     except (FileNotFoundError, RuntimeError) as exc:
         print(f"[preprocess] skip {pid}: {exc}")
         return None
 
-    vol = sitk.GetArrayFromImage(ct).astype(np.float32)
-    mask = resample_mask_to(ct, seg)
-    if mask.sum() < cfg.data.min_tumor_voxels:
-        print(f"[preprocess] skip {pid}: tumor too small")
+    labels = {g: label_of(clinical_row, g) for g in cfg.data.target_genes}
+    if all(v == -1 for v in labels.values()):
+        print(f"[preprocess] skip {pid}: no known label for any target gene")
         return None
 
-    center, width = cfg.data.hu_window
-    vol = window_hu(vol, center, width)
+    vol = sitk.GetArrayFromImage(ct).astype(np.float32)
+    center_hu, width = cfg.data.hu_window
+    vol = window_hu(vol, center_hu, width)
     spacing = ct.GetSpacing()[0]
     margin_px = int(round(cfg.data.roi_margin_mm / max(spacing, 1e-3)))
+    context = float(getattr(cfg.data, "context_factor", 1.0))
 
-    slices = tumor_slices(mask, cfg.data.n_slices, cfg.data.slice_strategy)
-    imgs = np.stack([crop_roi(vol[s], mask[s], margin_px, cfg.data.image_size) for s in slices])
-    roi_masks = np.stack(
-        [_resize((mask[s] > 0).astype(np.float32), cfg.data.image_size) for s in slices]
-    )
+    mask = None
+    try:
+        seg = load_segmentation(seg_dir)
+        m = resample_mask_to(ct, seg)
+        if m.sum() >= cfg.data.min_tumor_voxels:
+            mask = m
+        else:
+            print(f"[preprocess] {pid}: tumor mask too small, falling back to AIM")
+    except (FileNotFoundError, RuntimeError):
+        pass
 
-    labels = {g: label_of(clinical_row, g) for g in cfg.data.target_genes}
+    if mask is not None:
+        slices = tumor_slices(mask, cfg.data.n_slices, cfg.data.slice_strategy)
+        boxes = [roi_box((mask[s] > 0).astype(np.float32), vol[s].shape, margin_px, context)
+                 for s in slices]
+        rois = [(mask[s] > 0).astype(np.float32) for s in slices]
+        has_mask = True
+    else:
+        if ann is None or not ann.has_location:
+            print(f"[preprocess] skip {pid}: no segmentation and no AIM location")
+            return None
+        mk = next(m for m in ann.markups if m.cx is not None)
+        idx = sop_uid_index(ct_dir).get(str(mk.image_uid))
+        if idx is None:
+            if mk.frame is None or not (0 <= mk.frame < vol.shape[0]):
+                print(f"[preprocess] skip {pid}: AIM slice not resolvable")
+                return None
+            print(f"[preprocess] {pid}: AIM SOP UID not found, using frame {mk.frame}")
+            idx = mk.frame
+        half = int(round(float(getattr(cfg.data, "aim_crop_mm", 50.0))
+                         / max(spacing, 1e-3) / 2.0)) * context
+        half = max(int(round(half)), 8)
+        cy, cx = int(round(mk.cy)), int(round(mk.cx))
+        slices = _slices_around(idx, cfg.data.n_slices, vol.shape[0])
+        boxes = [(cy - half, cy + half, cx - half, cx + half)] * len(slices)
+        rois = [np.zeros_like(vol[s]) for s in slices]
+        has_mask = False
+
+    imgs = np.stack([_resize(crop_box(vol[s], b), cfg.data.image_size)
+                     for s, b in zip(slices, boxes)])
+    roi_masks = np.stack([_resize(crop_box(r, b), cfg.data.image_size)
+                          for r, b in zip(rois, boxes)])
+    roi_masks = (roi_masks > 0.5).astype(np.float32)
+
+    report = build_report(ann) if ann is not None else build_pseudo_report(clinical_row)
     out = os.path.join(cfg.paths.processed_dir, f"{pid}.npz")
-    np.savez_compressed(out, images=imgs.astype(np.float32), roi=roi_masks.astype(np.float32))
+    np.savez_compressed(out, images=imgs.astype(np.float32), roi=roi_masks)
     return dict(
         patient_id=str(pid),
         npz=out,
-        report=build_pseudo_report(clinical_row),
+        report=report,
         labels=labels,
         n_slices=len(slices),
+        has_mask=bool(has_mask),
     )
+
+
+def _series_dirs(pid: str, raw_dir: str, index: dict | None) -> tuple[str, str]:
+    """Resolve a patient's CT and SEG directories.
+
+    `download.fetch_all` extracts into raw_dir/dicom/<PatientID>/{CT,SEG} and
+    writes series_index.json. Fall back to the plain layout if the index is
+    absent (e.g. data fetched with the NBIA Data Retriever by hand).
+    """
+    base = os.path.join(raw_dir, "dicom", str(pid))
+    return os.path.join(base, "CT"), os.path.join(base, "SEG")
 
 
 def run(cfg) -> None:
     Path(cfg.paths.processed_dir).mkdir(parents=True, exist_ok=True)
     clinical_csv = os.path.join(cfg.paths.raw_dir, "clinical", "clinical.csv")
+    if not os.path.exists(clinical_csv):
+        raise FileNotFoundError(
+            f"{clinical_csv} not found. The EGFR/KRAS calls and semantic annotations "
+            "are supplementary spreadsheets on the TCIA collection page, not the "
+            "image API — download them by hand and save as clinical.csv."
+        )
     clinical = pd.read_csv(clinical_csv).set_index("Case ID", drop=False)
-    index_rows = []
+
+    index_path = os.path.join(cfg.paths.raw_dir, "series_index.json")
+    index = json.load(open(index_path)) if os.path.exists(index_path) else None
+    if index is None:
+        print(f"[preprocess] no series_index.json at {index_path}; "
+              "assuming dicom/<PatientID>/{CT,SEG} layout")
+
+    aim_dir = os.path.join(cfg.paths.raw_dir, "aim")
+    anns = load_aim(aim_dir) if os.path.isdir(aim_dir) else {}
+    if anns:
+        print(f"[preprocess] loaded {len(anns)} AIM annotations from {aim_dir}")
+    else:
+        print(f"[preprocess] WARNING: no AIM annotations at {aim_dir}. Rationales will "
+              "fall back to build_pseudo_report, whose columns do not exist in the TCIA "
+              "clinical sheet — every patient would get an identical sentence. Unzip "
+              "AIM_files_updated-*.zip there.")
+
+    index_rows, skipped = [], 0
     for pid, row in tqdm(clinical.iterrows(), total=len(clinical), desc="patients"):
-        # TODO(theia): map pid -> its CT dir and SEG dir using series_manifest.csv
-        ct_dir = os.path.join(cfg.paths.raw_dir, "dicom", str(pid), "CT")
-        seg_dir = os.path.join(cfg.paths.raw_dir, "dicom", str(pid), "SEG")
-        rec = process_patient(pid, ct_dir, seg_dir, row, cfg)
+        ct_dir, seg_dir = _series_dirs(pid, cfg.paths.raw_dir, index)
+        rec = process_patient(pid, ct_dir, seg_dir, row, cfg, anns.get(str(pid)))
         if rec:
             index_rows.append(rec)
+        else:
+            skipped += 1
+
     idx_path = os.path.join(cfg.paths.processed_dir, "rows.jsonl")
     with open(idx_path, "w") as fh:
         for r in index_rows:
             fh.write(json.dumps(r) + "\n")
-    print(f"[preprocess] wrote {len(index_rows)} patients -> {idx_path}")
+
+    n_mask = sum(1 for r in index_rows if r.get("has_mask"))
+    n_reports = len({r["report"] for r in index_rows})
+    print(f"[preprocess] wrote {len(index_rows)} patients ({skipped} skipped) -> {idx_path}")
+    print(f"[preprocess]   {n_mask} with a segmentation (grounding supervised), "
+          f"{len(index_rows) - n_mask} AIM-located only (grounding masked off)")
+    print(f"[preprocess]   {n_reports} distinct rationales across {len(index_rows)} patients")
+    if len(index_rows) > 5 and n_reports <= 2:
+        print("[preprocess]   WARNING: rationales are near-identical. The generation head "
+              "will learn a constant. Check that AIM annotations loaded.")
+    for g in cfg.data.target_genes:
+        pos = sum(1 for r in index_rows if r["labels"].get(g) == 1)
+        neg = sum(1 for r in index_rows if r["labels"].get(g) == 0)
+        print(f"[preprocess]   {g}: {pos} positive / {neg} negative / "
+              f"{len(index_rows)-pos-neg} unknown")
+    if not index_rows:
+        raise RuntimeError(
+            "no patients survived preprocessing. Check that the DICOM layout matches "
+            f"{os.path.join(cfg.paths.raw_dir, 'dicom', '<PatientID>', '{CT,SEG}')} — "
+            "run `python -m theia.data.download` to fetch and extract it."
+        )
 
 
 if __name__ == "__main__":
