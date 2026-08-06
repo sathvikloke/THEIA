@@ -29,6 +29,10 @@ data:
   # from 23 to 41. Their ROI is written as zeros and grounding is masked off for
   # them — no mask is invented.
   aim_crop_mm: 50.0
+  # An AIM point landing in air means the annotation does not localise a lesion
+  # on the slice we resolved. Measured: 4 of 43 (9%) fail this. Dropped rather
+  # than snapped to nearby tissue, which would invent a location.
+  aim_min_hu: -700.0
   slice_strategy: tumor_bbox   # tumor_bbox | max_area | all
   n_slices: 16                 # slices sampled through the tumor extent
   image_size: 224
