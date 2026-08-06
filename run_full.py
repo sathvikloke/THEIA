@@ -12,7 +12,12 @@ def main():
     cfg = load_config("configs/default.yaml")
     # 11.2 GB peak at batch_size=2 on this machine; 4 would swap. grad_accum
     # keeps the effective batch at the configured 16.
-    cfg["train"].update(batch_size=2, grad_accum=8, num_workers=2)
+    # Frozen encoder: 4M trainable of 480M, 2.1 GB peak (was 11.2), so batch 8
+    # costs what batch 2 used to. Diagnostics measured the frozen probe beating
+    # the fine-tuned model twice (0.610 vs 0.426) — 88M trainable params on ~95
+    # patients is the wrong capacity.
+    cfg["model"]["freeze_vision"] = True
+    cfg["train"].update(batch_size=8, grad_accum=2, num_workers=2)
     dev = resolve_device("auto")
     amp_on, _ = amp_settings(dev, cfg.train.amp)
     print(f"[run] {describe(dev, amp_on)}", flush=True)
