@@ -57,6 +57,51 @@ class VisionEncoder(nn.Module):
             for p in self.model.parameters():
                 p.requires_grad_(False)
 
+    def unfreeze_last_blocks(self, n: int) -> int:
+        """Re-enable gradients on the final n transformer blocks.
+
+        Fully freezing the encoder fixed the classifier (0.426 -> 0.573) but left
+        the grounding head unable to change *what* is attended — it can only
+        reweight features it cannot alter, and measured grounding lift stayed at
+        ~0.000 on every fold. The two objectives want different amounts of
+        plasticity. This exposes the middle ground: keep the early, generic
+        layers frozen and let the last few blocks adapt.
+
+        Returns the number of parameters unfrozen, so callers can log it rather
+        than assume it worked — block containers differ across backbones.
+        """
+        if n <= 0:
+            return 0
+        blocks = None
+        for holder in (self.model, getattr(self.model, "trunk", None)):
+            if holder is None:
+                continue
+            for attr in ("blocks", "layers", "resblocks", "transformer"):
+                cand = getattr(holder, attr, None)
+                if cand is not None and hasattr(cand, "__len__") and len(cand):
+                    blocks = cand
+                    break
+            if blocks is not None:
+                break
+        if blocks is None:
+            print("[backbone] WARNING: no transformer block list found; "
+                  "unfreeze_last_n had no effect")
+            return 0
+        n_unfrozen = 0
+        for blk in list(blocks)[-n:]:
+            for p in blk.parameters():
+                p.requires_grad_(True)
+                n_unfrozen += p.numel()
+        # The final norm sits after the last block and gates its output scale.
+        for attr in ("norm", "ln_post", "norm_pre"):
+            mod = getattr(self.model, attr, None) or getattr(
+                getattr(self.model, "trunk", None), attr, None)
+            if mod is not None:
+                for p in mod.parameters():
+                    p.requires_grad_(True)
+                    n_unfrozen += p.numel()
+        return n_unfrozen
+
     def _build(self, name: str):
         if name == "biomedclip":
             try:

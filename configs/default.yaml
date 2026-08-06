@@ -21,7 +21,13 @@ data:
   # with the tumor's area fraction. 2.0-3.0 makes grounding a real task, at the cost
   # of a smaller lesion in the input. Changing this changes the science — decide
   # deliberately, do not drift.
-  context_factor: 1.0
+  context_factor: 2.5
+  # Random offset of the crop centre, as a fraction of the crop side, seeded per
+  # patient. At 0 the tumor sits at the exact centre of every crop (measured ROI
+  # centroid 6.5 +/- 0.1 on a 14x14 grid whose centre is 6.5), which makes
+  # grounding unlearnable — the answer is "the middle" for everyone. Grounding
+  # lift was ~0.000 across four ablation arms until this was added.
+  crop_jitter_frac: 0.30
   # Patients with an AIM annotation but no SEG get a fixed-size crop centred on
   # the annotated lesion centroid. AIM marks a location, not an extent, so there
   # is no bounding box to scale from. ~48 patients in NSCLC-RADIOGENOMICS are in
@@ -67,7 +73,15 @@ split:
 model:
   vision_encoder: biomedclip   # biomedclip | timm_vit_b16 | open_clip_vit_b16
   vision_dim: 512
-  freeze_vision: false
+  freeze_vision: true          # measured: frozen 0.573 vs fine-tuned 0.426 at n=153
+  # Blocks to re-enable when freeze_vision is true. Full freezing fixed the
+  # classifier but left grounding lift at ~0.000 — the head can reweight fixed
+  # features but cannot change what is attended. 0 = fully frozen.
+  # Ablation on fold 0, jittered crops: fully frozen never grounds (lift -0.013,
+  # pointing 0.00) no matter the loss weight. Unfreezing the last 2 blocks gives
+  # lift +0.302 and pointing 1.00. Raising ground to 5.0 on top of that BREAKS it
+  # again (lift -0.001) — more pressure is worse.
+  unfreeze_last_n: 2
   lm_name: microsoft/BioGPT    # generation head backbone (swap for LLaVA-Med LM)
   lm_max_new_tokens: 96
   grounding_tokens: 8          # learned region queries for the grounding head

@@ -488,3 +488,80 @@ def test_collate_fn_is_picklable_for_dataloader_workers():
              report="r", patient_id="a", egfr=torch.tensor(1), kras=torch.tensor(0))
     out = restored([a, a])
     assert out["egfr"].shape[0] == 2 and "kras" in out
+
+
+# --------------------------------------------------------------------------
+# Partial unfreezing: full freeze fixed the classifier but starved grounding
+# --------------------------------------------------------------------------
+def test_unfreeze_last_blocks_reports_what_it_actually_unfroze():
+    import torch.nn as nn
+
+    import theia.models.backbone as bb
+
+    enc = object.__new__(bb.VisionEncoder)
+    nn.Module.__init__(enc)
+    enc.model = nn.Module()
+    enc.model.blocks = nn.ModuleList([nn.Linear(4, 4) for _ in range(6)])
+    for p in enc.model.parameters():
+        p.requires_grad_(False)
+
+    expected = sum(p.numel() for b in list(enc.model.blocks)[-2:] for p in b.parameters())
+    n = enc.unfreeze_last_blocks(2)
+    assert n == expected, f"reported {n}, actually {expected}"
+    grads = [all(p.requires_grad for p in b.parameters()) for b in enc.model.blocks]
+    assert grads == [False, False, False, False, True, True], grads
+
+
+def test_unfreeze_zero_is_a_noop_and_missing_blocks_is_not_fatal():
+    import torch.nn as nn
+
+    import theia.models.backbone as bb
+
+    enc = object.__new__(bb.VisionEncoder)
+    nn.Module.__init__(enc)
+    enc.model = nn.Module()
+    enc.model.blocks = nn.ModuleList([nn.Linear(4, 4)])
+    assert enc.unfreeze_last_blocks(0) == 0
+
+    bare = object.__new__(bb.VisionEncoder)
+    nn.Module.__init__(bare)
+    bare.model = nn.Module()                       # no block list at all
+    assert bare.unfreeze_last_blocks(2) == 0       # warns, does not raise
+
+
+# --------------------------------------------------------------------------
+# BUG: with no jitter the tumor sat at the exact centre of every crop, so
+#      grounding had nothing to learn (measured ROI centroid 6.5+-0.1 on a
+#      14x14 grid whose centre is 6.5; lift ~0.000 in all four ablation arms)
+# --------------------------------------------------------------------------
+def test_crop_jitter_moves_the_tumor_off_centre():
+    from theia.data.preprocess import roi_box
+
+    mask = np.zeros((512, 512), dtype=np.float32)
+    mask[240:272, 240:272] = 1.0                      # lesion at image centre
+
+    centres = []
+    for pid in range(40):
+        box = roi_box(mask, mask.shape, 4, context_factor=2.5, jitter=0.30,
+                      rng=np.random.default_rng(pid))
+        y0, y1, x0, x1 = box
+        side = y1 - y0
+        # where does the lesion centre sit, as a fraction of the crop?
+        centres.append(((256 - y0) / side, (256 - x0) / side))
+    ys = np.array([c[0] for c in centres])
+    xs = np.array([c[1] for c in centres])
+    assert ys.std() > 0.05 and xs.std() > 0.05, (
+        f"jitter did not vary the lesion position (sd {ys.std():.3f}, {xs.std():.3f})")
+    assert 0.2 < ys.mean() < 0.8, "lesion drifted out of frame on average"
+
+
+def test_zero_jitter_is_deterministic_and_centred():
+    from theia.data.preprocess import roi_box
+
+    mask = np.zeros((256, 256), dtype=np.float32)
+    mask[100:140, 100:140] = 1.0
+    a = roi_box(mask, mask.shape, 4, context_factor=2.0, jitter=0.0)
+    b = roi_box(mask, mask.shape, 4, context_factor=2.0, jitter=0.0)
+    assert a == b
+    y0, y1, x0, x1 = a
+    assert abs((y0 + y1) / 2 - 120) <= 1 and abs((x0 + x1) / 2 - 120) <= 1
