@@ -124,11 +124,22 @@ def tumor_slices(mask: np.ndarray, n_slices: int, strategy: str) -> list[int]:
 
 
 def roi_box(mask2d: np.ndarray, shape: tuple[int, int], margin_px: int,
-            context_factor: float = 1.0) -> tuple[int, int, int, int]:
-    """Square crop box (y0, y1, x0, x1) centred on the tumor.
+            context_factor: float = 1.0, jitter: float = 0.0,
+            rng: np.random.Generator | None = None) -> tuple[int, int, int, int]:
+    """Square crop box (y0, y1, x0, x1) around the tumor.
 
     Returned coordinates may fall outside the image; `crop_box` zero-pads rather
     than clipping, so the box stays square and the aspect ratio is preserved.
+
+    `jitter` offsets the box centre by up to that fraction of the crop side.
+    WHY THIS EXISTS: with jitter=0 the tumor lands at the exact centre of every
+    crop — measured across the cohort, the ROI centroid on the 14x14 patch grid
+    was row 6.5 +/- 0.1, col 6.5 +/- 0.2, where the grid centre is 6.5. Grounding
+    is then not a learnable task: "where is the tumor" has the same answer for
+    every patient, so there is no localisation function to fit and no spatial
+    variance for the metric to reward. Measured grounding lift was ~0.000 in all
+    four ablation arms, and the attention instead latched onto a backbone
+    positional artifact (a column-12 stripe). Jitter restores the task.
     """
     h, w = shape
     if mask2d.sum() == 0:
@@ -142,6 +153,11 @@ def roi_box(mask2d: np.ndarray, shape: tuple[int, int], margin_px: int,
         side = max(y1 - y0, x1 - x0) + 2 * margin_px
         half = max(side * context_factor / 2.0, 1.0)
     half = int(round(half))
+    if jitter > 0:
+        r = rng or np.random.default_rng(0)
+        span = jitter * 2 * half
+        cy += float(r.uniform(-span, span)) / 2.0
+        cx += float(r.uniform(-span, span)) / 2.0
     cyi, cxi = int(round(cy)), int(round(cx))
     return cyi - half, cyi + half, cxi - half, cxi + half
 
@@ -301,9 +317,18 @@ def process_patient(pid, ct_dir, seg_dir, clinical_row, cfg, ann=None) -> dict |
     except (FileNotFoundError, RuntimeError):
         pass
 
+    jitter = float(getattr(cfg.data, "crop_jitter_frac", 0.0))
+    # Seeded per patient so preprocessing stays reproducible, but the offset
+    # differs between patients — which is the whole point.
+    prng = np.random.default_rng(abs(hash(str(pid))) % (2**32))
+
     if mask is not None:
         slices = tumor_slices(mask, cfg.data.n_slices, cfg.data.slice_strategy)
-        boxes = [roi_box((mask[s] > 0).astype(np.float32), vol[s].shape, margin_px, context)
+        # One offset for the whole stack, so the lesion does not wander between
+        # slices of the same patient.
+        boxes = [roi_box((mask[s] > 0).astype(np.float32), vol[s].shape, margin_px,
+                         context, jitter, np.random.default_rng(
+                             abs(hash(str(pid))) % (2**32)))
                  for s in slices]
         rois = [(mask[s] > 0).astype(np.float32) for s in slices]
         has_mask = True

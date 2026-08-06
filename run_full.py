@@ -17,6 +17,7 @@ def main():
     # the fine-tuned model twice (0.610 vs 0.426) — 88M trainable params on ~95
     # patients is the wrong capacity.
     cfg["model"]["freeze_vision"] = True
+    cfg["model"]["unfreeze_last_n"] = 2
     cfg["train"].update(batch_size=8, grad_accum=2, num_workers=2)
     dev = resolve_device("auto")
     amp_on, _ = amp_settings(dev, cfg.train.amp)

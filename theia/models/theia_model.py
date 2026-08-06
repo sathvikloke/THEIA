@@ -35,6 +35,10 @@ class Theia(nn.Module):
         self.genes = [g.lower() for g in cfg.data.target_genes]
         self.pooling = getattr(m, "region_pooling", "mean")
         self.vision = VisionEncoder(m.vision_encoder, m.vision_dim, m.freeze_vision)
+        n_unfreeze = int(getattr(m, "unfreeze_last_n", 0) or 0)
+        if m.freeze_vision and n_unfreeze:
+            n = self.vision.unfreeze_last_blocks(n_unfreeze)
+            print(f"[theia] unfroze last {n_unfreeze} vision block(s): {n/1e6:.1f}M params")
         self.grounding = GroundingHead(m.vision_dim, m.grounding_tokens)
         self.classifier = ClassifierHead(m.vision_dim, cfg.data.target_genes,
                                          m.classifier_hidden, m.dropout)
