@@ -5,31 +5,41 @@
       "n_patients": 153.0,
       "egfr_n": 153.0,
       "egfr_n_pos": 40.0,
-      "egfr_auc": 0.7740044247787611,
-      "egfr_auc_lo": 0.6765838688416542,
-      "egfr_auc_hi": 0.8585555730627796,
+      "egfr_auc": 0.7640486725663715,
+      "egfr_auc_lo": 0.6646154347945509,
+      "egfr_auc_hi": 0.8526343355581366,
       "egfr_sens": 0.775,
       "egfr_spec": 0.584070796460177
+    },
+    "radiomics_legacy": {
+      "n_patients": 153.0,
+      "egfr_n": 153.0,
+      "egfr_n_pos": 40.0,
+      "egfr_auc": 0.6040929203539822,
+      "egfr_auc_lo": 0.49806753574383866,
+      "egfr_auc_hi": 0.7070366702909805,
+      "egfr_sens": 0.6,
+      "egfr_spec": 0.5221238938053098
     },
     "radiomics": {
       "n_patients": 153.0,
       "egfr_n": 153.0,
       "egfr_n_pos": 40.0,
-      "egfr_auc": 0.6618362831858408,
-      "egfr_auc_lo": 0.5678025191183087,
-      "egfr_auc_hi": 0.7540156832015347,
-      "egfr_sens": 0.65,
-      "egfr_spec": 0.5398230088495575
+      "egfr_auc": 0.5690265486725664,
+      "egfr_auc_lo": 0.4580662107034662,
+      "egfr_auc_hi": 0.6730498880148585,
+      "egfr_sens": 0.625,
+      "egfr_spec": 0.5309734513274337
     },
     "clinical+radiomics": {
       "n_patients": 153.0,
       "egfr_n": 153.0,
       "egfr_n_pos": 40.0,
-      "egfr_auc": 0.7587389380530973,
-      "egfr_auc_lo": 0.6588277933105519,
-      "egfr_auc_hi": 0.8471530083878699,
-      "egfr_sens": 0.75,
-      "egfr_spec": 0.5752212389380531
+      "egfr_auc": 0.7767699115044248,
+      "egfr_auc_lo": 0.6818330567933563,
+      "egfr_auc_hi": 0.8638984792108535,
+      "egfr_sens": 0.825,
+      "egfr_spec": 0.6017699115044248
     }
   }
 }

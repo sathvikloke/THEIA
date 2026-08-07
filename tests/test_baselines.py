@@ -251,3 +251,80 @@ def test_pooled_metrics_is_quiet_when_every_fold_is_mixed(capsys):
              "egfr_prob": (i * 37 % 100) / 100.0} for i in range(40)]
     pooled_metrics(rows, ["EGFR"], bootstrap_n=20)
     assert "single class" not in capsys.readouterr().out
+
+
+def test_hu_inversion_round_trips_through_the_display_window():
+    """to_hu must exactly invert preprocess.window_hu inside the window.
+
+    The .npz stores crops already windowed to [0,1]. Recovering Hounsfield units
+    is what makes density features expressible at all -- ground-glass opacity is
+    defined by an HU range and is among the best-established imaging correlates
+    of EGFR mutation. An inversion that is off by a scale factor would put the
+    ground-glass band in the wrong place and quietly measure nothing.
+    """
+    from theia.analysis.radiomics import to_hu
+    from theia.data.preprocess import window_hu
+
+    center, width = -600.0, 1500.0
+    hu = np.linspace(center - width / 2, center + width / 2, 101)
+    back = to_hu(window_hu(hu.copy(), center, width), center, width)
+    assert np.allclose(back, hu, atol=1e-3), "HU round-trip is not the identity"
+
+
+def test_density_fractions_find_ground_glass_where_it_is():
+    """A lesion built entirely of ground-glass HU must read as ~100% GG."""
+    from theia.analysis.radiomics import GG_HI, GG_LO, _density_fractions
+
+    hu = np.full((3, 8, 8), -500.0)          # squarely inside the GG band
+    m = np.zeros((3, 8, 8), dtype=bool)
+    m[:, 2:6, 2:6] = True
+    d = _density_fractions(hu, m)
+    assert d["gg_frac"] == pytest.approx(1.0)
+    assert d["solid_frac"] == 0.0
+
+    hu[:] = 50.0                              # soft tissue -> solid
+    d = _density_fractions(hu, m)
+    assert d["solid_frac"] == pytest.approx(1.0)
+    assert d["gg_frac"] == 0.0
+    assert GG_LO < GG_HI
+
+
+def test_shape_features_separate_a_sphere_from_a_slab():
+    """Sphericity must actually rank a compact blob above a flat one."""
+    from theia.analysis.radiomics import _shape3d
+
+    z, y, x = np.ogrid[:16, :16, :16]
+    ball = ((z - 8) ** 2 + (y - 8) ** 2 + (x - 8) ** 2) < 25
+    slab = np.zeros((16, 16, 16), dtype=bool)
+    slab[7:9, 2:14, 2:14] = True
+    assert _shape3d(ball)["sphericity"] > _shape3d(slab)["sphericity"]
+    # Flatness, not elongation, is what separates these two. Both shapes have
+    # equal major axes, so elongation is 1.0 for each; only the smallest-axis
+    # ratio sees that the slab is flat. Asserting on elongation here is what
+    # caught that the metric had been computed uninformatively.
+    assert _shape3d(ball)["flatness"] > _shape3d(slab)["flatness"]
+    assert _shape3d(slab)["flatness"] < 0.5
+
+
+def test_radiomics_never_returns_a_non_finite_feature(tmp_path):
+    """Degenerate inputs -- empty mask, constant image -- must not poison the matrix.
+
+    A single NaN would propagate through StandardScaler into every prediction
+    for that fold.
+    """
+    from theia.analysis.radiomics import extract
+
+    rows = []
+    for i, (img, roi) in enumerate([
+            (np.zeros((3, 16, 16), np.float32), np.zeros((3, 16, 16), np.float32)),
+            (np.ones((3, 16, 16), np.float32), np.ones((3, 16, 16), np.float32)),
+            (np.full((3, 16, 16), 0.5, np.float32), np.zeros((3, 16, 16), np.float32))]):
+        p = os.path.join(tmp_path, f"d{i}.npz")
+        np.savez_compressed(p, images=img, roi=roi)
+        rows.append({"npz": p, "patient_id": f"d{i}"})
+    X, names = extract(rows, -600.0, 1500.0)
+    assert np.isfinite(X).all(), "degenerate input produced a non-finite feature"
+    assert X.shape == (3, len(names))
+    # The maskless patients must be flagged, not silently treated as segmented.
+    assert X[0, names.index("has_mask")] == 0.0
+    assert X[1, names.index("has_mask")] == 1.0

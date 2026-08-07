@@ -132,33 +132,51 @@ def oof_predictions(X: np.ndarray, rows: list[dict], gene: str, cfg) -> list[dic
     return out
 
 
+def _estimator(C: float, penalty: str):
+    """Scaler + logistic regression, L2 or L1.
+
+    L1 is how the radiomics literature builds these models -- LASSO selects a
+    handful of features from a large bank before fitting (Zhang et al. keep 10
+    of 92). Without selection, 61 features over 153 patients with 40 positives
+    overfits: measured here, the 61-feature bank scored 0.604 under plain L2
+    against 0.662 for an 18-feature one. Handing the baseline a comparator the
+    field would never actually use is not a fair fight.
+    """
+    solver = "liblinear" if penalty == "l1" else "lbfgs"
+    return make_pipeline(
+        StandardScaler(),
+        LogisticRegression(C=C, penalty=penalty, solver=solver, max_iter=5000,
+                           class_weight="balanced"))
+
+
 def _tuned_logreg(X: np.ndarray, y: np.ndarray, seed: int):
-    """L2 logistic regression with C picked by inner CV on the fitting portion.
+    """Logistic regression with C AND penalty picked by inner CV.
 
     A fixed C would hand the baseline a handicap the deep model does not have
     (THEIA's hyperparameters were tuned over many runs on this cohort). Giving
-    the baseline its own inner tuning loop is what makes "THEIA wins" mean
-    something.
+    the baseline its own inner tuning loop -- over regularisation strength and
+    over L1-vs-L2, so a wide feature bank can select itself down -- is what
+    makes "THEIA wins" mean something.
+
+    The whole search runs inside the fitting portion, so the outer test fold is
+    never involved in choosing anything.
     """
-    best, best_auc = 1.0, -1.0
+    best, best_auc = (1.0, "l2"), -1.0
     n_pos = int(y.sum())
     n_splits = max(2, min(5, n_pos, len(y) - n_pos))
-    for C in (0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0):
-        skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
-        scores = []
-        for a, b in skf.split(X, y):
-            if len(set(y[a].tolist())) < 2 or len(set(y[b].tolist())) < 2:
-                continue
-            m = make_pipeline(StandardScaler(),
-                              LogisticRegression(C=C, max_iter=5000,
-                                                 class_weight="balanced"))
-            m.fit(X[a], y[a])
-            scores.append(roc_auc_score(y[b], m.predict_proba(X[b])[:, 1]))
-        if scores and float(np.mean(scores)) > best_auc:
-            best_auc, best = float(np.mean(scores)), C
-    clf = make_pipeline(StandardScaler(),
-                        LogisticRegression(C=best, max_iter=5000,
-                                           class_weight="balanced"))
+    for penalty in ("l2", "l1"):
+        for C in (0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0):
+            skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+            scores = []
+            for a, b in skf.split(X, y):
+                if len(set(y[a].tolist())) < 2 or len(set(y[b].tolist())) < 2:
+                    continue
+                m = _estimator(C, penalty)
+                m.fit(X[a], y[a])
+                scores.append(roc_auc_score(y[b], m.predict_proba(X[b])[:, 1]))
+            if scores and float(np.mean(scores)) > best_auc:
+                best_auc, best = float(np.mean(scores)), (C, penalty)
+    clf = _estimator(*best)
     clf.fit(X, y)
     return clf
 
@@ -241,10 +259,16 @@ def main() -> None:
     Xc, names = clinical_features(rows, csv_path)
     print(f"[base] clinical features {Xc.shape}: {', '.join(names)}", flush=True)
     Xr = radiomic_features(rows)
-    print(f"[base] radiomic features {Xr.shape}", flush=True)
+    print(f"[base] radiomic features (legacy 18) {Xr.shape}", flush=True)
+    from theia.analysis.radiomics import extract as rich_extract
 
-    arms = {"clinical": Xc, "radiomics": Xr,
-            "clinical+radiomics": np.hstack([Xc, Xr])}
+    Xrr, rnames = rich_extract(rows, *cfg.data.hu_window)
+    print(f"[base] radiomic features (rich) {Xrr.shape}", flush=True)
+
+    # Both radiomics arms are reported. Beating only the weak one would prove
+    # nothing, and quietly swapping it would hide that the comparator moved.
+    arms = {"clinical": Xc, "radiomics_legacy": Xr, "radiomics": Xrr,
+            "clinical+radiomics": np.hstack([Xc, Xrr])}
 
     results: dict[str, dict] = {"gene": gene, "arms": {}}
     preds: dict[str, list[dict]] = {}
