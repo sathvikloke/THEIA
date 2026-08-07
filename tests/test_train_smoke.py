@@ -86,6 +86,7 @@ def _cfg(tmp_path):
     cfg["paths"]["processed_dir"] = str(tmp_path)
     cfg["paths"]["ckpt_dir"] = str(tmp_path / "ckpt")
     cfg["paths"]["runs_dir"] = str(tmp_path / "runs")
+    cfg["paths"]["results_dir"] = str(tmp_path / "results")
     cfg["data"]["image_size"] = 32
     cfg["data"]["n_slices"] = 3
     cfg["model"]["vision_dim"] = 32
@@ -186,3 +187,41 @@ def test_full_run_reports_held_out_metrics(tmp_path, stub_model, monkeypatch, ca
     assert "pooled" in blob and blob["pooled"]["egfr_n"] > 0
     out = capsys.readouterr().out
     assert "POOLED OUT-OF-FOLD" in out
+
+
+def test_each_run_is_archived_and_never_overwrites_the_last(tmp_path, stub_model,
+                                                            monkeypatch):
+    """Two runs must leave two results files, and each must be enough to rebuild
+    the pooled AUC without any checkpoint.
+
+    Run 6 — the best result this project produced — was destroyed by later runs
+    writing to the same `checkpoints/fold{k}/best.pt` and `runs/cv_summary.json`.
+    Its headline AUC survived only in a log under /private/tmp. This is the test
+    that keeps that from happening twice.
+    """
+    from theia.engine import train as train_mod
+    from theia.engine.evaluate import pooled_metrics
+
+    rows = _synthetic_cohort(tmp_path)
+    cfg = _cfg(tmp_path)
+    monkeypatch.setattr(train_mod, "load_config", lambda *a, **k: cfg)
+
+    for run_id in ("run-a", "run-b"):
+        monkeypatch.setattr("sys.argv", ["train", "--device", "cpu", "--run_id", run_id])
+        train_mod.main()
+
+    results = sorted((tmp_path / "results").glob("*.json"))
+    assert [p.stem for p in results] == ["run-a", "run-b"], (
+        f"runs overwrote each other: {[p.name for p in results]}")
+    # Weights are namespaced too, so run-a's model is still on disk.
+    assert (tmp_path / "ckpt" / "run-a" / "fold0" / "best.pt").exists()
+    assert (tmp_path / "ckpt" / "run-b" / "fold0" / "best.pt").exists()
+
+    blob = json.load(open(results[0]))
+    assert blob["config"]["train"]["epochs"] == cfg["train"]["epochs"], \
+        "archive does not record what actually ran"
+    # The archive alone reproduces the headline number — no checkpoint loaded.
+    oof = [r for f in blob["folds"] for r in (f.get("oof") or [])]
+    assert oof, "no out-of-fold predictions archived; ROC curves are unrecoverable"
+    rebuilt = pooled_metrics(oof, cfg["data"]["target_genes"], cfg["eval"]["bootstrap_n"])
+    assert rebuilt["egfr_auc"] == pytest.approx(blob["pooled"]["egfr_auc"])

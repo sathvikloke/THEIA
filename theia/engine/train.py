@@ -26,6 +26,7 @@ import argparse
 import json
 import math
 import os
+from datetime import datetime
 from pathlib import Path
 from statistics import mean, stdev
 
@@ -274,13 +275,52 @@ def _report_pooled(summary: list[dict], cfg) -> dict:
     return pooled
 
 
+def _archive(run_id: str, cfg, summary: list, pooled: dict) -> str:
+    """Write the one artifact that must outlive the checkpoints.
+
+    Everything heavy — best.pt, last.pt — is gitignored and namespaced by run id,
+    so it survives only as long as the disk. This file is small, tracked, and
+    holds the resolved config plus every per-fold metric AND the out-of-fold
+    predictions, which is enough to regenerate the pooled AUC, its CI and every
+    ROC curve without the weights.
+
+    Written because run 6 — the best result this project has produced — was
+    destroyed by runs 7, 8 and 9 writing to the same `checkpoints/fold{k}/` and
+    `runs/cv_summary.json` paths. Its headline AUC survived only in a log file
+    under /private/tmp, which the OS is free to delete. A result you cannot
+    reproduce a figure from is not a result.
+    """
+    out = Path(getattr(cfg.paths, "results_dir", "results"))
+    out.mkdir(parents=True, exist_ok=True)
+    path = out / f"{run_id}.json"
+    with open(path, "w") as fh:
+        # Config subclasses dict and its nested values stay plain dicts, so it
+        # serialises as-is — the archive records what actually ran, not what the
+        # YAML on disk says today.
+        json.dump({"run_id": run_id, "config": dict(cfg), "pooled": pooled,
+                   "folds": summary}, fh, indent=2, default=str)
+    print(f"[train] archived -> {path}")
+    return str(path)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/default.yaml")
     ap.add_argument("--device", default=None, help="override cfg.train.device")
+    ap.add_argument("--run_id", default=None,
+                    help="names checkpoints/<run_id>/ and results/<run_id>.json; "
+                         "defaults to a timestamp. Runs no longer overwrite each other.")
     args = ap.parse_args()
     cfg = load_config(args.config)
     set_seed(cfg.seed)
+
+    run_id = args.run_id or datetime.now().strftime("%Y%m%d-%H%M%S")
+    # Join from a remembered root, not from the current value: mutating cfg in
+    # place means a second main() on the same object would nest run-b inside
+    # run-a. setdefault makes this idempotent however many times it runs.
+    root = cfg["paths"].setdefault("ckpt_root", cfg.paths.ckpt_dir)
+    cfg["paths"]["ckpt_dir"] = str(Path(root) / run_id)
+    print(f"[train] run_id={run_id}  checkpoints -> {cfg.paths.ckpt_dir}")
 
     device = resolve_device(args.device or getattr(cfg.train, "device", "auto"))
     amp_on, _ = amp_settings(device, cfg.train.amp)
@@ -307,7 +347,8 @@ def main() -> None:
     print(_summarize(summary, cfg.train.monitor))
     pooled = _report_pooled(summary, cfg)
     with open(os.path.join(cfg.paths.runs_dir, "cv_summary.json"), "w") as fh:
-        json.dump({"folds": summary, "pooled": pooled}, fh, indent=2)
+        json.dump({"folds": summary, "pooled": pooled, "run_id": run_id}, fh, indent=2)
+    _archive(run_id, cfg, summary, pooled)
 
 
 if __name__ == "__main__":
