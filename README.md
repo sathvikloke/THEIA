@@ -221,17 +221,23 @@ you, because 2 is a legal number.
 |---|---|---|---|---|
 | 1 | 117 pt, 23 pos | fine-tuned | centred | 0.426 [0.307, 0.546] |
 | 2 | 153 pt, 40 pos | frozen | centred | 0.573 [0.470, 0.676] |
-| **3** | **153 pt, 40 pos** | **last-2 unfrozen** | **jittered** | **0.654 [0.558, 0.751]** |
+| 3 | 153 pt, 40 pos | last-2 unfrozen | jittered | 0.654 [0.558, 0.751] |
+| 4 | 153 pt, 40 pos | + backbone_lr_mult 0.1 | jittered | 0.632 [0.534, 0.727] — reverted |
+| **6** | **153 pt, 40 pos** | **+ composite monitor** | **jittered** | **0.656 [0.560, 0.747]** |
 
 Run 3 is the first whose interval excludes chance. KRAS remains at chance
 (0.522 [0.400, 0.639]), consistent with its flat learning curve — keep it
 exploratory.
 
-Grounding now works but is **unstable across folds**: mean mass lift +0.061
-against a 0.039 chance baseline, ranging 0.000 to 0.217, with pointing above
-0.9 in three of five folds and 0.00 in one. It went from provably impossible
-(a centred crop has no localisation task) to intermittently good. Do not report
-it as solved.
+Grounding works in **4 of 5 folds**: mean mass lift **+0.235 ± 0.140** against a
+0.039 chance baseline, with pointing at 0.95–1.00 in those four and 0.00 in
+fold 3. The fix was checkpoint selection — selecting on `egfr_auc` alone and then
+reporting grounding meant the grounding number came from whichever epoch won on
+AUC. A composite monitor quadrupled mean lift (+0.060 → +0.235) at no cost to
+classification (0.654 → 0.656).
+
+One fold still does not localise. Report it as working-but-not-universal, not
+solved.
 
 **Report the pooled out-of-fold AUC, not the mean of per-fold AUCs.** With ~23
 positives across 5 folds, a single held-out fold holds ~5, and an AUC from 5
