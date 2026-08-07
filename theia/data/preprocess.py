@@ -142,7 +142,11 @@ def segment_mask(seg_file: str, ct, prefer=TUMOR_LABELS) -> np.ndarray:
         raise ValueError(f"{seg_file}: {arr.shape[0]} frames but "
                          f"{0 if frames is None else len(frames)} functional groups")
 
-    sitk = _sitk()
+    # No _sitk() call here on purpose: this function only needs the CT's size and
+    # its index->physical mapping, both of which are plain duck-typed calls. That
+    # keeps the segment-selection logic — the part that decides what counts as
+    # "tumor" — testable without SimpleITK, which is what the lazy import exists
+    # for in the first place.
     depth = ct.GetSize()[2]
     z_of = [ct.TransformIndexToPhysicalPoint((0, 0, k))[2] for k in range(depth)]
     out = np.zeros((depth, arr.shape[1], arr.shape[2]), dtype=np.uint8)
