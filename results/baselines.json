@@ -1,0 +1,35 @@
+{
+  "gene": "EGFR",
+  "arms": {
+    "clinical": {
+      "n_patients": 153.0,
+      "egfr_n": 153.0,
+      "egfr_n_pos": 40.0,
+      "egfr_auc": 0.7740044247787611,
+      "egfr_auc_lo": 0.6765838688416542,
+      "egfr_auc_hi": 0.8585555730627796,
+      "egfr_sens": 0.775,
+      "egfr_spec": 0.584070796460177
+    },
+    "radiomics": {
+      "n_patients": 153.0,
+      "egfr_n": 153.0,
+      "egfr_n_pos": 40.0,
+      "egfr_auc": 0.6618362831858408,
+      "egfr_auc_lo": 0.5678025191183087,
+      "egfr_auc_hi": 0.7540156832015347,
+      "egfr_sens": 0.65,
+      "egfr_spec": 0.5398230088495575
+    },
+    "clinical+radiomics": {
+      "n_patients": 153.0,
+      "egfr_n": 153.0,
+      "egfr_n_pos": 40.0,
+      "egfr_auc": 0.7587389380530973,
+      "egfr_auc_lo": 0.6588277933105519,
+      "egfr_auc_hi": 0.8471530083878699,
+      "egfr_sens": 0.75,
+      "egfr_spec": 0.5752212389380531
+    }
+  }
+}

@@ -9,6 +9,7 @@ stubs so the test needs no network, no pretrained weights, and no GPU. Everythin
 between them is the real code path.
 """
 import json
+import math
 import os
 
 import numpy as np
@@ -122,6 +123,46 @@ def test_train_fold_runs_and_writes_a_usable_checkpoint(tmp_path, stub_model):
     log = [json.loads(l) for l in open(tmp_path / "ckpt" / "fold0" / "log.jsonl")]
     assert log[-1]["split"] == "outer_test"
     assert any(r["split"] == "inner_val" for r in log[:-1])
+
+
+def test_a_nonfinite_gradient_does_not_kill_the_fold(tmp_path, stub_model, monkeypatch):
+    """One poisoned batch must be skipped, not written into the weights.
+
+    Off CUDA, AMP is disabled and GradScaler is a no-op, so before grad_clip
+    landed there was nothing skipping non-finite steps: a single bad batch put
+    NaN into every parameter and the fold trained on garbage for the rest of its
+    epochs. Run 10's fold 0 did exactly this at epoch 8 and then contributed its
+    epoch-0 checkpoint to the pooled estimate.
+    """
+    from theia.data.dataset import nested_kfold_indices
+    from theia.engine import train as train_mod
+
+    rows = _synthetic_cohort(tmp_path)
+    cfg = _cfg(tmp_path)
+    cfg["train"]["epochs"] = 2
+
+    # Poison exactly one step's loss, on the step that triggers an optimizer update.
+    real_total_loss, calls = train_mod.total_loss, {"n": 0}
+
+    def poisoned(out, batch, weights, device):
+        loss, parts = real_total_loss(out, batch, weights, device)
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return loss * float("inf"), parts
+        return loss, parts
+
+    monkeypatch.setattr(train_mod, "total_loss", poisoned)
+
+    tr, va, te = next(nested_kfold_indices(rows, "EGFR", 3, 1337, 0.25))
+    result = train_mod.train_fold(cfg, 0, tr, va, te, torch.device("cpu"))
+
+    state = torch.load(tmp_path / "ckpt" / "fold0" / "best.pt",
+                       map_location="cpu", weights_only=False)
+    bad = [k for k, v in state["model"].items()
+           if v.is_floating_point() and not torch.isfinite(v).all()]
+    assert not bad, f"non-finite weights survived into the checkpoint: {bad[:3]}"
+    auc = result["test"].get("egfr_auc")
+    assert auc is None or not math.isnan(auc), "fold produced NaN metrics after one bad batch"
 
 
 def test_checkpoint_reloads_into_a_fresh_model(tmp_path, stub_model):

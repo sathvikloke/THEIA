@@ -158,7 +158,7 @@ def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
         model.train()
         opt.zero_grad()
         pbar = tqdm(tl, desc=f"fold{fold} ep{epoch}")
-        running, seen = None, 0
+        running, seen, skipped = None, 0, 0
         for step, batch in enumerate(pbar):
             with autocast(device, amp_on, amp_dtype):
                 out = model(batch, device)
@@ -167,12 +167,33 @@ def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
             scaler.scale(loss).backward()
             if (step + 1) % cfg.train.grad_accum == 0:
                 prev_scale = scaler.get_scale()
-                scaler.step(opt)
-                scaler.update()
+                # Clip, and skip the step outright if the gradient is not finite.
+                #
+                # On CUDA, GradScaler already skips non-finite steps. Off CUDA
+                # (MPS, CPU) AMP is disabled, the scaler is a no-op, and NOTHING
+                # skipped them: one bad batch wrote NaN into the weights and the
+                # fold was dead from that point on, still burning epochs until
+                # early stopping. Fold 0 of run 10 went NaN at epoch 8 and kept
+                # its epoch-0 checkpoint, i.e. contributed an untrained model to
+                # the pooled estimate. The old code detected this and printed a
+                # warning, but had no way to act on it.
+                #
+                # unscale_ is a no-op when the scaler is disabled, so the clip
+                # sees true gradients on every backend.
+                scaler.unscale_(opt)
+                gnorm = torch.nn.utils.clip_grad_norm_(
+                    [p for p in model.parameters() if p.grad is not None],
+                    float(getattr(cfg.train, "grad_clip", 1.0)))
+                if torch.isfinite(gnorm):
+                    scaler.step(opt)
+                    scaler.update()
+                else:
+                    skipped += 1
+                    scaler.update()
                 opt.zero_grad()
                 # A skipped step (inf/nan gradients) must not advance the LR
                 # schedule, or OneCycleLR drifts out of sync with real progress.
-                if scaler.get_scale() >= prev_scale:
+                if torch.isfinite(gnorm) and scaler.get_scale() >= prev_scale:
                     sched.step()
             # parts are detached tensors; converting every step would force a
             # host sync per iteration. Accumulate and format occasionally.
@@ -188,6 +209,12 @@ def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
         metrics = evaluate(model, vl, cfg, device)
         metrics["epoch"] = epoch
         metrics["split"] = "inner_val"
+        if skipped:
+            # Recorded, not just printed: a fold that skipped many steps trained
+            # on less than it appears to, and that belongs in the archive.
+            metrics["skipped_steps"] = skipped
+            print(f"[train] fold{fold} ep{epoch}: skipped {skipped} non-finite "
+                  "optimizer step(s)")
         log.append(metrics)
         monitor = monitor_value(metrics, cfg.train.monitor)
         if _is_better(monitor, best):

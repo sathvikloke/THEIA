@@ -147,6 +147,11 @@ train:
   # neither run 6 nor run 8/9.
   backbone_lr_mult: 1.0
   weight_decay: 0.01
+  # Max global gradient norm. There was no clipping at all until run 10, whose
+  # fold 0 went NaN at epoch 8 and then kept its epoch-0 checkpoint — an
+  # untrained model contributing 1/5 of the pooled estimate. Off CUDA the
+  # GradScaler is disabled, so nothing was skipping non-finite steps either.
+  grad_clip: 1.0
   warmup_ratio: 0.05
   amp: true                    # honoured on CUDA only; reported at startup
   loss_weights:
