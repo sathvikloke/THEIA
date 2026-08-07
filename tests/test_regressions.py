@@ -780,3 +780,21 @@ def test_pretrain_checkpoint_missing_a_module_raises(tmp_path):
 
     with pytest.raises(KeyError, match="vision"):
         tm.Theia.load_grounding_pretrain(Stub(), str(ck))
+
+
+def test_pretrain_lr_default_is_the_one_that_actually_grounds():
+    """A 2x LR difference decided whether grounding worked at all.
+
+    Measured on 134 masked patients, 14 epochs:
+      lr 1e-4 -> loss plateaus 1.137, mass lift -0.007, pointing 0.00
+      lr 2e-4 -> loss 0.531,          mass lift +0.352, pointing 1.00
+
+    The shipped 1e-4 was a scaffold default that no run had ever exercised.
+    """
+    from theia.config import load_config
+
+    cfg = load_config("configs/default.yaml")
+    assert float(cfg.grounding_pretrain.lr) >= 2e-4, (
+        "grounding_pretrain.lr below 2e-4 does not learn to localise")
+    assert int(cfg.grounding_pretrain.epochs) >= 10, (
+        "grounding needs ~10 epochs to move off chance")
