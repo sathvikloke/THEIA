@@ -132,8 +132,11 @@ train:
 
 grounding_pretrain:
   enabled: false               # set true to pretrain grounding on RadGenome first
-  epochs: 3
-  lr: 1.0e-4
+  # 3 was far too few: grounding needs ~10 epochs to move off chance even on the
+  # labelled cohort, and a 2-epoch smoke test showed loss falling (3.89 -> 2.61)
+  # with lift still at +0.000.
+  epochs: 20
+  lr: 2.0e-4   # 1e-4 plateaued at lift -0.007; the main run grounds at 2e-4
 
 eval:
   bootstrap_n: 2000            # CI on AUC; final evaluation only, not per epoch
