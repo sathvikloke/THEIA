@@ -798,3 +798,31 @@ def test_pretrain_lr_default_is_the_one_that_actually_grounds():
         "grounding_pretrain.lr below 2e-4 does not learn to localise")
     assert int(cfg.grounding_pretrain.epochs) >= 10, (
         "grounding needs ~10 epochs to move off chance")
+
+
+# --------------------------------------------------------------------------
+# BUG CLASS: multi-segment DICOM SEG. Planning cohorts bundle lungs, cord,
+# heart and esophagus into one object; thresholding at >0 makes "tumor" mean
+# the whole thorax, silently.
+# --------------------------------------------------------------------------
+def test_tumor_and_non_tumor_label_lists_are_disjoint():
+    from theia.data.preprocess import NON_TUMOR_LABELS, TUMOR_LABELS
+
+    for t in TUMOR_LABELS:
+        for n in NON_TUMOR_LABELS:
+            assert t not in n and n not in t, (
+                f"'{t}' and '{n}' overlap; a segment could match both lists")
+
+
+def test_lung_and_cord_labels_are_rejected_as_tumor():
+    from theia.data.preprocess import NON_TUMOR_LABELS, TUMOR_LABELS
+
+    def is_tumor(label):
+        low = label.lower()
+        return (any(k in low for k in TUMOR_LABELS)
+                and not any(k in low for k in NON_TUMOR_LABELS))
+
+    assert is_tumor("Neoplasm, Primary")
+    assert is_tumor("GTV-1")
+    for other in ("Lung", "Lung-Left", "Spinal cord", "Esophagus", "Heart"):
+        assert not is_tumor(other), f"{other} was accepted as tumor"

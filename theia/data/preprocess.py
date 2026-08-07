@@ -88,6 +88,86 @@ def load_segmentation(seg_dir: str):
     return load_series(seg_dir)
 
 
+# Segment labels that denote the primary tumor, lowercased substring match.
+TUMOR_LABELS = ("neoplasm", "gtv", "tumor", "tumour", "lesion", "mass")
+# Everything else a planning SEG typically carries. Named so the failure mode is
+# obvious if a label ever matches both lists.
+NON_TUMOR_LABELS = ("lung", "spinal", "cord", "esophagus", "oesophagus", "heart",
+                    "body", "external", "skin", "carina", "trachea")
+
+
+def segment_mask(seg_file: str, ct, prefer=TUMOR_LABELS) -> np.ndarray:
+    """Extract ONLY the tumor segment from a multi-segment DICOM SEG.
+
+    Radiotherapy-planning segmentations bundle several structures into one
+    multi-frame object: NSCLC-Radiomics ships 4-6 segments per patient
+    (Neoplasm Primary, Lung x2, Spinal cord, Esophagus, Heart) stacked as
+    frames, so a 134-slice CT gets a 536-frame SEG.
+
+    Reading that with sitk.ReadImage and thresholding at >0 yields a "tumor"
+    mask covering the entire thorax, and nothing errors. Grounding trained on it
+    would learn to attend everywhere, which is precisely the failure this
+    project has already spent a day removing.
+
+    Frames are matched to CT slices by ImagePositionPatient, not by index, since
+    the SEG may be ordered per-segment and may not span every CT slice.
+    """
+    import pydicom
+
+    ds = pydicom.dcmread(seg_file)
+    segments = {int(s.SegmentNumber): str(getattr(s, "SegmentLabel", "")).strip()
+                for s in getattr(ds, "SegmentSequence", [])}
+    if not segments:
+        raise ValueError(f"{seg_file}: no SegmentSequence")
+
+    if len(segments) == 1:
+        # A single-segment SEG is the tumor by construction, whatever it is
+        # called — NSCLC-RADIOGENOMICS labels its "3D Slicer segmentation
+        # result", which matches no anatomical keyword.
+        wanted = set(segments)
+    else:
+        wanted = {n for n, lab in segments.items()
+                  if any(k in lab.lower() for k in prefer)
+                  and not any(k in lab.lower() for k in NON_TUMOR_LABELS)}
+    if not wanted:
+        raise ValueError(
+            f"{seg_file}: no tumor segment among {sorted(segments.values())}; "
+            f"expected a label containing one of {prefer}")
+
+    arr = ds.pixel_array
+    if arr.ndim == 2:
+        arr = arr[None]
+    frames = getattr(ds, "PerFrameFunctionalGroupsSequence", None)
+    if frames is None or len(frames) != arr.shape[0]:
+        raise ValueError(f"{seg_file}: {arr.shape[0]} frames but "
+                         f"{0 if frames is None else len(frames)} functional groups")
+
+    sitk = _sitk()
+    depth = ct.GetSize()[2]
+    z_of = [ct.TransformIndexToPhysicalPoint((0, 0, k))[2] for k in range(depth)]
+    out = np.zeros((depth, arr.shape[1], arr.shape[2]), dtype=np.uint8)
+
+    matched = 0
+    for i, fg in enumerate(frames):
+        try:
+            seg_no = int(fg.SegmentIdentificationSequence[0].ReferencedSegmentNumber)
+        except Exception:  # noqa: BLE001
+            continue
+        if seg_no not in wanted:
+            continue
+        try:
+            z = float(fg.PlanePositionSequence[0].ImagePositionPatient[2])
+        except Exception:  # noqa: BLE001
+            continue
+        k = int(np.argmin([abs(z - zz) for zz in z_of]))
+        out[k] = np.maximum(out[k], arr[i].astype(np.uint8))
+        matched += 1
+
+    if matched == 0:
+        raise ValueError(f"{seg_file}: tumor segment(s) {sorted(wanted)} matched no CT slice")
+    return out
+
+
 def resample_mask_to(ct, seg) -> np.ndarray:
     sitk = _sitk()
     seg_r = sitk.Resample(
