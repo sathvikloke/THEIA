@@ -668,3 +668,46 @@ def test_config_validates_every_key_in_a_composite_monitor():
     cfg["train"]["monitor"] = [["egfr_auc", 1.0], ["not_a_metric", 0.5]]
     with pytest.raises(ValueError, match="not_a_metric"):
         validate_config(cfg)
+
+
+# --------------------------------------------------------------------------
+# BUG: a diverged epoch produced NaN logits, sklearn raised "Input contains
+#      NaN", and the exception killed the whole 5-fold run at fold 0 epoch 2
+# --------------------------------------------------------------------------
+def test_evaluate_survives_non_finite_predictions():
+    import types
+
+    import torch
+
+    from theia.config import load_config
+    from theia.engine.evaluate import evaluate
+
+    cfg = load_config("configs/default.yaml", validate=False)
+    cfg["data"]["target_genes"] = ["EGFR"]
+
+    class DivergedModel:
+        genes = ["egfr"]
+
+        def eval(self):
+            return self
+
+        def __call__(self, batch, device, generate=False):
+            n = batch["egfr"].shape[0]
+            return {"logits": {"egfr": torch.full((n, 2), float("nan"))},
+                    "attn_maps": torch.rand(n, 8, 14, 14)}
+
+    batch = dict(egfr=torch.tensor([0, 1, 0, 1]),
+                 roi=_roi_with_fraction(0.3, b=4, s=2),
+                 patient_id=[f"p{i}" for i in range(4)])
+    m = evaluate(DivergedModel(), [batch], cfg, "cpu")     # must not raise
+    assert m["egfr_auc"] != m["egfr_auc"], "NaN predictions should give NaN AUC"
+
+
+def test_pooled_metrics_drops_non_finite_predictions():
+    from theia.engine.evaluate import pooled_metrics
+
+    rows = [{"patient_id": f"p{i}", "fold": 0, "egfr_true": i % 2,
+             "egfr_prob": (float("nan") if i < 2 else 0.1 * i)} for i in range(12)]
+    m = pooled_metrics(rows, ["EGFR"], bootstrap_n=50)
+    assert m["egfr_n"] == 10, f"expected 10 finite rows, got {m['egfr_n']}"
+    assert m["egfr_auc"] == m["egfr_auc"], "AUC should be finite after dropping NaNs"

@@ -175,6 +175,10 @@ def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
                     sched.step()
             # parts are detached tensors; converting every step would force a
             # host sync per iteration. Accumulate and format occasionally.
+            if not torch.isfinite(parts["total"]):
+                print(f"[train] fold{fold} ep{epoch} step{step}: non-finite loss "
+                      f"({ {k: float(v) for k, v in parts.items()} }); "
+                      "the fold has diverged")
             running = parts if running is None else {k: running[k] + parts[k] for k in parts}
             seen += 1
             if step % 20 == 0:
