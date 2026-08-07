@@ -215,6 +215,24 @@ invented. See `data.aim_crop_mm`.
 **ALK has 2 positives.** It cannot be modelled. Config validation will not stop
 you, because 2 is a legal number.
 
+### Current measured result
+
+| run | cohort | encoder | crops | pooled EGFR AUC |
+|---|---|---|---|---|
+| 1 | 117 pt, 23 pos | fine-tuned | centred | 0.426 [0.307, 0.546] |
+| 2 | 153 pt, 40 pos | frozen | centred | 0.573 [0.470, 0.676] |
+| **3** | **153 pt, 40 pos** | **last-2 unfrozen** | **jittered** | **0.654 [0.558, 0.751]** |
+
+Run 3 is the first whose interval excludes chance. KRAS remains at chance
+(0.522 [0.400, 0.639]), consistent with its flat learning curve — keep it
+exploratory.
+
+Grounding now works but is **unstable across folds**: mean mass lift +0.061
+against a 0.039 chance baseline, ranging 0.000 to 0.217, with pointing above
+0.9 in three of five folds and 0.00 in one. It went from provably impossible
+(a centred crop has no localisation task) to intermittently good. Do not report
+it as solved.
+
 **Report the pooled out-of-fold AUC, not the mean of per-fold AUCs.** With ~23
 positives across 5 folds, a single held-out fold holds ~5, and an AUC from 5
 positives has a 95% CI near ±0.27 even when the model is genuinely good — an
