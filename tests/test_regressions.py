@@ -711,3 +711,72 @@ def test_pooled_metrics_drops_non_finite_predictions():
     m = pooled_metrics(rows, ["EGFR"], bootstrap_n=50)
     assert m["egfr_n"] == 10, f"expected 10 finite rows, got {m['egfr_n']}"
     assert m["egfr_auc"] == m["egfr_auc"], "AUC should be finite after dropping NaNs"
+
+
+# --------------------------------------------------------------------------
+# Grounding pretraining: warm-start must transfer vision+grounding only, and
+# must fail loudly rather than silently no-op (which would look like
+# "pretraining did not help")
+# --------------------------------------------------------------------------
+def _tiny_cfg():
+    from theia.config import load_config
+
+    cfg = load_config("configs/default.yaml", validate=False)
+    cfg["model"].update(vision_dim=32, grounding_tokens=4, classifier_hidden=16,
+                        grounding_pretrain_ckpt=None)
+    cfg["lora"]["enabled"] = False
+    return cfg
+
+
+def test_pretrain_checkpoint_transfers_vision_and_grounding(tmp_path, monkeypatch):
+    import torch.nn as nn
+
+    import theia.models.backbone as bb
+    from theia.engine.pretrain import GroundingOnly
+
+    class TinyTrunk(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.stem = nn.Conv2d(3, 32, 4, 4)
+            self.blocks = nn.ModuleList([nn.Linear(32, 32) for _ in range(4)])
+
+        def forward_features(self, x):
+            return self.stem(x).flatten(2).transpose(1, 2)[:, :64, :]
+
+    monkeypatch.setattr(bb.VisionEncoder, "_build",
+                        lambda self, name: (TinyTrunk(), 32, (8, 8), (0.5,) * 3, (0.5,) * 3))
+    cfg = _tiny_cfg()
+    src = GroundingOnly(cfg)
+    ck = tmp_path / "pre.pt"
+    torch.save({"vision": src.vision.state_dict(),
+                "grounding": src.grounding.state_dict(),
+                "metrics": {"grounding_mass_lift": 0.25}}, ck)
+
+    dst = GroundingOnly(cfg)
+    before = dst.grounding.queries.detach().clone()
+    blob = torch.load(ck, map_location="cpu", weights_only=False)
+    dst.grounding.load_state_dict(blob["grounding"])
+    assert not torch.allclose(before, dst.grounding.queries), "weights did not change"
+    assert torch.allclose(src.grounding.queries, dst.grounding.queries)
+
+
+def test_missing_pretrain_checkpoint_raises_rather_than_silently_skipping(tmp_path):
+    import theia.models.theia_model as tm
+
+    m = object.__new__(tm.Theia)
+    with pytest.raises(FileNotFoundError, match="does not exist"):
+        tm.Theia.load_grounding_pretrain(m, str(tmp_path / "nope.pt"))
+
+
+def test_pretrain_checkpoint_missing_a_module_raises(tmp_path):
+    import theia.models.theia_model as tm
+
+    ck = tmp_path / "half.pt"
+    torch.save({"grounding": {}}, ck)          # no 'vision' key
+
+    class Stub:
+        vision = torch.nn.Linear(2, 2)
+        grounding = torch.nn.Linear(2, 2)
+
+    with pytest.raises(KeyError, match="vision"):
+        tm.Theia.load_grounding_pretrain(Stub(), str(ck))
