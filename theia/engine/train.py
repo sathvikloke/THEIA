@@ -78,18 +78,46 @@ def _is_better(candidate: float, best: float) -> bool:
     return not math.isnan(candidate) and candidate > best
 
 
+def _param_groups(model, cfg) -> list[dict]:
+    """Discriminative learning rates: pretrained vision blocks train slower.
+
+    With `unfreeze_last_n`, the re-enabled ViT blocks carry pretrained weights but
+    were getting the same LR as randomly-initialised heads. That is far too high
+    for them and is the likely cause of grounding's fold-to-fold instability —
+    measured mass lift ranged 0.000 to 0.217 across five folds on identical
+    settings, and the same fold swung 0.302 -> 0.004 between runs.
+
+    Vision parameters get lr * train.backbone_lr_mult; heads keep the full rate.
+    """
+    mult = float(getattr(cfg.train, "backbone_lr_mult", 1.0))
+    vision, heads = [], []
+    vision_ids = {id(p) for p in model.vision.parameters()}
+    for p in model.parameters():
+        if not p.requires_grad:
+            continue
+        (vision if id(p) in vision_ids else heads).append(p)
+    if not vision or mult == 1.0:
+        return [{"params": vision + heads, "lr": cfg.train.lr}]
+    return [
+        {"params": vision, "lr": cfg.train.lr * mult},
+        {"params": heads, "lr": cfg.train.lr},
+    ]
+
+
 def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
     tl, vl, testl = make_loaders(cfg, train_idx, val_idx, test_idx)
     amp_on, amp_dtype = amp_settings(device, cfg.train.amp)
     model = Theia(cfg).to(device)
-    opt = torch.optim.AdamW(model.trainable_parameters(), lr=cfg.train.lr,
+    opt = torch.optim.AdamW(_param_groups(model, cfg), lr=cfg.train.lr,
                             weight_decay=cfg.train.weight_decay)
     # scheduler steps once per OPTIMIZER step (every grad_accum batches), so
     # total_steps must match that count or OneCycleLR raises past the end.
     opt_steps_per_epoch = max(len(tl) // cfg.train.grad_accum, 1)
     steps = cfg.train.epochs * opt_steps_per_epoch
+    # max_lr must be per-group, or OneCycleLR overwrites the discriminative rates
+    # set in _param_groups and drives the pretrained blocks at the head rate.
     sched = torch.optim.lr_scheduler.OneCycleLR(
-        opt, max_lr=cfg.train.lr, total_steps=steps,
+        opt, max_lr=[g["lr"] for g in opt.param_groups], total_steps=steps,
         pct_start=cfg.train.warmup_ratio)
     scaler = make_grad_scaler(device, amp_on)
 

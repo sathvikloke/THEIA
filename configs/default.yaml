@@ -11,8 +11,8 @@ paths:
 data:
   modalities: [CT]             # roadmap: [CT, PATH] once the pathology branch lands
   modality_dropout: 0.0        # roadmap (Q2): prob of dropping one modality in training
-  headline_genes: [EGFR, KRAS] # well-powered, carry the paper
-  exploratory_genes: []        # roadmap: [ALK, MET, BRAF, STK11, TP53] as prevalence allows
+  headline_genes: [EGFR]       # KRAS demoted: pooled 0.522 [0.400, 0.639], flat learning curve
+  exploratory_genes: [KRAS]    # roadmap: + ALK, MET, BRAF, STK11, TP53 as prevalence allows
   target_genes: [EGFR, KRAS]   # = headline + exploratory once the panel is locked in Q1
   roi_margin_mm: 12            # dilation around seg mask before crop
   # Square crop side = (tumor bbox + 2*margin) * context_factor. At 1.0 the tumor
@@ -107,6 +107,10 @@ train:
   batch_size: 8                # 128 imgs/step at n_slices=16; drop to 2 on <32GB
   grad_accum: 2
   lr: 2.0e-4
+  # Unfrozen vision blocks carry pretrained weights and must train slower than
+  # randomly-initialised heads. At 1.0 (same rate) grounding was unstable:
+  # mass lift ranged 0.000-0.217 across five identical folds.
+  backbone_lr_mult: 0.1
   weight_decay: 0.01
   warmup_ratio: 0.05
   amp: true                    # honoured on CUDA only; reported at startup
