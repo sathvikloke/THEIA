@@ -214,3 +214,40 @@ def test_paired_delta_reports_no_difference_for_identical_models(tmp_path):
     d = paired_delta(preds, [dict(r) for r in preds], "EGFR", n_boot=300, seed=1)
     assert d["delta"] == pytest.approx(0.0, abs=1e-9)
     assert d["p_two_sided"] > 0.5, "identical models flagged as different"
+
+
+def test_pooled_metrics_warns_when_a_fold_holds_one_class(capsys):
+    """A single-class fold must be announced, not absorbed silently.
+
+    Its within-fold ranks still spread across [0,1] and enter the pooled AUC as
+    though informative, so the estimate drifts toward chance with nothing to
+    distinguish that from a genuinely weak model. Found while debugging a test
+    of my own that assigned folds so each held exactly one class -- a "strictly
+    better" model scored a delta of exactly 0.000 and looked like a code bug.
+    """
+    from theia.engine.evaluate import pooled_metrics
+
+    rows = []
+    for i in range(40):
+        # fold 0 is all-negative, fold 1 all-positive, folds 2-3 are mixed.
+        fold = i % 4
+        y = {0: 0, 1: 1}.get(fold, i % 2)
+        rows.append({"patient_id": f"p{i}", "fold": fold, "egfr_true": y,
+                     "egfr_prob": (i * 37 % 100) / 100.0})
+    pooled_metrics(rows, ["EGFR"], bootstrap_n=20)
+    out = capsys.readouterr().out
+    assert "single class" in out, "single-class folds passed without a warning"
+    assert "'0'" in out and "'1'" in out, f"wrong folds named: {out}"
+
+
+def test_pooled_metrics_is_quiet_when_every_fold_is_mixed(capsys):
+    """The warning must not cry wolf on healthy data."""
+    from theia.engine.evaluate import pooled_metrics
+
+    # fold = i % 4 with y = i % 2 would put class 0 in the even folds and class
+    # 1 in the odd ones -- the very trap this warning exists to catch, and one I
+    # walked into twice while writing these tests. Block the folds instead.
+    rows = [{"patient_id": f"p{i}", "fold": i // 10, "egfr_true": i % 2,
+             "egfr_prob": (i * 37 % 100) / 100.0} for i in range(40)]
+    pooled_metrics(rows, ["EGFR"], bootstrap_n=20)
+    assert "single class" not in capsys.readouterr().out
