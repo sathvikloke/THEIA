@@ -27,8 +27,10 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
-from theia.data.preprocess import (_resize, crop_box, load_segmentation, load_series,
-                                   resample_mask_to, roi_box, tumor_slices, window_hu)
+import glob
+
+from theia.data.preprocess import (_resize, crop_box, load_series, roi_box,
+                                   segment_mask, tumor_slices, window_hu)
 
 
 def process_patient(pid: str, ct_dir: str, seg_dir: str, cfg) -> dict | None:
@@ -36,12 +38,16 @@ def process_patient(pid: str, ct_dir: str, seg_dir: str, cfg) -> dict | None:
 
     try:
         ct = load_series(ct_dir)
-        seg = load_segmentation(seg_dir)
-    except (FileNotFoundError, RuntimeError) as exc:
+        segf = sorted(glob.glob(os.path.join(seg_dir, "*.dcm")))
+        if not segf:
+            raise FileNotFoundError(f"no SEG in {seg_dir}")
+        # segment_mask, not resample_mask_to: planning SEGs bundle lungs, cord,
+        # heart and esophagus alongside the tumor, and thresholding the whole
+        # object at >0 would make "tumor" mean the entire thorax.
+        mask = segment_mask(segf[0], ct)
+    except (FileNotFoundError, RuntimeError, ValueError) as exc:
         print(f"[pretrain-prep] skip {pid}: {exc}")
         return None
-
-    mask = resample_mask_to(ct, seg)
     if mask.sum() < cfg.data.min_tumor_voxels:
         print(f"[pretrain-prep] skip {pid}: tumor too small ({int(mask.sum())} voxels)")
         return None
