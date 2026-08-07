@@ -158,7 +158,7 @@ def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
         model.train()
         opt.zero_grad()
         pbar = tqdm(tl, desc=f"fold{fold} ep{epoch}")
-        running, seen, skipped = None, 0, 0
+        running, seen, skipped, overflowed = None, 0, 0, 0
         for step, batch in enumerate(pbar):
             with autocast(device, amp_on, amp_dtype):
                 out = model(batch, device)
@@ -188,7 +188,19 @@ def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
                     scaler.step(opt)
                     scaler.update()
                 else:
+                    # Distinguish the two ways this happens, because they need
+                    # opposite responses and look identical from the norm alone:
+                    #   every grad finite -> the SUM OF SQUARES overflowed fp32
+                    #     while each element was representable. The gradients are
+                    #     usable and merely enormous.
+                    #   some grad non-finite -> a true NaN/inf. Skipping is right.
+                    # Without this the log says "non-finite" for both and there is
+                    # no way to tell which you are looking at.
+                    grads_ok = all(torch.isfinite(p.grad).all()
+                                   for p in model.parameters() if p.grad is not None)
                     skipped += 1
+                    if grads_ok:
+                        overflowed += 1
                     scaler.update()
                 opt.zero_grad()
                 # A skipped step (inf/nan gradients) must not advance the LR
@@ -213,8 +225,11 @@ def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
             # Recorded, not just printed: a fold that skipped many steps trained
             # on less than it appears to, and that belongs in the archive.
             metrics["skipped_steps"] = skipped
-            print(f"[train] fold{fold} ep{epoch}: skipped {skipped} non-finite "
-                  "optimizer step(s)")
+            metrics["overflow_steps"] = overflowed
+            how = (f"{overflowed} from fp32 norm overflow (gradients themselves "
+                   f"finite), {skipped - overflowed} from true NaN/inf")
+            print(f"[train] fold{fold} ep{epoch}: skipped {skipped} optimizer "
+                  f"step(s): {how}")
         log.append(metrics)
         monitor = monitor_value(metrics, cfg.train.monitor)
         if _is_better(monitor, best):

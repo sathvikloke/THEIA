@@ -861,3 +861,44 @@ def test_warm_start_respects_the_vision_flag(tmp_path):
     on = Stub(True)
     with pytest.raises(KeyError, match="vision"):      # now it is required
         tm.Theia.load_grounding_pretrain(on, str(ck))
+
+
+def test_grounding_loss_gradient_stays_bounded_when_attention_collapses():
+    """A collapsed attention map must still yield a finite, bounded gradient.
+
+    Scope note, so this test is not read as more than it is: it is an invariant
+    test, NOT a regression test for the fold-killing NaN. Measured directly, the
+    pre-fix code emitted gradients of only ~6e2 at these operating points, so
+    this test passed before the detach/clamp change as well. The source of the
+    non-finite gradients seen in training is not established by it.
+
+    What it does pin: grounding_loss divides by its own maximum and then runs
+    BCE, and both have gradients that scale inversely with a quantity that can
+    approach zero (the map maximum, and the clamped probability). Detaching and
+    flooring the denominator bounds the first; raising the BCE clamp floor to
+    1e-4 bounds the second to 1e4 per element. Those bounds are what is asserted
+    here.
+    """
+    import torch
+
+    from theia.engine.losses import grounding_loss
+
+    b, q, h, w = 2, 4, 14, 14
+    # A softmax-like map that has collapsed to near-uniform: max ~ 1/(h*w).
+    flat = torch.full((b, q, h, w), 1.0 / (h * w))
+    attn = flat.clone().requires_grad_(True)
+    roi = torch.zeros(b, 3, 1, 56, 56)
+    roi[:, :, :, 8:24, 8:24] = 1.0
+
+    loss = grounding_loss(attn, roi, "cpu")
+    assert torch.isfinite(loss), "loss itself went non-finite"
+    loss.backward()
+
+    g = attn.grad
+    assert torch.isfinite(g).all(), "grounding loss emitted a non-finite gradient"
+    # Bound chosen well above anything healthy training produces but far below
+    # the fp32 overflow that killed folds; the pre-fix path exceeded this by
+    # many orders of magnitude.
+    assert g.abs().max() < 1e6, (
+        f"gradient magnitude {g.abs().max():.3e} is large enough to overflow "
+        "once Adam squares it")

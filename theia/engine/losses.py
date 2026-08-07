@@ -71,7 +71,22 @@ def grounding_loss(attn_maps: torch.Tensor, roi: torch.Tensor, device) -> torch.
     """attn_maps [B,Q,h,w] vs roi [B,S,1,H,W] -> Dice + BCE on the union map."""
     b, q, h, w = attn_maps.shape
     union = attn_maps.amax(dim=1)                                        # [B,h,w]
-    union = union / (union.amax(dim=(1, 2), keepdim=True) + EPS)
+    # Rescale the map to peak at 1. The denominator is DETACHED and floored on
+    # purpose, and both matter.
+    #
+    # detach: this division is a rescaling, not a learning signal about the
+    # maximum. Left attached it contributes a 1/max^2 term that grows without
+    # bound as attention flattens.
+    # clamp_min: attn_w is a softmax over patch tokens, so a diffuse map has a
+    # maximum near 1/n_tokens. Dividing by that amplifies every upstream
+    # gradient by n_tokens, and the amplification is unbounded as the map
+    # flattens further.
+    #
+    # Together with the BCE floor below, these were the two unbounded gradient
+    # paths that made whole folds die: the loss stayed perfectly finite while
+    # the gradient overflowed fp32, so nothing downstream could see it coming.
+    denom = union.amax(dim=(1, 2), keepdim=True).detach().clamp_min(1e-3)
+    union = union / denom
 
     target = roi_to_grid(roi, h, w, device)
 
@@ -85,7 +100,11 @@ def grounding_loss(attn_maps: torch.Tensor, roi: torch.Tensor, device) -> torch.
     # binary_cross_entropy is autocast-banned on CUDA. Run it in fp32 with
     # autocast off; the result is numerically what the fp32 path always produced.
     with torch.amp.autocast(device_type=union.device.type, enabled=False):
-        u32 = union.float().clamp(EPS, 1.0 - EPS)
+        # d/du of BCE is (u - t) / (u(1 - u)), so the clamp floor sets the
+        # largest gradient this loss can emit. At EPS=1e-6 that is 1e6 per
+        # element, before the normalizer above multiplies it again. 1e-4 bounds
+        # it to 1e4 and changes the loss value by <1e-3 nats.
+        u32 = union.float().clamp(1e-4, 1.0 - 1e-4)
         t32 = target.float()
         bce = F.binary_cross_entropy(u32, t32)
         inter = (u32 * t32).sum(dim=(1, 2))
