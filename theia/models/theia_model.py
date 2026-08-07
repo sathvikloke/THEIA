@@ -48,6 +48,7 @@ class Theia(nn.Module):
         self.lora_applied = False
         if cfg.lora.enabled:
             self._apply_lora(cfg.lora)
+        self.warm_start_vision = bool(getattr(m, "warm_start_vision", False))
         ckpt = getattr(m, "grounding_pretrain_ckpt", None)
         if ckpt:
             self.load_grounding_pretrain(str(ckpt))
@@ -66,7 +67,16 @@ class Theia(nn.Module):
                 f"model.grounding_pretrain_ckpt points at {path}, which does not exist. "
                 "Run theia.engine.pretrain first, or unset the key.")
         blob = torch.load(path, map_location="cpu", weights_only=False)
-        for name, module in (("vision", self.vision), ("grounding", self.grounding)):
+        # Transferring the vision encoder too buys grounding and costs prediction.
+        # Measured on the full 5-fold run: warm-starting both took grounding lift
+        # +0.235 -> +0.749 (4/5 -> 5/5 folds) but pooled EGFR 0.656 -> 0.528.
+        # Pretraining adapts the ViT to NSCLC-Radiomics, a radiotherapy-planning
+        # cohort with different scanners; those features answer "where is the
+        # dense thing" and lose the texture that carries EGFR signal here.
+        targets = [("grounding", self.grounding)]
+        if self.warm_start_vision:
+            targets.insert(0, ("vision", self.vision))
+        for name, module in targets:
             if name not in blob:
                 raise KeyError(f"{path} has no '{name}' weights (keys: {sorted(blob)})")
             missing, unexpected = module.load_state_dict(blob[name], strict=False)
@@ -77,7 +87,8 @@ class Theia(nn.Module):
                     "The pretraining run must use the same vision_encoder and "
                     "grounding_tokens as this one.")
         lift = (blob.get("metrics") or {}).get("grounding_mass_lift")
-        print(f"[theia] warm-started vision+grounding from {path}"
+        what = "vision+grounding" if self.warm_start_vision else "grounding head only"
+        print(f"[theia] warm-started {what} from {path}"
               + (f" (pretrain val lift {lift:+.3f})" if lift is not None else ""))
 
     def _apply_lora(self, lora_cfg) -> None:

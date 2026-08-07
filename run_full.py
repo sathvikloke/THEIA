@@ -18,7 +18,9 @@ def main():
     # patients is the wrong capacity.
     cfg["model"]["freeze_vision"] = True
     cfg["model"]["unfreeze_last_n"] = 2
-    cfg["train"].update(batch_size=8, grad_accum=2, num_workers=2)
+    cfg["model"]["grounding_pretrain_ckpt"] = "checkpoints/grounding_pretrain.pt"
+    cfg["train"].update(batch_size=8, grad_accum=2, num_workers=2,
+                        backbone_lr_mult=0.3)
     dev = resolve_device("auto")
     amp_on, _ = amp_settings(dev, cfg.train.amp)
     print(f"[run] {describe(dev, amp_on)}", flush=True)

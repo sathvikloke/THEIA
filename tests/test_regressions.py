@@ -775,6 +775,7 @@ def test_pretrain_checkpoint_missing_a_module_raises(tmp_path):
     torch.save({"grounding": {}}, ck)          # no 'vision' key
 
     class Stub:
+        warm_start_vision = True          # so 'vision' is required
         vision = torch.nn.Linear(2, 2)
         grounding = torch.nn.Linear(2, 2)
 
@@ -826,3 +827,37 @@ def test_lung_and_cord_labels_are_rejected_as_tumor():
     assert is_tumor("GTV-1")
     for other in ("Lung", "Lung-Left", "Spinal cord", "Esophagus", "Heart"):
         assert not is_tumor(other), f"{other} was accepted as tumor"
+
+
+def test_warm_start_transfers_grounding_head_only_by_default():
+    """Warm-starting the vision encoder too bought grounding and cost prediction.
+
+    Full 5-fold: grounding lift +0.235 -> +0.749 (4/5 -> 5/5 folds), but pooled
+    EGFR 0.656 -> 0.528. Default is grounding-head-only.
+    """
+    from theia.config import load_config
+
+    cfg = load_config("configs/default.yaml")
+    assert cfg.model.warm_start_vision is False
+
+
+def test_warm_start_respects_the_vision_flag(tmp_path):
+    import torch.nn as nn
+
+    import theia.models.theia_model as tm
+
+    class Stub:
+        def __init__(self, flag):
+            self.warm_start_vision = flag
+            self.vision = nn.Linear(4, 4)
+            self.grounding = nn.Linear(4, 4)
+
+    ck = tmp_path / "p.pt"
+    torch.save({"grounding": nn.Linear(4, 4).state_dict(), "metrics": {}}, ck)
+
+    off = Stub(False)                                  # no 'vision' key needed
+    tm.Theia.load_grounding_pretrain(off, str(ck))
+
+    on = Stub(True)
+    with pytest.raises(KeyError, match="vision"):      # now it is required
+        tm.Theia.load_grounding_pretrain(on, str(ck))

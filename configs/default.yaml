@@ -94,7 +94,15 @@ model:
   region_pooling: mean         # mean | max
   # Warm-start vision + grounding from theia.engine.pretrain (label-free
   # cohorts: NSCLC-Radiomics 421 + LIDC-IDRI 875 masked patients). null = off.
-  grounding_pretrain_ckpt: null
+  # Pretrained on NSCLC-Radiomics (420 masked patients, no genomic labels):
+  # val grounding lift +0.735, attention mass 16x its shuffled baseline.
+  grounding_pretrain_ckpt: checkpoints/grounding_pretrain.pt
+  # Transfer the vision encoder as well? Measured over a full 5-fold run:
+  #   true  -> grounding +0.235 -> +0.749 (5/5 folds), pooled EGFR 0.656 -> 0.528
+  #   false -> grounding head only; keeps BiomedCLIP's features for prediction
+  # Pretraining adapts the ViT to NSCLC-Radiomics' scanners and loses the
+  # texture that carries EGFR signal on this cohort.
+  warm_start_vision: false
 
 lora:
   enabled: true
@@ -110,12 +118,13 @@ train:
   batch_size: 8                # 128 imgs/step at n_slices=16; drop to 2 on <32GB
   grad_accum: 2
   lr: 2.0e-4
-  # TRIED AND REVERTED: 0.1 was meant to stabilise grounding but killed it —
-  # mean lift +0.060 -> -0.001, folds grounding 2/5 -> 0/5, and EGFR fell
-  # 0.654 -> 0.632. The sd dropped only because everything collapsed to zero.
-  # The unfrozen blocks need the full rate to move enough to change what is
-  # attended.
-  backbone_lr_mult: 1.0
+  # Depends on whether grounding is being LEARNED or PRESERVED.
+  #   no warm-start: 1.0. At 0.1 the blocks cannot move enough to learn to
+  #     localise at all (lift +0.060 -> -0.001, folds grounding 2/5 -> 0/5).
+  #   with grounding_pretrain_ckpt: 0.3. The blocks arrive already localising,
+  #     so the full rate destroys it and 0.1 starves the classifier. Fold 0:
+  #     mult 0.1 -> EGFR 0.484 / lift +0.810;  0.3 -> EGFR 0.663 / lift +0.798.
+  backbone_lr_mult: 0.3
   weight_decay: 0.01
   warmup_ratio: 0.05
   amp: true                    # honoured on CUDA only; reported at startup

@@ -92,6 +92,8 @@ def _cfg(tmp_path):
     cfg["model"]["grounding_tokens"] = 4
     cfg["model"]["classifier_hidden"] = 16
     cfg["lora"]["enabled"] = False
+    # tiny stub dims; the real pretrain checkpoint would not match
+    cfg["model"]["grounding_pretrain_ckpt"] = None
     cfg["train"].update(epochs=2, batch_size=4, grad_accum=1, num_workers=0,
                         amp=False, device="cpu", early_stop_patience=5)
     cfg["split"].update(n_folds=3, nested=True, inner_val_frac=0.25)
