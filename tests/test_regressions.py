@@ -565,3 +565,64 @@ def test_zero_jitter_is_deterministic_and_centred():
     assert a == b
     y0, y1, x0, x1 = a
     assert abs((y0 + y1) / 2 - 120) <= 1 and abs((x0 + x1) / 2 - 120) <= 1
+
+
+# --------------------------------------------------------------------------
+# Discriminative LR: unfrozen pretrained blocks must not train at the head rate
+# --------------------------------------------------------------------------
+def test_param_groups_give_vision_a_lower_lr():
+    import torch.nn as nn
+
+    from theia.config import load_config
+    from theia.engine.train import _param_groups
+
+    class Stub(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.vision = nn.Linear(4, 4)
+            self.classifier = nn.Linear(4, 2)
+
+    cfg = load_config("configs/default.yaml", validate=False)
+    cfg["train"]["lr"] = 2e-4
+    cfg["train"]["backbone_lr_mult"] = 0.1
+    groups = _param_groups(Stub(), cfg)
+    assert len(groups) == 2, "vision and heads were not separated"
+    lrs = sorted(g["lr"] for g in groups)
+    assert lrs == pytest.approx([2e-5, 2e-4]), lrs
+
+
+def test_param_groups_collapse_when_mult_is_one():
+    import torch.nn as nn
+
+    from theia.config import load_config
+    from theia.engine.train import _param_groups
+
+    class Stub(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.vision = nn.Linear(4, 4)
+            self.classifier = nn.Linear(4, 2)
+
+    cfg = load_config("configs/default.yaml", validate=False)
+    cfg["train"]["backbone_lr_mult"] = 1.0
+    assert len(_param_groups(Stub(), cfg)) == 1
+
+
+def test_frozen_vision_yields_a_single_group():
+    import torch.nn as nn
+
+    from theia.config import load_config
+    from theia.engine.train import _param_groups
+
+    class Stub(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.vision = nn.Linear(4, 4)
+            self.classifier = nn.Linear(4, 2)
+
+    m = Stub()
+    for p in m.vision.parameters():
+        p.requires_grad_(False)
+    cfg = load_config("configs/default.yaml", validate=False)
+    cfg["train"]["backbone_lr_mult"] = 0.1
+    assert len(_param_groups(m, cfg)) == 1, "no trainable vision params, so one group"
