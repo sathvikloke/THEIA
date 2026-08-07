@@ -106,6 +106,17 @@ model:
   #   vision+grounding (run 8)     0.528 [0.423, 0.633]  +0.749, 5/5 folds
   #   grounding head only (run 9)  0.597 [0.496, 0.696]  +0.235, 2/5 folds
   #
+  # CAVEAT, and it is a big one: runs 6-8 predate train.grad_clip. Run 8's fold 0
+  # provably diverged to NaN and kept its epoch-0 checkpoint, and its fold 2 shows
+  # the same signature (best ep0, stopped at ep8 = patience exactly). So run 8's
+  # 0.528 is not a clean measurement of what warm-starting costs -- an unknown
+  # part of that drop is one or two dead folds. Run 7 had the same dead fold 0.
+  # Run 9 is the only pretraining arm with no divergence, so 0.597 is trustworthy;
+  # run 6's training log did not survive, so its divergence status is unknown.
+  # The pretraining arms need re-running under clipping before the comparison
+  # above can be quoted in a paper. The grounding conclusions are unaffected --
+  # those were measured per fold on folds that trained normally.
+  #
   # Transferring both buys near-perfect localisation and costs the entire
   # classification signal: pretraining adapts the ViT to a radiotherapy-planning
   # cohort's scanners, keeping "where is the dense thing" and losing the texture
