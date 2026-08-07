@@ -65,6 +65,20 @@ def evaluate(model, loader, cfg, device, full: bool = False) -> dict:
 
     metrics: dict[str, float] = {}
     for g in genes:
+        # A diverged epoch produces NaN logits. sklearn then raises
+        # "Input contains NaN" and takes the whole multi-fold run down with it —
+        # measured: run 5 died at fold 0 epoch 2 and lost the other 4 folds.
+        # Treat it as an epoch with no signal instead: NaN is already handled
+        # everywhere downstream (monitor, checkpointing, pooling).
+        finite = np.isfinite(probs[g]).all() if probs[g] else True
+        if not finite:
+            n_bad = int((~np.isfinite(np.asarray(probs[g]))).sum())
+            print(f"[eval] {g}: {n_bad}/{len(probs[g])} non-finite predictions "
+                  "(model diverged this epoch); reporting NaN")
+            metrics[f"{g}_auc"] = float("nan")
+            metrics[f"{g}_n"] = float(len(ys[g]))
+            metrics[f"{g}_n_pos"] = float(sum(ys[g]))
+            continue
         if len(set(ys[g])) < 2:
             # Undefined, not zero. train.py treats NaN as "no signal this epoch"
             # rather than letting it silently block checkpointing forever.
@@ -160,6 +174,15 @@ def pooled_metrics(rows: list[dict], genes: list[str], bootstrap_n: int = 2000) 
             out[f"{g}_auc"] = float("nan")
             continue
         y = np.array([r[f"{g}_true"] for r in keep])
+        raw = np.array([r[f"{g}_prob"] for r in keep], dtype=float)
+        if not np.isfinite(raw).all():
+            bad = int((~np.isfinite(raw)).sum())
+            print(f"[eval] pooled {g}: dropping {bad} non-finite out-of-fold predictions")
+            ok = np.isfinite(raw)
+            keep = [r for r, k in zip(keep, ok) if k]
+            y = y[ok]
+            if len(set(y.tolist())) < 2:
+                out[f"{g}_n"] = float(len(y)); out[f"{g}_auc"] = float("nan"); continue
         p = _rank_normalize_by_fold(keep, f"{g}_prob")
         out[f"{g}_n"] = float(len(y))
         out[f"{g}_n_pos"] = float(y.sum()) if len(y) else 0.0
