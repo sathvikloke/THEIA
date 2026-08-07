@@ -17,6 +17,8 @@ but the README no longer claims the coupling is airtight.
 """
 from __future__ import annotations
 
+import os
+
 import torch
 import torch.nn as nn
 
@@ -46,6 +48,37 @@ class Theia(nn.Module):
         self.lora_applied = False
         if cfg.lora.enabled:
             self._apply_lora(cfg.lora)
+        ckpt = getattr(m, "grounding_pretrain_ckpt", None)
+        if ckpt:
+            self.load_grounding_pretrain(str(ckpt))
+
+    def load_grounding_pretrain(self, path: str) -> None:
+        """Warm-start vision + grounding from a label-free pretraining run.
+
+        Only these two modules are transferred; the classifier and the LM are
+        cohort-specific and must not inherit anything. Loaded strictly, because a
+        silent key mismatch here would look exactly like pretraining that did not
+        help — which is the one conclusion this experiment must not reach by
+        accident.
+        """
+        if not os.path.exists(path):
+            raise FileNotFoundError(
+                f"model.grounding_pretrain_ckpt points at {path}, which does not exist. "
+                "Run theia.engine.pretrain first, or unset the key.")
+        blob = torch.load(path, map_location="cpu", weights_only=False)
+        for name, module in (("vision", self.vision), ("grounding", self.grounding)):
+            if name not in blob:
+                raise KeyError(f"{path} has no '{name}' weights (keys: {sorted(blob)})")
+            missing, unexpected = module.load_state_dict(blob[name], strict=False)
+            if missing or unexpected:
+                raise RuntimeError(
+                    f"grounding-pretrain '{name}' does not match this config: "
+                    f"{len(missing)} missing, {len(unexpected)} unexpected keys. "
+                    "The pretraining run must use the same vision_encoder and "
+                    "grounding_tokens as this one.")
+        lift = (blob.get("metrics") or {}).get("grounding_mass_lift")
+        print(f"[theia] warm-started vision+grounding from {path}"
+              + (f" (pretrain val lift {lift:+.3f})" if lift is not None else ""))
 
     def _apply_lora(self, lora_cfg) -> None:
         """Apply LoRA to the LM, or fail loudly.

@@ -92,6 +92,9 @@ model:
   # "max" makes prediction and localization share the same evidence. "mean" is
   # the original behaviour and lets an unsupervised query feed the classifier.
   region_pooling: mean         # mean | max
+  # Warm-start vision + grounding from theia.engine.pretrain (label-free
+  # cohorts: NSCLC-Radiomics 421 + LIDC-IDRI 875 masked patients). null = off.
+  grounding_pretrain_ckpt: null
 
 lora:
   enabled: true
