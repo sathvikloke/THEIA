@@ -66,14 +66,17 @@ def validate_config(cfg: Config) -> None:
         errs.append(f"split.stratify_on '{cfg.split.stratify_on}' is not in data.target_genes")
 
     monitor = cfg.train.monitor
+    monitor_keys = [monitor] if isinstance(monitor, str) else [
+        m if isinstance(m, str) else m[0] for m in monitor]
     allowed = {f"{g}_{suffix}" for g in genes
                for suffix in ("auc", "sens", "spec")} | {
         "grounding_mass", "grounding_pointing", "grounding_iou",
         "grounding_mass_lift", "grounding_pointing_lift", "grounding_iou_lift",
     }
-    if monitor not in allowed:
-        errs.append(f"train.monitor '{monitor}' is not emitted by evaluate(). "
-                    f"Valid: {', '.join(sorted(allowed))}")
+    for mk in monitor_keys:
+        if mk not in allowed:
+            errs.append(f"train.monitor '{mk}' is not emitted by evaluate(). "
+                        f"Valid: {', '.join(sorted(allowed))}")
 
     if cfg.data.slice_strategy not in VALID_SLICE_STRATEGIES:
         errs.append(f"data.slice_strategy '{cfg.data.slice_strategy}' not in "

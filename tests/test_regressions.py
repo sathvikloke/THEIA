@@ -626,3 +626,45 @@ def test_frozen_vision_yields_a_single_group():
     cfg = load_config("configs/default.yaml", validate=False)
     cfg["train"]["backbone_lr_mult"] = 0.1
     assert len(_param_groups(m, cfg)) == 1, "no trainable vision params, so one group"
+
+
+# --------------------------------------------------------------------------
+# Composite monitor: selecting on AUC alone discards good-grounding epochs
+# --------------------------------------------------------------------------
+def test_monitor_value_supports_string_list_and_weights():
+    from theia.engine.train import monitor_value
+
+    m = {"egfr_auc": 0.70, "grounding_mass_lift": 0.20}
+    assert monitor_value(m, "egfr_auc") == pytest.approx(0.70)
+    assert monitor_value(m, ["egfr_auc", "grounding_mass_lift"]) == pytest.approx(0.90)
+    assert monitor_value(m, [["egfr_auc", 1.0], ["grounding_mass_lift", 0.5]]) \
+        == pytest.approx(0.80)
+
+
+def test_composite_monitor_prefers_an_epoch_that_does_both():
+    """The bug: fold 1 selected ep4 (lift +0.007) over ep12 (lift +0.069)."""
+    from theia.engine.train import monitor_value
+
+    mon = [["egfr_auc", 1.0], ["grounding_mass_lift", 0.5]]
+    ep4 = {"egfr_auc": 0.741, "grounding_mass_lift": 0.007}
+    ep12 = {"egfr_auc": 0.700, "grounding_mass_lift": 0.069}
+    assert monitor_value(ep4, "egfr_auc") > monitor_value(ep12, "egfr_auc")
+    # under the composite the grounding epoch is competitive
+    assert monitor_value(ep12, mon) == pytest.approx(0.7345)
+
+
+def test_nan_in_any_component_invalidates_the_composite():
+    from theia.engine.train import monitor_value
+
+    v = monitor_value({"egfr_auc": float("nan"), "grounding_mass_lift": 0.2},
+                      [["egfr_auc", 1.0], ["grounding_mass_lift", 0.5]])
+    assert v != v, "NaN AUC must not be masked by a finite grounding term"
+
+
+def test_config_validates_every_key_in_a_composite_monitor():
+    from theia.config import validate_config
+
+    cfg = _base_cfg()
+    cfg["train"]["monitor"] = [["egfr_auc", 1.0], ["not_a_metric", 0.5]]
+    with pytest.raises(ValueError, match="not_a_metric"):
+        validate_config(cfg)

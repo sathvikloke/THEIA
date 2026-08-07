@@ -78,6 +78,29 @@ def _is_better(candidate: float, best: float) -> bool:
     return not math.isnan(candidate) and candidate > best
 
 
+def monitor_value(metrics: dict, monitor) -> float:
+    """Resolve train.monitor, which may be one key or several to be summed.
+
+    Selecting on `egfr_auc` alone and then *reporting* grounding means the
+    grounding number comes from whichever epoch happened to win on AUC.
+    Measured: fold 1 selected epoch 4 (lift +0.007) while its best grounding sat
+    at epoch 12 (+0.069). A composite monitor keeps an epoch that does both.
+
+    Accepts "egfr_auc", ["egfr_auc", "grounding_mass_lift"], or
+    [["egfr_auc", 1.0], ["grounding_mass_lift", 0.5]].
+    """
+    if isinstance(monitor, str):
+        return float(metrics.get(monitor, float("nan")))
+    total = 0.0
+    for item in monitor:
+        key, weight = (item, 1.0) if isinstance(item, str) else (item[0], float(item[1]))
+        v = metrics.get(key, float("nan"))
+        if v != v:                      # NaN in any component invalidates the sum
+            return float("nan")
+        total += weight * float(v)
+    return total
+
+
 def _param_groups(model, cfg) -> list[dict]:
     """Discriminative learning rates: pretrained vision blocks train slower.
 
@@ -161,7 +184,7 @@ def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
         metrics["epoch"] = epoch
         metrics["split"] = "inner_val"
         log.append(metrics)
-        monitor = metrics.get(cfg.train.monitor, float("nan"))
+        monitor = monitor_value(metrics, cfg.train.monitor)
         if _is_better(monitor, best):
             best, best_epoch, patience = monitor, epoch, 0
             save(ckpt_dir / "best.pt", metrics)
@@ -200,13 +223,25 @@ def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
     return result
 
 
-def _summarize(summary: list[dict], monitor: str) -> str:
-    vals = [s["test"][monitor] for s in summary
-            if s.get("test") and not math.isnan(s["test"].get(monitor, float("nan")))]
+def _monitor_label(monitor) -> str:
+    if isinstance(monitor, str):
+        return monitor
+    return " + ".join(m if isinstance(m, str) else f"{m[1]}*{m[0]}" for m in monitor)
+
+
+def _summarize(summary: list[dict], monitor) -> str:
+    """Per-fold spread of the monitored quantity.
+
+    Goes through monitor_value so a composite monitor (a list) does not get used
+    as a dict key — `s["test"][monitor]` raises "unhashable type: list".
+    """
+    label = _monitor_label(monitor)
+    vals = [monitor_value(s["test"], monitor) for s in summary if s.get("test")]
+    vals = [v for v in vals if not math.isnan(v)]
     if not vals:
-        return f"[train] no fold produced a finite {monitor}"
+        return f"[train] no fold produced a finite {label}"
     spread = f" ± {stdev(vals):.3f} (sd)" if len(vals) > 1 else ""
-    return (f"[train] per-fold {monitor}: {mean(vals):.3f}{spread} "
+    return (f"[train] per-fold {label}: {mean(vals):.3f}{spread} "
             f"over {len(vals)}/{len(summary)} folds")
 
 
