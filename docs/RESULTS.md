@@ -132,6 +132,39 @@ Recorded because each produced a plausible number rather than an error.
 - **Single-class folds** make within-fold rank pooling meaningless while looking
   normal. Now warned.
 
+### Open: a seed-dependent NaN in the vision backbone's backward pass
+
+Not fixed. Localised, reproducible, and contained.
+
+Fold 0 skips **every** optimizer step from epoch 1 onward in runs 11, 13 and 14,
+so the model never updates after epoch 0 and its inner-validation monitor is
+bit-identical (0.555617) for the whole run. One fifth of the pooled estimate is
+an untrained model.
+
+What the instrumentation established:
+
+- 141 parameters carry non-finite gradients, **all of them in the unfrozen ViT
+  blocks** (`vision.model.trunk.blocks.10.*` first). Nothing in the heads.
+- The **forward is healthy**: cls 0.5265, gen 4.7863, ground 4.7251, all finite,
+  at the step where the gradient is not.
+- It is **initialisation-dependent**. The same fold, same data, same schedule,
+  same workers runs clean without `set_seed(1337)` and goes NaN with it. Epoch 0
+  trains normally (6 good steps, gradients clipped at 1.0); the weights it lands
+  on produce NaN gradients from then on, for every batch.
+- It is **not** fp32 norm overflow (0 of the skipped steps had finite
+  gradients), **not** the grounding loss (an A/B on the real configuration
+  improved conditioning 270× and did not remove it), and **not** empty
+  rationales reaching BioGPT (0 of 158 rows have an empty report).
+
+Leading hypothesis, untested: `GroundingHead` calls `nn.MultiheadAttention` with
+`need_weights=True`, which forces the non-fused math attention path, and that
+path's backward is where MPS numerical issues would show up. Testable by
+computing the attention weights manually.
+
+Consequence for the numbers: the guard prevents corruption, so no run silently
+trains on NaN weights any more, but an affected fold contributes an untrained
+model. Runs 13 and 14 are degraded this way; run 12 was not.
+
 ## 7. What follows
 
 The current framing — "THEIA predicts EGFR from CT" — is not supportable. §2 is
