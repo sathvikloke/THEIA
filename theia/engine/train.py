@@ -132,15 +132,23 @@ class _FoldStalled(RuntimeError):
     """Every optimizer step in an epoch was skipped, so the fold is not training."""
 
 
-def train_fold_with_retry(cfg, fold: int, tr, va, te, device, max_retries: int = 2):
+def train_fold_with_retry(cfg, fold: int, tr, va, te, device, max_retries: int = 1):
     """Run a fold, retrying from a fresh initialisation if it stalls numerically.
 
     There is an unresolved numerical instability in the backward pass on MPS: the
-    forward is finite everywhere, the backward is NaN everywhere, it depends on
-    the initialisation, and registering backward hooks on every module makes it
-    disappear — so it is a marginal overflow sensitive to autograd graph
-    structure, not a divide-by-zero. When a fold lands on a bad initialisation it
-    skips every optimizer step from then on and reports an untrained model.
+    forward is finite everywhere, the backward is NaN everywhere, and registering
+    backward hooks on every module makes it disappear — so it is a marginal
+    overflow sensitive to autograd graph structure, not a divide-by-zero. An
+    affected fold skips every optimizer step from then on, so its weights never
+    change and it would report an untrained model as a result.
+
+    Measured, so nobody re-derives it: removing the GENERATION term prevents it;
+    removing the grounding term does not (tested directly at ground=0.0 — the
+    NaN reappears at the same step). Retrying from a different initialisation
+    was tried and does NOT reliably help: run 15's fold 0 stalled on all three
+    seeds. The retry is kept because it is cheap and sometimes works, but the
+    stall detection is the part that matters — without it the fold is silently
+    reported as a result.
 
     The retry criterion is deliberately NUMERICAL FAILURE, never performance. A
     fold is re-run only when it skipped every step of an epoch; a fold that

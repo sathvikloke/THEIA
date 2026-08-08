@@ -176,10 +176,35 @@ out is a corruption confined to the generation branch: `classifier` is a leaf fe
 only by the classification loss, which reads a perfectly finite 0.5266 at that
 step, yet its gradients are non-finite too.
 
-So: the forward is finite everywhere, the backward is NaN everywhere, and the
-generation term is necessary for it to happen. Next step would be to record which
-intermediate *activation* first goes non-finite in the backward (a tensor hook),
-rather than which parameter.
+**The backward-hook probe was run, and its result is that the bug is an autograd
+graph artefact.** With `register_full_backward_hook` on every leaf module — and
+`drop_last`, worker count, seed and LR schedule all matched to `train_fold` — the
+NaN does not occur at all: three epochs clean where the unhooked run fails at
+epoch 1. The hooks perturb the thing they measure. That rules out a structural
+cause; a divide-by-zero or `log(0)` would survive graph perturbation. It is a
+marginal overflow in the MPS backward, sensitive to graph structure.
+
+Two further results, both by direct test:
+
+- **The generation term is necessary.** Removing it runs clean through epoch 3.
+- **Grounding is irrelevant.** At `ground = 0.0` (the term dropped entirely, not
+  scaled by zero) the NaN reappears at the same step with the same 141/141
+  parameters. An earlier correlation — that run 12 had 0 stalls while runs 13–15
+  had 7–11 — suggested grounding was implicated. It was a coincidence of run 12
+  having a *dead* grounding loss, and the direct test refutes it.
+- **Retrying from a different initialisation does not reliably help.** Run 15's
+  fold 0 stalled on all three seeds tried.
+
+So this is a PyTorch/MPS numerical issue in the generation path, not a THEIA
+logic bug, and not something more instrumentation isolates on this hardware.
+The code now *detects* it (`_FoldStalled` when an epoch skips every optimizer
+step) and marks the fold stalled rather than reporting an untrained model as a
+result. That detection is the part that matters.
+
+Practical options, in order: run on CUDA, where the backward kernels differ; or
+train with `loss_weights.gen = 0`, which is measured to be stable and costs only
+the rationale head — a secondary contribution that neither the classification nor
+the grounding claims depend on.
 
 Related fix made while testing this: `total_loss` now **drops** a zero-weighted
 term instead of multiplying it by zero. `0 * NaN` is `NaN`, so scaling a term to
