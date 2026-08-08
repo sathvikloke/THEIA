@@ -167,6 +167,7 @@ def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
     scaler = make_grad_scaler(device, amp_on)
 
     best, best_epoch, patience = -float("inf"), -1, 0
+    reported_nan = False
     ckpt_dir = Path(cfg.paths.ckpt_dir) / f"fold{fold}"
     ckpt_dir.mkdir(parents=True, exist_ok=True)
     log = []
@@ -180,11 +181,13 @@ def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
         opt.zero_grad()
         pbar = tqdm(tl, desc=f"fold{fold} ep{epoch}")
         running, seen, skipped, overflowed = None, 0, 0, 0
+        recent_ids: list = []
         for step, batch in enumerate(pbar):
             with autocast(device, amp_on, amp_dtype):
                 out = model(batch, device)
                 loss, parts = total_loss(out, batch, cfg.train.loss_weights, device)
                 loss = loss / cfg.train.grad_accum
+            recent_ids = (recent_ids + list(batch["patient_id"]))[-2 * cfg.train.batch_size:]
             scaler.scale(loss).backward()
             if (step + 1) % cfg.train.grad_accum == 0:
                 prev_scale = scaler.get_scale()
@@ -222,6 +225,23 @@ def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
                     skipped += 1
                     if grads_ok:
                         overflowed += 1
+                    elif not reported_nan:
+                        # One-shot per fold: name the parameters and the patients.
+                        # This instability has recurred across runs 11 and 14 and
+                        # is not yet explained; isolated harnesses would not
+                        # reproduce it, and guessing at causes (grounding loss,
+                        # empty rationales, fp32 norm overflow) has cost more
+                        # than instrumenting it once. Bounded output, no spam.
+                        reported_nan = True
+                        bad = [n for n, p in model.named_parameters()
+                               if p.grad is not None and not torch.isfinite(p.grad).all()]
+                        print(f"[train] fold{fold} ep{epoch} step{step}: FIRST "
+                              f"non-finite gradient. {len(bad)} param(s); "
+                              f"first 6: {bad[:6]}")
+                        print(f"[train]   loss parts: "
+                              f"{ {k: round(float(v), 4) for k, v in parts.items()} }")
+                        print(f"[train]   patients in the accumulated batches: "
+                              f"{recent_ids}")
                     scaler.update()
                 opt.zero_grad()
                 # A skipped step (inf/nan gradients) must not advance the LR
