@@ -128,6 +128,47 @@ def _param_groups(model, cfg) -> list[dict]:
     ]
 
 
+class _FoldStalled(RuntimeError):
+    """Every optimizer step in an epoch was skipped, so the fold is not training."""
+
+
+def train_fold_with_retry(cfg, fold: int, tr, va, te, device, max_retries: int = 2):
+    """Run a fold, retrying from a fresh initialisation if it stalls numerically.
+
+    There is an unresolved numerical instability in the backward pass on MPS: the
+    forward is finite everywhere, the backward is NaN everywhere, it depends on
+    the initialisation, and registering backward hooks on every module makes it
+    disappear — so it is a marginal overflow sensitive to autograd graph
+    structure, not a divide-by-zero. When a fold lands on a bad initialisation it
+    skips every optimizer step from then on and reports an untrained model.
+
+    The retry criterion is deliberately NUMERICAL FAILURE, never performance. A
+    fold is re-run only when it skipped every step of an epoch; a fold that
+    trains and scores badly is kept exactly as it is. Retrying on a bad AUC would
+    be seed-shopping and would bias every reported number upward. The seed offset
+    used is recorded in the fold's result so the archive shows what happened.
+    """
+    for attempt in range(max_retries + 1):
+        if attempt:
+            # Perturb only the initialisation. The data split is untouched, so
+            # the patient held out by this fold is the same on every attempt.
+            set_seed(cfg.seed + 1000 * attempt)
+            print(f"[train] fold{fold}: retry {attempt} with init seed "
+                  f"{cfg.seed + 1000 * attempt}")
+        try:
+            result = train_fold(cfg, fold, tr, va, te, device)
+            if attempt:
+                result["init_seed_offset"] = 1000 * attempt
+            return result
+        except _FoldStalled as exc:
+            print(f"[train] {exc}")
+            if attempt == max_retries:
+                print(f"[train] fold{fold}: still stalling after {max_retries} "
+                      "retries; reporting it as stalled rather than as a result")
+                return {"fold": fold, "stalled": True, "test": {}}
+    return {"fold": fold, "stalled": True, "test": {}}
+
+
 def _warn_if_monitor_is_frozen(log: list[dict], fold: int, monitor, n: int = 4) -> None:
     """Flag a monitor that is bit-identical across several epochs.
 
@@ -280,6 +321,12 @@ def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
                    f"finite), {skipped - overflowed} from true NaN/inf")
             print(f"[train] fold{fold} ep{epoch}: skipped {skipped} optimizer "
                   f"step(s): {how}")
+        # A fold that skipped EVERY step this epoch is not training at all: the
+        # weights are exactly what they were, and it will report an untrained
+        # model as if it were a result. Give up on this initialisation and say so.
+        if skipped and skipped >= opt_steps_per_epoch and epoch > 0:
+            raise _FoldStalled(
+                f"fold{fold} skipped all {skipped} optimizer steps at epoch {epoch}")
         log.append(metrics)
         monitor = monitor_value(metrics, cfg.train.monitor)
         if _is_better(monitor, best):
@@ -445,7 +492,7 @@ def main() -> None:
 
     summary = []
     for fold, (tr, va, te) in enumerate(folds):
-        summary.append(train_fold(cfg, fold, tr, va, te, device))
+        summary.append(train_fold_with_retry(cfg, fold, tr, va, te, device))
 
     Path(cfg.paths.runs_dir).mkdir(parents=True, exist_ok=True)
     print(_summarize(summary, cfg.train.monitor))

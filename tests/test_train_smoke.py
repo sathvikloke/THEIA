@@ -319,3 +319,63 @@ def test_a_frozen_monitor_is_reported_as_stuck(tmp_path, stub_model, monkeypatch
     out = capsys.readouterr().out
     assert "not changing" in out and "stuck fold" in out, (
         f"a frozen monitor was not reported: {out[-400:]}")
+
+
+def test_a_stalled_fold_is_retried_from_a_fresh_init(tmp_path, stub_model, monkeypatch):
+    """A fold that skips every optimizer step must be re-run, not reported.
+
+    There is an unresolved MPS backward instability: on a bad initialisation a
+    fold skips every step from epoch 1 onward, so its weights never change and it
+    contributes an untrained model to the pooled estimate. Runs 11, 13 and 14
+    each lost a fold this way.
+    """
+    from theia.engine import train as train_mod
+
+    rows = _synthetic_cohort(tmp_path)
+    cfg = _cfg(tmp_path)
+    calls = {"n": 0}
+    real = train_mod.train_fold
+
+    def stall_once(c, fold, tr, va, te, dev):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise train_mod._FoldStalled("fold0 skipped all 6 optimizer steps at epoch 1")
+        return real(c, fold, tr, va, te, dev)
+
+    monkeypatch.setattr(train_mod, "train_fold", stall_once)
+
+    from theia.data.dataset import nested_kfold_indices
+    tr, va, te = next(nested_kfold_indices(rows, "EGFR", 3, 1337, 0.25))
+    result = train_mod.train_fold_with_retry(cfg, 0, tr, va, te, torch.device("cpu"))
+
+    assert calls["n"] == 2, "a stalled fold was not retried"
+    assert not result.get("stalled"), "retry succeeded but the fold is still marked stalled"
+    assert result.get("init_seed_offset") == 1000, (
+        "the retry's seed offset must be recorded, or the archive misreports what ran")
+
+
+def test_retry_never_fires_on_a_merely_bad_result(tmp_path, stub_model, monkeypatch):
+    """Retrying on a poor AUC would be seed-shopping and would bias every number.
+
+    The criterion must be numerical failure alone. A fold that trains normally and
+    scores badly has to be kept exactly as it is.
+    """
+    from theia.engine import train as train_mod
+
+    rows = _synthetic_cohort(tmp_path)
+    cfg = _cfg(tmp_path)
+    calls = {"n": 0}
+
+    def terrible_but_healthy(c, fold, tr, va, te, dev):
+        calls["n"] += 1
+        return {"fold": fold, "test": {"egfr_auc": 0.11}}
+
+    monkeypatch.setattr(train_mod, "train_fold", terrible_but_healthy)
+
+    from theia.data.dataset import nested_kfold_indices
+    tr, va, te = next(nested_kfold_indices(rows, "EGFR", 3, 1337, 0.25))
+    result = train_mod.train_fold_with_retry(cfg, 0, tr, va, te, torch.device("cpu"))
+
+    assert calls["n"] == 1, "a healthy fold was retried because its score was low"
+    assert result["test"]["egfr_auc"] == 0.11
+    assert "init_seed_offset" not in result
