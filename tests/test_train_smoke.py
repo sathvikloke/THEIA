@@ -266,3 +266,56 @@ def test_each_run_is_archived_and_never_overwrites_the_last(tmp_path, stub_model
     assert oof, "no out-of-fold predictions archived; ROC curves are unrecoverable"
     rebuilt = pooled_metrics(oof, cfg["data"]["target_genes"], cfg["eval"]["bootstrap_n"])
     assert rebuilt["egfr_auc"] == pytest.approx(blob["pooled"]["egfr_auc"])
+
+
+def test_patience_does_not_run_during_warmup(tmp_path, stub_model, monkeypatch, capsys):
+    """A lucky epoch-0 monitor must not stop a fold that is still improving.
+
+    Under OneCycleLR the first epochs sit far below peak LR, so epoch 0 is an
+    essentially untrained model and its inner-validation AUC is a draw from
+    noise on ~24 patients. Run 13 lost 2 of 5 folds to exactly this: fold 2
+    peaked at ep0 (0.620), then climbed 0.436 -> 0.571 over epochs 4-8 with
+    grounding lift rising to +0.272 and still going, and was stopped because
+    patience had been counting the whole time.
+    """
+    from theia.engine import train as train_mod
+
+    rows = _synthetic_cohort(tmp_path)
+    cfg = _cfg(tmp_path)
+    cfg["train"].update(epochs=12, early_stop_patience=2, early_stop_min_epochs=8)
+
+    # A monitor that peaks immediately and then never recovers: with patience 2
+    # and no warmup floor this stops at epoch 2.
+    seq = iter([0.9] + [0.1] * 20)
+    monkeypatch.setattr(train_mod, "monitor_value", lambda m, mon: next(seq, 0.1))
+
+    from theia.data.dataset import nested_kfold_indices
+    tr, va, te = next(nested_kfold_indices(rows, "EGFR", 3, 1337, 0.25))
+    train_mod.train_fold(cfg, 0, tr, va, te, torch.device("cpu"))
+
+    log = [json.loads(l) for l in open(tmp_path / "ckpt" / "fold0" / "log.jsonl")]
+    ran = len([r for r in log if r.get("split") == "inner_val"])
+    assert ran >= 8, (
+        f"fold stopped after {ran} epochs; patience ran during warmup")
+
+
+def test_a_frozen_monitor_is_reported_as_stuck(tmp_path, stub_model, monkeypatch, capsys):
+    """An AUC repeating to full precision is a stuck fold, not a plateau.
+
+    Run 13's fold 0 sat at exactly 0.556 with grounding lift exactly 0.000 for
+    all nine epochs and was reported as an ordinary early stop, indistinguishable
+    in the output from a fold that trained and levelled off.
+    """
+    from theia.engine import train as train_mod
+    from theia.data.dataset import nested_kfold_indices
+
+    rows = _synthetic_cohort(tmp_path)
+    cfg = _cfg(tmp_path)
+    cfg["train"].update(epochs=6, early_stop_patience=99, early_stop_min_epochs=0)
+    monkeypatch.setattr(train_mod, "monitor_value", lambda m, mon: 0.5560000)
+
+    tr, va, te = next(nested_kfold_indices(rows, "EGFR", 3, 1337, 0.25))
+    train_mod.train_fold(cfg, 0, tr, va, te, torch.device("cpu"))
+    out = capsys.readouterr().out
+    assert "not changing" in out and "stuck fold" in out, (
+        f"a frozen monitor was not reported: {out[-400:]}")

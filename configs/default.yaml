@@ -170,6 +170,14 @@ train:
     gen: 1.0
     ground: 0.5
   early_stop_patience: 8
+  # Patience does not start counting until this many epochs have run. Under
+  # OneCycleLR the opening epochs sit far below peak LR, so epoch 0 is an
+  # essentially untrained model whose inner-validation AUC (on ~24 patients,
+  # ~6 positives) is a draw from noise. Letting it set the bar is selection on
+  # noise: run 13's fold 2 peaked at ep0, then climbed steadily with grounding
+  # lift reaching +0.272 and still rising, and was stopped anyway. Folds 0 and 2
+  # both died this way in that run, i.e. 2 of 5 never trained.
+  early_stop_min_epochs: 10
   # One key, or several to be summed. Selecting on egfr_auc alone and then
   # reporting grounding means the grounding number comes from whichever epoch
   # won on AUC: fold 1 selected ep4 (lift +0.007) while its best grounding sat

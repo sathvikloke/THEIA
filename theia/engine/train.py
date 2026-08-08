@@ -128,6 +128,27 @@ def _param_groups(model, cfg) -> list[dict]:
     ]
 
 
+def _warn_if_monitor_is_frozen(log: list[dict], fold: int, monitor, n: int = 4) -> None:
+    """Flag a monitor that is bit-identical across several epochs.
+
+    Training that is genuinely stuck and training that is merely plateauing look
+    the same in the summary, but they are not the same: an AUC repeating to full
+    float precision for four epochs means the model's ranking of the validation
+    set has not changed AT ALL, which is a degenerate state, not slow progress.
+
+    Run 13's fold 0 sat at exactly 0.556 with lift exactly 0.000 for all nine of
+    its epochs and was then reported as a normal early stop. Nothing in the
+    output distinguished it from a fold that trained and plateaued.
+    """
+    vals = [monitor_value(m, monitor) for m in log if m.get("split") == "inner_val"]
+    if len(vals) < n or any(v != v for v in vals[-n:]):
+        return
+    if len(set(vals[-n:])) == 1:
+        print(f"[train] WARNING: fold{fold} monitor has been exactly {vals[-1]:.6f} "
+              f"for {n} epochs — the model's validation ranking is not changing. "
+              "This is a stuck fold, not a plateau.")
+
+
 def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
     tl, vl, testl = make_loaders(cfg, train_idx, val_idx, test_idx)
     amp_on, amp_dtype = amp_settings(device, cfg.train.amp)
@@ -236,10 +257,22 @@ def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
             best, best_epoch, patience = monitor, epoch, 0
             save(ckpt_dir / "best.pt", metrics)
         else:
+            # Patience does not run during warmup. Under OneCycleLR the first
+            # epochs sit at a fraction of peak LR (8e-6 against 2e-4 here), so
+            # epoch 0 is an essentially untrained model whose validation AUC is
+            # a draw from noise on ~24 patients. Letting that draw set the bar
+            # is selection on noise, and it is not hypothetical: run 13's fold 2
+            # peaked at ep0 (0.620), then climbed 0.436 -> 0.571 over epochs 4-8
+            # with grounding lift rising to +0.272 and still going, and was
+            # stopped anyway because patience had been counting from ep0.
+            if epoch + 1 < int(getattr(cfg.train, "early_stop_min_epochs", 0)):
+                continue
             patience += 1
             if patience >= cfg.train.early_stop_patience:
                 print(f"[train] early stop fold{fold} @ ep{epoch} (best ep{best_epoch})")
                 break
+
+        _warn_if_monitor_is_frozen(log, fold, cfg.train.monitor)
 
     # Always leave a usable checkpoint. If the monitor was NaN every epoch
     # (single-class validation split) there is no "best", but downstream tools
