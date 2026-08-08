@@ -235,9 +235,18 @@ def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
                         reported_nan = True
                         bad = [n for n, p in model.named_parameters()
                                if p.grad is not None and not torch.isfinite(p.grad).all()]
+                        total = sum(1 for p in model.parameters() if p.grad is not None)
+                        # Group by top-level module. "first 6" is misleading here:
+                        # named_parameters() starts at the vision encoder, so a NaN
+                        # that originates at the loss and propagates everywhere looks
+                        # identical to one that starts in the backbone. The share of
+                        # each module is what distinguishes them.
+                        by_mod: dict[str, int] = {}
+                        for n in bad:
+                            by_mod[n.split(".")[0]] = by_mod.get(n.split(".")[0], 0) + 1
                         print(f"[train] fold{fold} ep{epoch} step{step}: FIRST "
-                              f"non-finite gradient. {len(bad)} param(s); "
-                              f"first 6: {bad[:6]}")
+                              f"non-finite gradient in {len(bad)}/{total} params "
+                              f"with grads; by module: {by_mod}")
                         print(f"[train]   loss parts: "
                               f"{ {k: round(float(v), 4) for k, v in parts.items()} }")
                         print(f"[train]   patients in the accumulated batches: "

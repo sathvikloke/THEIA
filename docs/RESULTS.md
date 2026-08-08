@@ -156,10 +156,36 @@ What the instrumentation established:
   improved conditioning 270× and did not remove it), and **not** empty
   rationales reaching BioGPT (0 of 158 rows have an empty report).
 
-Leading hypothesis, untested: `GroundingHead` calls `nn.MultiheadAttention` with
-`need_weights=True`, which forces the non-fused math attention path, and that
-path's backward is where MPS numerical issues would show up. Testable by
-computing the attention weights manually.
+Two further hypotheses tested since:
+
+- **`nn.MultiheadAttention`'s math path — ruled out.** `GroundingHead` asks for
+  attention weights, which forces the non-fused path. Replacing it with an
+  explicit implementation using the same parameters (verified identical to
+  1.5e-8) reproduced the NaN at the *same step, same 141 parameters, same losses
+  to four decimals*. Kept anyway: it is equivalent, keeps checkpoints
+  compatible, and puts the softmax in float32 under our control.
+- **The generation head — implicated, not proven.** Dropping the generation term
+  runs clean through epoch 3, where it previously failed at epoch 1. Caveat: the
+  ablation changes the optimisation trajectory, so this does not exclude the
+  possibility that it merely avoids the bad region.
+
+The module breakdown at failure is **141 of 141 trainable parameters** — vision
+28, grounding 7, classifier 8, generation 98. Those proportions are just each
+module's parameter count, so they do not localise the origin. What they do rule
+out is a corruption confined to the generation branch: `classifier` is a leaf fed
+only by the classification loss, which reads a perfectly finite 0.5266 at that
+step, yet its gradients are non-finite too.
+
+So: the forward is finite everywhere, the backward is NaN everywhere, and the
+generation term is necessary for it to happen. Next step would be to record which
+intermediate *activation* first goes non-finite in the backward (a tensor hook),
+rather than which parameter.
+
+Related fix made while testing this: `total_loss` now **drops** a zero-weighted
+term instead of multiplying it by zero. `0 * NaN` is `NaN`, so scaling a term to
+zero did not remove its gradient — it silently poisoned every upstream parameter
+while the reported loss stayed finite. That also makes "set the weight to 0" a
+valid ablation, which it previously was not.
 
 Consequence for the numbers: the guard prevents corruption, so no run silently
 trains on NaN weights any more, but an affected fold contributes an untrained

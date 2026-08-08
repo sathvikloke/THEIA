@@ -136,6 +136,15 @@ def total_loss(out: dict, batch, weights, device) -> tuple[torch.Tensor, dict]:
     if gen is None:
         gen = torch.zeros((), device=device)
     grd = grounding_loss(out["attn_maps"], batch["roi"], device)
-    loss = weights.cls * cls + weights.gen * gen + weights.ground * grd
+
+    # A zero-weighted term is DROPPED, not multiplied by zero. 0 * NaN is NaN, so
+    # scaling a term to zero does not remove its gradient from the backward pass —
+    # it silently poisons every parameter upstream of it while the reported loss
+    # stays finite. That also makes "set the weight to 0" a usable ablation for
+    # locating which term is producing a bad gradient, which it otherwise is not.
+    terms = [(float(weights.cls), cls), (float(weights.gen), gen),
+             (float(weights.ground), grd)]
+    loss = sum((w * t for w, t in terms if w != 0.0),
+               start=torch.zeros((), device=device))
     parts = dict(cls=cls.detach(), gen=gen.detach(), ground=grd.detach(), total=loss.detach())
     return loss, parts

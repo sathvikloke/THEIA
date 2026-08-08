@@ -959,3 +959,36 @@ def test_grounding_loss_gradient_stays_bounded_when_attention_collapses():
     assert g.abs().max() < 1e6, (
         f"gradient magnitude {g.abs().max():.3e} is large enough to overflow "
         "once Adam squares it")
+
+
+def test_a_zero_weighted_loss_term_is_dropped_not_multiplied_by_zero():
+    """0 * NaN is NaN, so a zero weight must remove the term from the graph.
+
+    Scaling a term to zero leaves its backward attached: every parameter
+    upstream of it still receives NaN while the reported loss stays finite and
+    healthy-looking. It also makes "set the weight to 0" useless as an ablation
+    for locating a bad gradient, which is exactly what it was needed for.
+    """
+    import torch
+
+    from theia.engine.losses import total_loss
+
+    class W:
+        cls, gen, ground = 1.0, 0.0, 0.0
+
+    p = torch.nn.Parameter(torch.randn(2, 2))
+    logits = {"egfr": (p @ torch.randn(2, 2)).unsqueeze(0).repeat(2, 1, 1)[:, 0, :]}
+    out = {
+        "logits": logits,
+        "attn_maps": torch.rand(2, 4, 14, 14, requires_grad=True),
+        # A poisoned generation loss: finite forward, NaN gradient.
+        "gen_loss": (p * float("inf")).sum() * 0.0 + torch.tensor(1.0),
+    }
+    roi = torch.zeros(2, 3, 1, 56, 56)
+    roi[:, :, :, 8:24, 8:24] = 1.0
+    batch = {"roi": roi, "egfr": torch.tensor([0, 1])}
+
+    loss, _ = total_loss(out, batch, W(), "cpu")
+    loss.backward()
+    assert torch.isfinite(p.grad).all(), (
+        "a zero-weighted term still contributed NaN to the backward pass")
