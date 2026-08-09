@@ -418,3 +418,50 @@ def test_cli_overrides_are_applied_and_archived(tmp_path, stub_model, monkeypatc
     # YAML parsing, not raw strings — 0.0 must be a float, not "0.0".
     assert isinstance(blob["config"]["train"]["loss_weights"]["gen"], float)
     del load_config
+
+
+def test_last_checkpoint_is_not_written_unless_asked(tmp_path, stub_model):
+    """last.pt doubles storage and nothing loads it.
+
+    Every tool opens best.pt. 33 accumulated last.pt files had reached 59 GB,
+    which was most of the reason there was no disk left for a second pretraining
+    cohort.
+    """
+    from theia.data.dataset import nested_kfold_indices
+    from theia.engine.train import train_fold
+
+    rows = _synthetic_cohort(tmp_path)
+    cfg = _cfg(tmp_path)
+    tr, va, te = next(nested_kfold_indices(rows, "EGFR", 3, 1337, 0.25))
+    train_fold(cfg, 0, tr, va, te, torch.device("cpu"))
+
+    d = tmp_path / "ckpt" / "fold0"
+    assert (d / "best.pt").exists(), "no selected checkpoint written"
+    assert not (d / "last.pt").exists(), "last.pt written without save_last"
+
+    cfg["train"]["save_last"] = True
+    train_fold(cfg, 1, tr, va, te, torch.device("cpu"))
+    assert (tmp_path / "ckpt" / "fold1" / "last.pt").exists(), "save_last ignored"
+
+
+def test_last_is_still_written_when_no_epoch_could_be_selected(tmp_path, stub_model,
+                                                               monkeypatch):
+    """The fallback path must survive the storage change.
+
+    If the monitor is NaN every epoch there is no 'best'; something has to be
+    loadable or downstream tools hit FileNotFoundError.
+    """
+    from theia.data.dataset import nested_kfold_indices
+    from theia.engine import train as train_mod
+
+    rows = _synthetic_cohort(tmp_path)
+    cfg = _cfg(tmp_path)
+    cfg["train"]["save_last"] = False
+    monkeypatch.setattr(train_mod, "monitor_value", lambda m, mon: float("nan"))
+
+    tr, va, te = next(nested_kfold_indices(rows, "EGFR", 3, 1337, 0.25))
+    train_mod.train_fold(cfg, 0, tr, va, te, torch.device("cpu"))
+
+    d = tmp_path / "ckpt" / "fold0"
+    assert (d / "best.pt").exists(), "no fallback checkpoint written"
+    assert (d / "last.pt").exists(), "fallback last.pt was suppressed"

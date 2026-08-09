@@ -367,11 +367,20 @@ def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
     # Always leave a usable checkpoint. If the monitor was NaN every epoch
     # (single-class validation split) there is no "best", but downstream tools
     # still need weights to load rather than a FileNotFoundError.
-    save(ckpt_dir / "last.pt", log[-1] if log else {})
+    #
+    # last.pt is written only when it is the fallback, or when explicitly asked
+    # for. Nothing in this project ever LOADS it -- every tool opens best.pt --
+    # and it doubles checkpoint storage: 33 of them had accumulated to 59 GB,
+    # which was most of the reason there was no disk left for a second
+    # pretraining cohort. Set train.save_last true to keep the final-epoch
+    # weights, e.g. to inspect a run that early-stopped.
     if best_epoch < 0:
+        save(ckpt_dir / "last.pt", log[-1] if log else {})
         print(f"[train] fold{fold}: monitor '{cfg.train.monitor}' was NaN every epoch "
               f"(validation split likely single-class); using last.pt as best.pt")
         save(ckpt_dir / "best.pt", log[-1] if log else {})
+    elif bool(getattr(cfg.train, "save_last", False)):
+        save(ckpt_dir / "last.pt", log[-1] if log else {})
 
     result = dict(fold=fold, best_inner=None if best_epoch < 0 else best, best_epoch=best_epoch)
 

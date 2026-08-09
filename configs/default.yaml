@@ -162,6 +162,13 @@ train:
   # fold 0 went NaN at epoch 8 and then kept its epoch-0 checkpoint — an
   # untrained model contributing 1/5 of the pooled estimate. Off CUDA the
   # GradScaler is disabled, so nothing was skipping non-finite steps either.
+  # Keep the final-epoch weights alongside the selected ones. Off by default:
+  # nothing in this project loads last.pt -- every tool opens best.pt -- and
+  # 33 of them had reached 59 GB, which was most of the reason there was no
+  # disk left for a second pretraining cohort. It is still written
+  # unconditionally when no epoch could be selected, since something has to be
+  # loadable then.
+  save_last: false
   grad_clip: 1.0
   warmup_ratio: 0.05
   amp: true                    # honoured on CUDA only; reported at startup
