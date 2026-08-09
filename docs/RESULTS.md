@@ -139,20 +139,43 @@ EGFR prevalence against our 26%) and many use proper validation. It does show
 that an estimate this sensitive to analytic choice needs nested validation
 before it means anything.
 
-## 4. Grounding
+## 4. Grounding — this part works
 
-The methodological contribution, and it is real but unstable.
+The localisation claim is the one that holds up, and in the final configuration
+it holds up robustly. Across **14 scored folds** (3 seeds x 5 folds, one fold
+stalled and excluded), on held-out patients:
+
+| metric | model | shuffled baseline | lift |
+|---|---|---|---|
+| attention mass in ROI | **0.428 ± 0.154** | 0.036 ± 0.005 | **+0.391** |
+| pointing game | **0.883 ± 0.248** | 0.049 ± 0.034 | **+0.835** |
+| area-matched IoU | **0.637 ± 0.178** | 0.017 ± 0.008 | +0.620 |
+
+Attention mass inside the tumour is **11.7x its shuffled baseline**, and mass
+beats its own per-fold chance level in **14 of 14 folds** (sign test
+p = 1.2e-4). By lift > 0.05, 13 of 14 folds localise. Mean peak ratio is 26.7,
+so the maps are sharply peaked rather than diffuse — the failure mode that
+produced an apparently-good pointing score in run 12 is absent here.
+
+For scale, the tumour occupies 3.9% of the crop on average, so "attend to the
+lesion" is not a free win: a uniform map scores ~0.039, which is exactly what
+the shuffled baseline reports.
+
+Progress across configurations, which is mostly a record of bugs removed:
 
 | run | grounding lift | folds localising | note |
 |---|---|---|---|
-| 6 | +0.235 | 4/5 | pre-clipping, log lost |
-| 12 | +0.001 | 0/5 | **loss bug, see §5** |
+| 6 | +0.235 | 4/5 | pre-clipping |
+| 12 | +0.001 | 0/5 | the clamp fixed-point bug |
 | 13 | +0.180 | 2/5 | 2 folds died in warmup |
+| **multi-seed (final)** | **+0.391** | **13/14** | logit-BCE loss, warmup floor |
 
-Every lift is reported against a per-fold shuffled baseline, and
-`grounding_peak_ratio` flags attention that is flat. That matters: run 12 scored
-0.65–1.00 on the *pointing game* while its attention map was literally constant.
-A localisation metric without a chance baseline would have called that a success.
+Two caveats that belong with the number. These runs set `loss_weights.gen = 0`,
+so this is grounding alongside classification with the rationale head switched
+off. And one fold (seed 42, fold 1) shows lift 0.000 at peak ratio 23.1 —
+sharply peaked attention pointed somewhere other than the tumour, which is a
+different failure from diffuse attention and worth understanding before the
+claim is generalised.
 
 ## 4b. The rationale arm is not ready for a reader study
 

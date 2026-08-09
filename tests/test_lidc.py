@@ -167,3 +167,42 @@ def test_summarise_reports_what_each_threshold_would_keep(tmp_path):
     assert s["by_readers"] == {2: 1, 4: 1}
     assert s["kept_at_threshold"] == 1, "threshold accounting is wrong"
     assert s["kept_frac"] == pytest.approx(0.5)
+
+
+def test_mask_for_scan_refuses_a_mismatched_series(tmp_path, monkeypatch):
+    """An XML whose slices match no UID in the series must raise, not return empty.
+
+    Returning an all-zero mask would look like "this scan has no nodule" and the
+    scan would be silently dropped from the pretraining cohort, when the real
+    problem is that the annotation and the images are from different scans.
+    """
+    from theia.data import lidc
+
+    monkeypatch.setattr(lidc, "_volume_shape", lambda ct: (5, 24, 24))
+    import theia.data.preprocess as pp
+    monkeypatch.setattr(pp, "load_series", lambda d: object())
+    monkeypatch.setattr(pp, "sop_uid_index", lambda d: {"OTHER-UID": 0})
+
+    path = _xml(tmp_path, [(2, 2, 6)] * 3, uid="ANNOTATION-UID")
+    with pytest.raises(ValueError, match="different scans"):
+        lidc.mask_for_scan(path, "ignored", min_agreement=1)
+
+
+def test_mask_for_scan_places_contours_by_uid_not_by_order(tmp_path, monkeypatch):
+    """The contour must land on the slice its UID names, whatever the file order.
+
+    DICOM files do not arrive in acquisition order, so index-based placement
+    would put every mask on the wrong slice while raising nothing.
+    """
+    from theia.data import lidc
+
+    monkeypatch.setattr(lidc, "_volume_shape", lambda ct: (5, 24, 24))
+    import theia.data.preprocess as pp
+    monkeypatch.setattr(pp, "load_series", lambda d: object())
+    # The annotated UID is the FOURTH slice, not the first.
+    monkeypatch.setattr(pp, "sop_uid_index",
+                        lambda d: {"a": 0, "b": 1, "c": 2, "1.2.3": 3, "e": 4})
+
+    m = lidc.mask_for_scan(_xml(tmp_path, [(2, 2, 6)] * 3), "ignored", min_agreement=2)
+    assert m[3].sum() > 0, "contour did not land on the slice its UID names"
+    assert m[0].sum() == 0 and m[4].sum() == 0, "contour leaked onto other slices"

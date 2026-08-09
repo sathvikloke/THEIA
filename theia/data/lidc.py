@@ -123,6 +123,34 @@ def consensus_mask(per_slice: dict, uid_to_index: dict, shape: tuple[int, int],
     return out
 
 
+def mask_for_scan(xml_path: str, ct_dir: str, min_agreement: int = 3) -> np.ndarray:
+    """[depth, H, W] consensus mask aligned to the CT series in `ct_dir`.
+
+    Slices are matched by SOP instance UID, never by index. LIDC contours carry
+    the UID of the image they were drawn on, and the DICOM files in a directory
+    do not arrive in acquisition order, so index matching would silently place
+    every contour on the wrong slice -- the same class of error as pairing a
+    mask with the wrong series.
+    """
+    from theia.data.preprocess import load_series, sop_uid_index
+
+    ct = load_series(ct_dir)
+    uid_to_index = sop_uid_index(ct_dir)
+    depth, h, w = _volume_shape(ct)
+    per_slice = parse_xml(xml_path)
+    matched = sum(1 for uid in per_slice if uid in uid_to_index)
+    if per_slice and matched == 0:
+        raise ValueError(
+            f"{xml_path}: none of its {len(per_slice)} annotated slices match a "
+            f"SOP UID in {ct_dir}. The XML and the series belong to different scans.")
+    return consensus_mask(per_slice, uid_to_index, (h, w), depth, min_agreement)
+
+
+def _volume_shape(ct) -> tuple[int, int, int]:
+    w, h, depth = ct.GetSize()          # SimpleITK reports (x, y, z)
+    return depth, h, w
+
+
 def summarise(xml_paths: list[str], min_agreement: int = 3) -> dict:
     """Reader-agreement statistics over a set of XMLs, without loading any CT.
 
@@ -156,6 +184,8 @@ def main() -> None:
                     help="readers who must agree on a voxel (LUNA16 uses 3 of 4)")
     ap.add_argument("--summarise_only", action="store_true",
                     help="report reader agreement and exit, without touching CT")
+    ap.add_argument("--masks_out", default=None,
+                    help="write per-scan consensus masks here (.npz per scan)")
     ap.add_argument("--out", default="results/lidc_agreement.json")
     a = ap.parse_args()
 
@@ -174,6 +204,35 @@ def main() -> None:
     Path(os.path.dirname(a.out) or ".").mkdir(parents=True, exist_ok=True)
     json.dump(stats, open(a.out, "w"), indent=2)
     print(f"[lidc] wrote {a.out}")
+
+    if a.summarise_only:
+        print("[lidc] --summarise_only: stopping before any CT is read")
+        return
+    if not a.masks_out:
+        print("[lidc] no --masks_out given; nothing further to do. Pass it to write "
+              "per-scan consensus masks for grounding pretraining.")
+        return
+
+    out_dir = Path(a.masks_out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    written, skipped = 0, 0
+    for xml in xmls:
+        scan_dir = os.path.dirname(xml)
+        try:
+            m = mask_for_scan(xml, scan_dir, a.min_agreement)
+        except Exception as exc:                              # noqa: BLE001
+            print(f"[lidc] skip {os.path.basename(scan_dir)}: "
+                  f"{type(exc).__name__}: {exc}")
+            skipped += 1
+            continue
+        if int(m.sum()) == 0:
+            skipped += 1
+            continue
+        np.savez_compressed(out_dir / f"{Path(scan_dir).name}.npz", mask=m)
+        written += 1
+    print(f"[lidc] wrote {written} consensus mask(s) to {out_dir} ({skipped} skipped)")
+    print("[lidc] next: python -m theia.data.preprocess_masks --raw_dir <tree> "
+          f"--out_dir data/processed_lidc  (masks from {out_dir})")
 
 
 if __name__ == "__main__":
