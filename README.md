@@ -254,7 +254,11 @@ carried by smoking status. Never-smokers here are 60.6% EGFR-mutant against
 mass inside the tumour is 0.428 ± 0.154 against a shuffled baseline of 0.036 —
 11.7× chance — and beats its own per-fold baseline in 14 of 14 folds (sign test
 p = 1.2e-4). The pointing game reaches 0.883 against 0.049 chance. The tumour
-occupies 3.9% of the crop, so this is not a free win. KRAS remains at chance.
+occupies 3.9% of the crop, so this is not a free win.
+
+**KRAS is at chance**: 0.509 ± 0.037 across the same three seeds, every interval
+spanning 0.5. Reported rather than dropped — a panel quietly narrowed to its
+best member is not a result.
 
 **Quote the multi-seed number, not a single run.** Pooled EGFR moved 0.597 /
 0.612 / 0.674 across three seeds of the same configuration. An earlier single

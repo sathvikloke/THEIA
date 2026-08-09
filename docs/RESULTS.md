@@ -53,25 +53,35 @@ epidemiology, not an artefact.
 ## 2. The question that decides the paper
 
 Imaging is only interesting if it adds something a clinician does not already
-have. Paired bootstrap on identical folds, so every patient contributes to both
-arms and the shared cohort variance cancels:
+have. Repeated **per seed**, with the clinical baseline rebuilt on each seed's
+own folds — `cfg.seed` drives `nested_kfold_indices`, so reusing one baseline
+across seeds would pair each patient against a model that held out a different
+set entirely — and compared by paired bootstrap:
 
-| comparison | ΔAUC | 95% CI | p |
-|---|---|---|---|
-| **(clinical + THEIA) − clinical** | **−0.006** | **[−0.066, +0.048]** | **0.832** |
-| THEIA − clinical | −0.105 | [−0.220, +0.002] | 0.058 |
-| THEIA − (clinical + radiomics) | −0.125 | [−0.235, −0.021] | 0.014 |
-| THEIA − radiomics | +0.081 | [−0.044, +0.202] | 0.189 |
+| seed | clinical | + THEIA | ΔAUC | 95% CI | p |
+|---|---|---|---|---|---|
+| 1337 | 0.759 | 0.767 | +0.008 | [−0.046, +0.065] | 0.782 |
+| 42 | 0.779 | 0.736 | −0.044 | [−0.107, +0.021] | 0.175 |
+| 7 | 0.805 | 0.776 | −0.029 | [−0.093, +0.038] | 0.372 |
 
-**THEIA adds nothing on top of clinical variables.** The interval is tight
-around zero — this is a reasonably precise null, not an underpowered shrug: the
-true increment lies between −6.6 and +4.8 AUC points. THEIA is significantly
-worse than clinical+radiomics (p = 0.014), and beats radiomics alone
-non-significantly.
+> **Δ = −0.022 ± 0.027 across seeds, and every seed's CI includes zero.**
 
-This does not say the imaging is uninformative in principle. It says that on
-158 patients, whatever EGFR signal this model extracts from CT is already
-carried by smoking status.
+**THEIA adds nothing on top of five chart variables**, and the point estimate is
+slightly negative in two of three seeds.
+
+Deliberately *not* merged into one large paired test. A patient appears once per
+seed, so the merged set has patients × seeds rows; the bootstrap resamples rows
+and would treat three correlated copies of the same patient as three independent
+observations, shrinking the interval by roughly √3 for no added information.
+
+For reference, the single-run version of this test (run 12, generation term
+active) gave −0.006 [−0.066, +0.048], p = 0.832. It agrees in direction, but it
+inherited ±0.041 of seed noise without showing it; the per-seed table above is
+the one to quote.
+
+This does not say imaging is uninformative in principle — §2b shows the images
+do carry signal. It says that on 158 patients, whatever EGFR signal this model
+extracts is already carried by smoking status.
 
 ## 2b. The images do carry signal — and the architecture adds nothing to it
 
@@ -117,6 +127,28 @@ collapsing, so more labelled data still helps:
 | 76 | 0.627 ± 0.066 | 0.531 ± 0.097 |
 | 115 | 0.654 ± 0.050 | 0.621 ± 0.050 |
 | 153 | 0.665 ± 0.028 | 0.624 ± 0.029 |
+
+## 2c. KRAS is at chance, measured properly
+
+Reported here rather than dropped, because a gene that fails is evidence about
+the method and a panel quietly narrowed to its best member is not a result.
+
+| seed | KRAS AUC | 95% CI | n | positives |
+|---|---|---|---|---|
+| 1337 | 0.551 | [0.439, 0.668] | 122 | 23 |
+| 42 | 0.483 | [0.362, 0.603] | 152 | 32 |
+| 7 | 0.493 | [0.386, 0.603] | 152 | 32 |
+
+**0.509 ± 0.037 across seeds**; every interval spans chance and the point
+estimate is indistinguishable from 0.5. At 21% prevalence (32 of 152) the study
+is underpowered for KRAS on its own, but nothing here suggests an effect being
+missed rather than absent — unlike EGFR, whose permutation test is significant
+at the same n.
+
+This is consistent with the biology: KRAS mutation has no established
+morphological correlate comparable to EGFR's association with ground-glass
+opacity and never-smoker status. KRAS stays exploratory and is not a headline
+endpoint.
 
 ## 3. Radiomics is dominated by analytic choices, not biology
 

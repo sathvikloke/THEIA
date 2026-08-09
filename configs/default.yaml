@@ -15,7 +15,11 @@ paths:
 data:
   modalities: [CT]             # roadmap: [CT, PATH] once the pathology branch lands
   modality_dropout: 0.0        # roadmap (Q2): prob of dropping one modality in training
-  headline_genes: [EGFR]       # KRAS demoted: pooled 0.522 [0.400, 0.639], flat learning curve
+  # KRAS is exploratory, not demoted on one run: measured across the same three
+  # seeds as EGFR it is 0.509 +/- 0.037, every interval spanning chance. Kept in
+  # target_genes and reported, because a panel quietly narrowed to its best
+  # member is not a result.
+  headline_genes: [EGFR]
   exploratory_genes: [KRAS]    # roadmap: + ALK, MET, BRAF, STK11, TP53 as prevalence allows
   target_genes: [EGFR, KRAS]   # = headline + exploratory once the panel is locked in Q1
   roi_margin_mm: 12            # dilation around seg mask before crop
