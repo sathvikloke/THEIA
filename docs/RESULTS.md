@@ -73,6 +73,51 @@ This does not say the imaging is uninformative in principle. It says that on
 158 patients, whatever EGFR signal this model extracts from CT is already
 carried by smoking status.
 
+## 2b. The images do carry signal — and the architecture adds nothing to it
+
+At n=153 the permutation tests are significant for the first time. Both were
+null at n=117 (p = 0.52 deep, 0.94 radiomics):
+
+| features | pooled OOF AUC | permutation p (200 shuffles) |
+|---|---|---|
+| frozen BiomedCLIP + L2 logistic regression | 0.683 | **0.010** |
+| radiomics + L2 logistic regression | 0.680 | **0.010** |
+
+So there is real EGFR signal in these images. That was an open question and it
+is now answered.
+
+The uncomfortable part is the comparison against the full model. Scored through
+**exactly THEIA's nested splits**, per seed:
+
+| seed | frozen probe | THEIA | diff |
+|---|---|---|---|
+| 1337 | 0.626 | 0.674 | −0.048 |
+| 42 | 0.562 | 0.597 | −0.035 |
+| 7 | 0.665 | 0.612 | +0.053 |
+| **mean** | **0.617 ± 0.052** | **0.627 ± 0.041** | — |
+
+A logistic regression on frozen features is statistically indistinguishable from
+the whole grounded multimodal network. THEIA is nominally ahead by 0.010, which
+is a quarter of its own seed sd.
+
+One protocol caution, because it nearly became a wrong headline. The same
+features and estimator score **0.683 under `diagnostics.py`'s flat
+StratifiedKFold** and **0.617 under the nested protocol** — 0.066 of difference
+from the evaluation protocol alone, with no change to the model. Read against
+the flat number the probe appears to beat THEIA outright; read against the
+matched one it does not. Any comparison between arms has to hold the protocol
+fixed, and that gap is larger than most effects reported in this literature.
+
+Learning curves are still rising at the full cohort, and their spread is
+collapsing, so more labelled data still helps:
+
+| n train | frozen probe | radiomics |
+|---|---|---|
+| 38 | 0.484 ± 0.169 | 0.560 ± 0.126 |
+| 76 | 0.627 ± 0.066 | 0.531 ± 0.097 |
+| 115 | 0.654 ± 0.050 | 0.621 ± 0.050 |
+| 153 | 0.665 ± 0.028 | 0.624 ± 0.029 |
+
 ## 3. Radiomics is dominated by analytic choices, not biology
 
 Six pre-specifiable pipelines, same folds, same estimator family:
