@@ -861,3 +861,134 @@ def test_warm_start_respects_the_vision_flag(tmp_path):
     on = Stub(True)
     with pytest.raises(KeyError, match="vision"):      # now it is required
         tm.Theia.load_grounding_pretrain(on, str(ck))
+
+
+def test_uniform_attention_is_not_a_fixed_point():
+    """A perfectly flat attention map must produce a NON-ZERO gradient.
+
+    grounding_loss normalises the map by its own maximum, so the peak cell is
+    pinned at the top of the range on every step. Run BCE on probabilities
+    clamped to (eps, 1-eps) and that peak can land exactly ON the upper clamp,
+    where the gradient is identically zero. A map that goes flat then has every
+    cell clamped at once and can never recover: loss 9.30 with max|grad| exactly
+    0.000 -- a trap with a high loss and no way out. Run 12 fell into it and all
+    five folds reported grounding lift +0.001 at peak ratio 1.000, reducing the
+    project's main methodological claim to a constant map that still scored well
+    on the pointing game.
+
+    Attribution, because it is not what it looks like: the ORIGINAL loss passes
+    this test, at max|grad| 5.9e2. It survived by accident. Its denominator was
+    `amax + 1e-6`, which left the normalised peak at 0.9998 -- just below a
+    1-1e-4 clamp. Replacing that epsilon with clamp_min(1e-3) made the peak
+    exactly 1.0 and pushed it onto the clamp, and detaching the denominator
+    removed the remaining escape route. Both changes were mine, neither was in
+    run 6, and each looked like a strict improvement in isolation.
+
+    binary_cross_entropy_with_logits has no clamp and therefore no dead zone at
+    all, rather than one avoided by a well-chosen epsilon.
+    """
+    import torch
+
+    from theia.engine.losses import grounding_loss
+
+    b, q, h, w = 2, 4, 14, 14
+    roi = torch.zeros(b, 3, 1, 56, 56)
+    roi[:, :, :, 8:24, 8:24] = 1.0
+    flat = torch.full((b, q, h, w), 1.0 / (h * w)).requires_grad_(True)
+
+    loss = grounding_loss(flat, roi, "cpu")
+    loss.backward()
+    assert flat.grad.abs().max() > 1e-3, (
+        "uniform attention has no gradient — the model cannot escape a flat map")
+
+
+def test_grounding_loss_prefers_attention_on_the_tumor():
+    """Aligned attention must score better than anti-aligned.
+
+    Trivial-looking, and it is the property every other grounding number depends
+    on. Worth asserting explicitly because the fixed-point bug above left a loss
+    that still *ranked* maps correctly while being unable to move toward the
+    better one.
+    """
+    import torch
+
+    from theia.engine.losses import grounding_loss, roi_to_grid
+
+    roi = torch.zeros(2, 3, 1, 56, 56)
+    roi[:, :, :, 8:24, 8:24] = 1.0
+    t = roi_to_grid(roi, 14, 14, "cpu").unsqueeze(1).repeat(1, 4, 1, 1).float()
+    aligned = t * 0.9 + 0.05
+    anti = (1 - t) * 0.9 + 0.05
+    assert grounding_loss(aligned, roi, "cpu") < grounding_loss(anti, roi, "cpu")
+
+
+def test_grounding_loss_gradient_stays_bounded_when_attention_collapses():
+    """A collapsed attention map must still yield a finite, bounded gradient.
+
+    Scope note, so this test is not read as more than it is: it is an invariant
+    test, NOT a regression test for the fold-killing NaN. Measured directly, the
+    pre-fix code emitted gradients of only ~6e2 at these operating points, so
+    this test passed before the change as well. The source of the non-finite
+    gradients seen in training is not established by it.
+
+    What it does pin: the BCE now runs on logits, whose gradient is
+    (sigmoid(z) - t) and so is bounded in [-1, 1] by construction, and the
+    normaliser's denominator is floored so the 1/max amplification cannot grow
+    without bound.
+    """
+    import torch
+
+    from theia.engine.losses import grounding_loss
+
+    b, q, h, w = 2, 4, 14, 14
+    # A softmax-like map that has collapsed to near-uniform: max ~ 1/(h*w).
+    flat = torch.full((b, q, h, w), 1.0 / (h * w))
+    attn = flat.clone().requires_grad_(True)
+    roi = torch.zeros(b, 3, 1, 56, 56)
+    roi[:, :, :, 8:24, 8:24] = 1.0
+
+    loss = grounding_loss(attn, roi, "cpu")
+    assert torch.isfinite(loss), "loss itself went non-finite"
+    loss.backward()
+
+    g = attn.grad
+    assert torch.isfinite(g).all(), "grounding loss emitted a non-finite gradient"
+    # Bound chosen well above anything healthy training produces but far below
+    # the fp32 overflow that killed folds; the pre-fix path exceeded this by
+    # many orders of magnitude.
+    assert g.abs().max() < 1e6, (
+        f"gradient magnitude {g.abs().max():.3e} is large enough to overflow "
+        "once Adam squares it")
+
+
+def test_a_zero_weighted_loss_term_is_dropped_not_multiplied_by_zero():
+    """0 * NaN is NaN, so a zero weight must remove the term from the graph.
+
+    Scaling a term to zero leaves its backward attached: every parameter
+    upstream of it still receives NaN while the reported loss stays finite and
+    healthy-looking. It also makes "set the weight to 0" useless as an ablation
+    for locating a bad gradient, which is exactly what it was needed for.
+    """
+    import torch
+
+    from theia.engine.losses import total_loss
+
+    class W:
+        cls, gen, ground = 1.0, 0.0, 0.0
+
+    p = torch.nn.Parameter(torch.randn(2, 2))
+    logits = {"egfr": (p @ torch.randn(2, 2)).unsqueeze(0).repeat(2, 1, 1)[:, 0, :]}
+    out = {
+        "logits": logits,
+        "attn_maps": torch.rand(2, 4, 14, 14, requires_grad=True),
+        # A poisoned generation loss: finite forward, NaN gradient.
+        "gen_loss": (p * float("inf")).sum() * 0.0 + torch.tensor(1.0),
+    }
+    roi = torch.zeros(2, 3, 1, 56, 56)
+    roi[:, :, :, 8:24, 8:24] = 1.0
+    batch = {"roi": roi, "egfr": torch.tensor([0, 1])}
+
+    loss, _ = total_loss(out, batch, W(), "cpu")
+    loss.backward()
+    assert torch.isfinite(p.grad).all(), (
+        "a zero-weighted term still contributed NaN to the backward pass")

@@ -26,10 +26,12 @@ import argparse
 import json
 import math
 import os
+from datetime import datetime
 from pathlib import Path
 from statistics import mean, stdev
 
 import torch
+import yaml
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -127,6 +129,81 @@ def _param_groups(model, cfg) -> list[dict]:
     ]
 
 
+class _FoldStalled(RuntimeError):
+    """Every optimizer step in an epoch was skipped, so the fold is not training."""
+
+
+def train_fold_with_retry(cfg, fold: int, tr, va, te, device, max_retries: int = 1):
+    """Run a fold, retrying from a fresh initialisation if it stalls numerically.
+
+    There is an unresolved numerical instability in the backward pass on MPS: the
+    forward is finite everywhere, the backward is NaN everywhere, and registering
+    backward hooks on every module makes it disappear — so it is a marginal
+    overflow sensitive to autograd graph structure, not a divide-by-zero. An
+    affected fold skips every optimizer step from then on, so its weights never
+    change and it would report an untrained model as a result.
+
+    Measured, so nobody re-derives it. Every loss term has been dropped from the
+    graph individually and NONE of them is the cause: at ground=0.0 the NaN
+    reappears unchanged, and at gen=0.0 it still occurs with the affected set
+    reading vision 28 / grounding 7 / classifier 8 / generation 0 — the
+    generation head is not even in the graph. What is common to every failing
+    configuration is the backward through the unfrozen ViT blocks. Retrying from
+    a different initialisation does NOT reliably help either: run 15's fold 0
+    stalled on all three seeds.
+
+    So the retry is kept only because it is cheap and occasionally works. The
+    stall DETECTION is the part that earns its place — without it the fold is
+    silently reported as a result.
+
+    The retry criterion is deliberately NUMERICAL FAILURE, never performance. A
+    fold is re-run only when it skipped every step of an epoch; a fold that
+    trains and scores badly is kept exactly as it is. Retrying on a bad AUC would
+    be seed-shopping and would bias every reported number upward. The seed offset
+    used is recorded in the fold's result so the archive shows what happened.
+    """
+    for attempt in range(max_retries + 1):
+        if attempt:
+            # Perturb only the initialisation. The data split is untouched, so
+            # the patient held out by this fold is the same on every attempt.
+            set_seed(cfg.seed + 1000 * attempt)
+            print(f"[train] fold{fold}: retry {attempt} with init seed "
+                  f"{cfg.seed + 1000 * attempt}")
+        try:
+            result = train_fold(cfg, fold, tr, va, te, device)
+            if attempt:
+                result["init_seed_offset"] = 1000 * attempt
+            return result
+        except _FoldStalled as exc:
+            print(f"[train] {exc}")
+            if attempt == max_retries:
+                print(f"[train] fold{fold}: still stalling after {max_retries} "
+                      "retries; reporting it as stalled rather than as a result")
+                return {"fold": fold, "stalled": True, "test": {}}
+    return {"fold": fold, "stalled": True, "test": {}}
+
+
+def _warn_if_monitor_is_frozen(log: list[dict], fold: int, monitor, n: int = 4) -> None:
+    """Flag a monitor that is bit-identical across several epochs.
+
+    Training that is genuinely stuck and training that is merely plateauing look
+    the same in the summary, but they are not the same: an AUC repeating to full
+    float precision for four epochs means the model's ranking of the validation
+    set has not changed AT ALL, which is a degenerate state, not slow progress.
+
+    Run 13's fold 0 sat at exactly 0.556 with lift exactly 0.000 for all nine of
+    its epochs and was then reported as a normal early stop. Nothing in the
+    output distinguished it from a fold that trained and plateaued.
+    """
+    vals = [monitor_value(m, monitor) for m in log if m.get("split") == "inner_val"]
+    if len(vals) < n or any(v != v for v in vals[-n:]):
+        return
+    if len(set(vals[-n:])) == 1:
+        print(f"[train] WARNING: fold{fold} monitor has been exactly {vals[-1]:.6f} "
+              f"for {n} epochs — the model's validation ranking is not changing. "
+              "This is a stuck fold, not a plateau.")
+
+
 def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
     tl, vl, testl = make_loaders(cfg, train_idx, val_idx, test_idx)
     amp_on, amp_dtype = amp_settings(device, cfg.train.amp)
@@ -145,6 +222,7 @@ def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
     scaler = make_grad_scaler(device, amp_on)
 
     best, best_epoch, patience = -float("inf"), -1, 0
+    reported_nan = False
     ckpt_dir = Path(cfg.paths.ckpt_dir) / f"fold{fold}"
     ckpt_dir.mkdir(parents=True, exist_ok=True)
     log = []
@@ -157,21 +235,82 @@ def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
         model.train()
         opt.zero_grad()
         pbar = tqdm(tl, desc=f"fold{fold} ep{epoch}")
-        running, seen = None, 0
+        running, seen, skipped, overflowed = None, 0, 0, 0
+        recent_ids: list = []
         for step, batch in enumerate(pbar):
             with autocast(device, amp_on, amp_dtype):
                 out = model(batch, device)
                 loss, parts = total_loss(out, batch, cfg.train.loss_weights, device)
                 loss = loss / cfg.train.grad_accum
+            recent_ids = (recent_ids + list(batch["patient_id"]))[-2 * cfg.train.batch_size:]
             scaler.scale(loss).backward()
             if (step + 1) % cfg.train.grad_accum == 0:
                 prev_scale = scaler.get_scale()
-                scaler.step(opt)
-                scaler.update()
+                # Clip, and skip the step outright if the gradient is not finite.
+                #
+                # On CUDA, GradScaler already skips non-finite steps. Off CUDA
+                # (MPS, CPU) AMP is disabled, the scaler is a no-op, and NOTHING
+                # skipped them: one bad batch wrote NaN into the weights and the
+                # fold was dead from that point on, still burning epochs until
+                # early stopping. Fold 0 of run 10 went NaN at epoch 8 and kept
+                # its epoch-0 checkpoint, i.e. contributed an untrained model to
+                # the pooled estimate. The old code detected this and printed a
+                # warning, but had no way to act on it.
+                #
+                # unscale_ is a no-op when the scaler is disabled, so the clip
+                # sees true gradients on every backend.
+                scaler.unscale_(opt)
+                gnorm = torch.nn.utils.clip_grad_norm_(
+                    [p for p in model.parameters() if p.grad is not None],
+                    float(getattr(cfg.train, "grad_clip", 1.0)))
+                if torch.isfinite(gnorm):
+                    scaler.step(opt)
+                    scaler.update()
+                else:
+                    # Distinguish the two ways this happens, because they need
+                    # opposite responses and look identical from the norm alone:
+                    #   every grad finite -> the SUM OF SQUARES overflowed fp32
+                    #     while each element was representable. The gradients are
+                    #     usable and merely enormous.
+                    #   some grad non-finite -> a true NaN/inf. Skipping is right.
+                    # Without this the log says "non-finite" for both and there is
+                    # no way to tell which you are looking at.
+                    grads_ok = all(torch.isfinite(p.grad).all()
+                                   for p in model.parameters() if p.grad is not None)
+                    skipped += 1
+                    if grads_ok:
+                        overflowed += 1
+                    elif not reported_nan:
+                        # One-shot per fold: name the parameters and the patients.
+                        # This instability has recurred across runs 11 and 14 and
+                        # is not yet explained; isolated harnesses would not
+                        # reproduce it, and guessing at causes (grounding loss,
+                        # empty rationales, fp32 norm overflow) has cost more
+                        # than instrumenting it once. Bounded output, no spam.
+                        reported_nan = True
+                        bad = [n for n, p in model.named_parameters()
+                               if p.grad is not None and not torch.isfinite(p.grad).all()]
+                        total = sum(1 for p in model.parameters() if p.grad is not None)
+                        # Group by top-level module. "first 6" is misleading here:
+                        # named_parameters() starts at the vision encoder, so a NaN
+                        # that originates at the loss and propagates everywhere looks
+                        # identical to one that starts in the backbone. The share of
+                        # each module is what distinguishes them.
+                        by_mod: dict[str, int] = {}
+                        for n in bad:
+                            by_mod[n.split(".")[0]] = by_mod.get(n.split(".")[0], 0) + 1
+                        print(f"[train] fold{fold} ep{epoch} step{step}: FIRST "
+                              f"non-finite gradient in {len(bad)}/{total} params "
+                              f"with grads; by module: {by_mod}")
+                        print(f"[train]   loss parts: "
+                              f"{ {k: round(float(v), 4) for k, v in parts.items()} }")
+                        print(f"[train]   patients in the accumulated batches: "
+                              f"{recent_ids}")
+                    scaler.update()
                 opt.zero_grad()
                 # A skipped step (inf/nan gradients) must not advance the LR
                 # schedule, or OneCycleLR drifts out of sync with real progress.
-                if scaler.get_scale() >= prev_scale:
+                if torch.isfinite(gnorm) and scaler.get_scale() >= prev_scale:
                     sched.step()
             # parts are detached tensors; converting every step would force a
             # host sync per iteration. Accumulate and format occasionally.
@@ -187,16 +326,43 @@ def train_fold(cfg, fold: int, train_idx, val_idx, test_idx, device) -> dict:
         metrics = evaluate(model, vl, cfg, device)
         metrics["epoch"] = epoch
         metrics["split"] = "inner_val"
+        if skipped:
+            # Recorded, not just printed: a fold that skipped many steps trained
+            # on less than it appears to, and that belongs in the archive.
+            metrics["skipped_steps"] = skipped
+            metrics["overflow_steps"] = overflowed
+            how = (f"{overflowed} from fp32 norm overflow (gradients themselves "
+                   f"finite), {skipped - overflowed} from true NaN/inf")
+            print(f"[train] fold{fold} ep{epoch}: skipped {skipped} optimizer "
+                  f"step(s): {how}")
+        # A fold that skipped EVERY step this epoch is not training at all: the
+        # weights are exactly what they were, and it will report an untrained
+        # model as if it were a result. Give up on this initialisation and say so.
+        if skipped and skipped >= opt_steps_per_epoch and epoch > 0:
+            raise _FoldStalled(
+                f"fold{fold} skipped all {skipped} optimizer steps at epoch {epoch}")
         log.append(metrics)
         monitor = monitor_value(metrics, cfg.train.monitor)
         if _is_better(monitor, best):
             best, best_epoch, patience = monitor, epoch, 0
             save(ckpt_dir / "best.pt", metrics)
         else:
+            # Patience does not run during warmup. Under OneCycleLR the first
+            # epochs sit at a fraction of peak LR (8e-6 against 2e-4 here), so
+            # epoch 0 is an essentially untrained model whose validation AUC is
+            # a draw from noise on ~24 patients. Letting that draw set the bar
+            # is selection on noise, and it is not hypothetical: run 13's fold 2
+            # peaked at ep0 (0.620), then climbed 0.436 -> 0.571 over epochs 4-8
+            # with grounding lift rising to +0.272 and still going, and was
+            # stopped anyway because patience had been counting from ep0.
+            if epoch + 1 < int(getattr(cfg.train, "early_stop_min_epochs", 0)):
+                continue
             patience += 1
             if patience >= cfg.train.early_stop_patience:
                 print(f"[train] early stop fold{fold} @ ep{epoch} (best ep{best_epoch})")
                 break
+
+        _warn_if_monitor_is_frozen(log, fold, cfg.train.monitor)
 
     # Always leave a usable checkpoint. If the monitor was NaN every epoch
     # (single-class validation split) there is no "best", but downstream tools
@@ -274,13 +440,65 @@ def _report_pooled(summary: list[dict], cfg) -> dict:
     return pooled
 
 
+def _archive(run_id: str, cfg, summary: list, pooled: dict) -> str:
+    """Write the one artifact that must outlive the checkpoints.
+
+    Everything heavy — best.pt, last.pt — is gitignored and namespaced by run id,
+    so it survives only as long as the disk. This file is small, tracked, and
+    holds the resolved config plus every per-fold metric AND the out-of-fold
+    predictions, which is enough to regenerate the pooled AUC, its CI and every
+    ROC curve without the weights.
+
+    Written because run 6 — the best result this project has produced — was
+    destroyed by runs 7, 8 and 9 writing to the same `checkpoints/fold{k}/` and
+    `runs/cv_summary.json` paths. Its headline AUC survived only in a log file
+    under /private/tmp, which the OS is free to delete. A result you cannot
+    reproduce a figure from is not a result.
+    """
+    out = Path(getattr(cfg.paths, "results_dir", "results"))
+    out.mkdir(parents=True, exist_ok=True)
+    path = out / f"{run_id}.json"
+    with open(path, "w") as fh:
+        # Config subclasses dict and its nested values stay plain dicts, so it
+        # serialises as-is — the archive records what actually ran, not what the
+        # YAML on disk says today.
+        json.dump({"run_id": run_id, "config": dict(cfg), "pooled": pooled,
+                   "folds": summary}, fh, indent=2, default=str)
+    print(f"[train] archived -> {path}")
+    return str(path)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/default.yaml")
     ap.add_argument("--device", default=None, help="override cfg.train.device")
+    ap.add_argument("--run_id", default=None,
+                    help="names checkpoints/<run_id>/ and results/<run_id>.json; "
+                         "defaults to a timestamp. Runs no longer overwrite each other.")
+    ap.add_argument("--set", action="append", default=[], metavar="KEY=VALUE",
+                    help="dotted config override, e.g. --set train.loss_weights.gen=0 "
+                         "--set seed=7. Repeatable. The resolved config is what "
+                         "results/<run_id>.json records, so an override is never "
+                         "invisible after the fact.")
     args = ap.parse_args()
-    cfg = load_config(args.config)
+    overrides = {}
+    for item in args.set:
+        if "=" not in item:
+            ap.error(f"--set expects KEY=VALUE, got {item!r}")
+        key, _, raw = item.partition("=")
+        overrides[key] = yaml.safe_load(raw)     # ints/floats/bools/lists, not str
+    cfg = load_config(args.config, overrides or None)
+    if overrides:
+        print(f"[train] config overrides: {overrides}")
     set_seed(cfg.seed)
+
+    run_id = args.run_id or datetime.now().strftime("%Y%m%d-%H%M%S")
+    # Join from a remembered root, not from the current value: mutating cfg in
+    # place means a second main() on the same object would nest run-b inside
+    # run-a. setdefault makes this idempotent however many times it runs.
+    root = cfg["paths"].setdefault("ckpt_root", cfg.paths.ckpt_dir)
+    cfg["paths"]["ckpt_dir"] = str(Path(root) / run_id)
+    print(f"[train] run_id={run_id}  checkpoints -> {cfg.paths.ckpt_dir}")
 
     device = resolve_device(args.device or getattr(cfg.train, "device", "auto"))
     amp_on, _ = amp_settings(device, cfg.train.amp)
@@ -301,13 +519,14 @@ def main() -> None:
 
     summary = []
     for fold, (tr, va, te) in enumerate(folds):
-        summary.append(train_fold(cfg, fold, tr, va, te, device))
+        summary.append(train_fold_with_retry(cfg, fold, tr, va, te, device))
 
     Path(cfg.paths.runs_dir).mkdir(parents=True, exist_ok=True)
     print(_summarize(summary, cfg.train.monitor))
     pooled = _report_pooled(summary, cfg)
     with open(os.path.join(cfg.paths.runs_dir, "cv_summary.json"), "w") as fh:
-        json.dump({"folds": summary, "pooled": pooled}, fh, indent=2)
+        json.dump({"folds": summary, "pooled": pooled, "run_id": run_id}, fh, indent=2)
+    _archive(run_id, cfg, summary, pooled)
 
 
 if __name__ == "__main__":

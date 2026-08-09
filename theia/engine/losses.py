@@ -23,6 +23,8 @@ import torch.nn.functional as F
 
 IGNORE = -1
 EPS = 1e-6
+# Sharpness of the logit map in grounding_loss; see the comment at its use.
+LOGIT_SCALE = 8.0
 
 
 def classification_loss(logits: dict, batch, device) -> torch.Tensor:
@@ -71,7 +73,17 @@ def grounding_loss(attn_maps: torch.Tensor, roi: torch.Tensor, device) -> torch.
     """attn_maps [B,Q,h,w] vs roi [B,S,1,H,W] -> Dice + BCE on the union map."""
     b, q, h, w = attn_maps.shape
     union = attn_maps.amax(dim=1)                                        # [B,h,w]
-    union = union / (union.amax(dim=(1, 2), keepdim=True) + EPS)
+    # Rescale the map to peak at 1. The denominator stays ATTACHED: detaching it
+    # removes the gradient through the maximum, which is one of the two things
+    # that let a flattened map recover (the other, the clamp, is gone entirely --
+    # see the BCE comment below). Detached, run 12 collapsed to uniform attention
+    # in all five folds, lift +0.001 and peak ratio 1.000 against run 6's +0.235.
+    #
+    # The floor bounds the amplification: attn_w is a softmax over patch tokens,
+    # so a diffuse map peaks near 1/n_tokens and dividing by that scales every
+    # upstream gradient by n_tokens, without bound as the map flattens further.
+    denom = union.amax(dim=(1, 2), keepdim=True).clamp_min(1e-3)
+    union = union / denom
 
     target = roi_to_grid(roi, h, w, device)
 
@@ -85,9 +97,27 @@ def grounding_loss(attn_maps: torch.Tensor, roi: torch.Tensor, device) -> torch.
     # binary_cross_entropy is autocast-banned on CUDA. Run it in fp32 with
     # autocast off; the result is numerically what the fp32 path always produced.
     with torch.amp.autocast(device_type=union.device.type, enabled=False):
-        u32 = union.float().clamp(EPS, 1.0 - EPS)
+        u32 = union.float()
         t32 = target.float()
-        bce = F.binary_cross_entropy(u32, t32)
+        # BCE on LOGITS rather than on clamped probabilities.
+        #
+        # The old form ran binary_cross_entropy on u clamped to (eps, 1-eps),
+        # which has two defects that only show up together. d/du of BCE is
+        # (u - t)/(u(1 - u)), so the floor sets the largest gradient the loss can
+        # emit -- 1e6 per element at eps=1e-6. And normalising by the maximum
+        # puts the peak cell at exactly 1.0 on EVERY step, so the peak always sat
+        # on the upper clamp, where the gradient is identically zero. A map that
+        # went uniform therefore had every cell clamped at once and could never
+        # recover: loss 9.30, max|grad| 0.000. Run 6 escaped only because random
+        # init is never exactly flat; run 12 fell in and all five folds reported
+        # peak ratio 1.000.
+        #
+        # with_logits has no clamp and no dead zone. Its gradient is
+        # (sigmoid(z) - t), bounded in [-1, 1] by construction, so this is both
+        # better conditioned than the original AND free of the fixed point.
+        # LOGIT_SCALE sets how sharply the map is pushed toward 0/1; at 8 the
+        # attainable range is sigmoid(+-4) = [0.018, 0.982].
+        bce = F.binary_cross_entropy_with_logits((u32 - 0.5) * LOGIT_SCALE, t32)
         inter = (u32 * t32).sum(dim=(1, 2))
         dice = 1 - (2 * inter + 1) / (u32.sum(dim=(1, 2)) + t32.sum(dim=(1, 2)) + 1)
         out = bce + dice.mean()
@@ -106,6 +136,15 @@ def total_loss(out: dict, batch, weights, device) -> tuple[torch.Tensor, dict]:
     if gen is None:
         gen = torch.zeros((), device=device)
     grd = grounding_loss(out["attn_maps"], batch["roi"], device)
-    loss = weights.cls * cls + weights.gen * gen + weights.ground * grd
+
+    # A zero-weighted term is DROPPED, not multiplied by zero. 0 * NaN is NaN, so
+    # scaling a term to zero does not remove its gradient from the backward pass —
+    # it silently poisons every parameter upstream of it while the reported loss
+    # stays finite. That also makes "set the weight to 0" a usable ablation for
+    # locating which term is producing a bad gradient, which it otherwise is not.
+    terms = [(float(weights.cls), cls), (float(weights.gen), gen),
+             (float(weights.ground), grd)]
+    loss = sum((w * t for w, t in terms if w != 0.0),
+               start=torch.zeros((), device=device))
     parts = dict(cls=cls.detach(), gen=gen.detach(), ground=grd.detach(), total=loss.detach())
     return loss, parts

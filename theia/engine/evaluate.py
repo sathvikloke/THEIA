@@ -164,6 +164,31 @@ def _rank_normalize_by_fold(rows: list[dict], key: str) -> np.ndarray:
     return out
 
 
+def _warn_single_class_folds(rows: list[dict], gene: str) -> None:
+    """A fold with only one class contributes noise to the pooled ranking.
+
+    Within-fold ranks are what make folds commensurable, but a fold whose
+    patients are all positive (or all negative) has no internal ordering that
+    means anything against the label: its ranks still spread across [0,1] and
+    enter the pooled AUC as if they were informative. The pooled number drifts
+    toward chance with nothing in the output to say why.
+
+    Not an error — with a rare gene it may be unavoidable, and the roadmap's
+    ALK/STK11/TP53 will hit it long before EGFR does. But it must be visible,
+    because it is indistinguishable from a genuinely weak model.
+    """
+    by_fold: dict[object, list[int]] = {}
+    for r in rows:
+        y = r.get(f"{gene}_true", -1)
+        if y != -1:
+            by_fold.setdefault(r.get("fold", 0), []).append(int(y))
+    bad = [f for f, ys in by_fold.items() if len(ys) > 1 and len(set(ys)) < 2]
+    if bad:
+        print(f"[eval] WARNING: {gene.upper()} fold(s) {sorted(map(str, bad))} hold a "
+              "single class; their within-fold ranks carry no signal and drag the "
+              "pooled AUC toward chance. Treat the pooled estimate as a lower bound.")
+
+
 def pooled_metrics(rows: list[dict], genes: list[str], bootstrap_n: int = 2000) -> dict:
     """One AUC per gene over the pooled out-of-fold predictions, with a CI."""
     out: dict[str, float] = {"n_patients": float(len(rows))}
@@ -183,6 +208,7 @@ def pooled_metrics(rows: list[dict], genes: list[str], bootstrap_n: int = 2000) 
             y = y[ok]
             if len(set(y.tolist())) < 2:
                 out[f"{g}_n"] = float(len(y)); out[f"{g}_auc"] = float("nan"); continue
+        _warn_single_class_folds(keep, g)
         p = _rank_normalize_by_fold(keep, f"{g}_prob")
         out[f"{g}_n"] = float(len(y))
         out[f"{g}_n_pos"] = float(y.sum()) if len(y) else 0.0
