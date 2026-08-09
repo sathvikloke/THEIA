@@ -109,6 +109,45 @@ Every lift is reported against a per-fold shuffled baseline, and
 0.65–1.00 on the *pointing game* while its attention map was literally constant.
 A localisation metric without a chance baseline would have called that a success.
 
+## 4b. The rationale arm is not ready for a reader study
+
+Blocking, and found only by building the case set and reading it.
+
+**The generation head decodes BioGPT's prior, not the annotation.** Given a
+patient whose annotation reads *"A spiculated round solid lesion, peripheral,
+with attachment to pleura"*, the model emits *"A 55-year-old woman was referred
+to our hospital for a solid nodule in the right lower lobe."* It invents age,
+sex and laterality that appear nowhere in its input. For a clinical rationale
+that is worse than useless — it is confident confabulation, and a reader study
+run on it would be measuring how fluent BioGPT is.
+
+The cause is checkpoint selection. `train.monitor` is
+`[[egfr_auc, 1.0], [grounding_mass_lift, 0.5]]` — it never looks at generation
+quality, so nothing stops it selecting an epoch whose LM is barely trained. On
+the refreshed fold it chose **epoch 1**.
+
+Before the rationale arm can be studied, all three of:
+
+1. a generation term in the monitor (teacher-forced loss on the inner
+   validation split is the obvious one), so the selected epoch has an LM worth
+   showing;
+2. a checkpoint with working grounding *and* a trained LM — currently no
+   checkpoint has both, because the configuration that trains grounding stably
+   (`gen = 0`) is the one that disables generation;
+3. a confabulation check — no demographic or laterality claim may appear that
+   is not derivable from the input.
+
+Two real defects were fixed along the way and are worth keeping fixed:
+
+- **Empty rationales.** BioGPT's tokenizer prepends `</s>`, which is also its
+  eos_token, so at inference the model's first prediction after the visual
+  prefix was `</s>` and `generate()` stopped immediately. Every rationale was
+  the empty string, silently.
+- **74% of training rationales were raw RadLex ids.** The AIM parser read the
+  readable term from `codeSystem`, which is where the AMC-* files put it; the
+  R01-* files put it in a nested `iso:displayName`. 117 of 158 reports read like
+  *"A rid5801 rid5757 rid5741 lesion"*. Now 0.
+
 ## 5. Runs and their trustworthiness
 
 | run | config | EGFR | status |
