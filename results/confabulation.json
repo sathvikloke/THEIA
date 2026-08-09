@@ -1,0 +1,18 @@
+{
+  "n": 31,
+  "clean_rate": 0.967741935483871,
+  "ungroundable_rate": 0.0,
+  "unsupported_rate": 0.0,
+  "numeric_rate": 0.03225806451612903,
+  "specificity": {
+    "n": 31,
+    "distinct_frac": 0.22580645161290322,
+    "self_overlap": 0.5465182725284159,
+    "cross_overlap": 0.5292324172350302,
+    "cross_overlap_sd": 0.012004305563942014,
+    "specificity_gap": 0.017285855293385666,
+    "p_value": 0.07784431137724551,
+    "n_perm": 500
+  },
+  "gate_pass": false
+}

@@ -111,6 +111,9 @@ def build(cfg, ckpt: str, out_dir: str) -> None:
     img_dir = Path(out_dir) / "img"
     img_dir.mkdir(exist_ok=True)
     presentations, key = [], []
+    pres_pids: list[str] = []      # patient behind each presentation, for the gate
+    reports_by_pid = {r['patient_id']: r.get('report', '') for r in
+                      (json.loads(l) for l in open(rows))}
     genes = model.genes
 
     for pid_i in picks:
@@ -141,7 +144,32 @@ def build(cfg, ckpt: str, out_dir: str) -> None:
             payload = dict(arms[arm])
             payload["questions"] = ARM_QUESTIONS[arm]
             presentations.append(dict(token=token, arm_payload=payload))
+            pres_pids.append(item['patient_id'])
             key.append(dict(token=token, patient_id=item["patient_id"], arm=arm))
+
+    # Gate the rationales before anything reaches a reader.
+    #
+    # This is the one failure a reader cannot catch: a fluent clinical sentence
+    # is indistinguishable from a correct one unless you hold the source. The
+    # checkpoint the previous monitor selected produced ungroundable claims --
+    # an age, a sex, a referral history -- in 65% of its rationales, while
+    # later epochs of the SAME run produced none. So the failure is a selection
+    # artefact, and shipping it would have cost the reader cohort's time to
+    # discover something a regex finds in a second.
+    from theia.analysis.confabulation import audit, gate, specificity
+
+    pairs = [(p["arm_payload"]["rationale"], reports_by_pid[pid])
+             for p, pid in zip(presentations, pres_pids) if "rationale" in p["arm_payload"]]
+    if pairs:
+        result = audit(pairs)
+        ok, msg = gate(result, spec=specificity(pairs))
+        print(f"[reader] confabulation gate: {'PASS' if ok else 'FAIL'} — {msg}")
+        if not ok:
+            raise RuntimeError(
+                f"refusing to write a case set: {msg} "
+                "Select a checkpoint whose LM has trained (train.monitor now "
+                "includes gen_loss), or run theia.analysis.confabulation to see "
+                "which claims are being invented.")
 
     rng.shuffle(presentations)
     with open(Path(out_dir) / "presentations.json", "w") as fh:
