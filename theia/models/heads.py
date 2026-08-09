@@ -133,6 +133,12 @@ class GenerationHead(nn.Module):
         self.tokenizer.padding_side = "right"
         self.lm = AutoModelForCausalLM.from_pretrained(lm_name)
         self.max_new_tokens = max_new_tokens
+        # Whatever this tokenizer actually prepends to a sequence — read it off
+        # rather than assuming bos_token_id. For BioGPT the two disagree:
+        # bos_token is <s> (0) but the tokenizer prepends </s> (2). Guessing
+        # wrong here puts generation in a state training never saw.
+        probe = self.tokenizer("x", return_tensors="pt").input_ids[0]
+        self.seq_start_id = int(probe[0])
         lm_dim = self.lm.get_input_embeddings().embedding_dim
         self.visual_proj = nn.Linear(dim, lm_dim)
 
@@ -156,13 +162,42 @@ class GenerationHead(nn.Module):
 
     @torch.no_grad()
     def generate(self, region_emb: torch.Tensor, device) -> list[str]:
+        """Decode a rationale from the visual prefix.
+
+        The sequence-start token is appended to the prefix, and it is not
+        optional. BioGPT's tokenizer prepends `</s>` to every sequence, and
+        `</s>` is ALSO its eos_token. Training therefore sees
+
+            [visual prefix] + [</s>] + rationale tokens
+
+        so at inference the model's first prediction after the prefix is exactly
+        `</s>` — which is correct behaviour, and which `generate()` reads as
+        "stop". The result was a single EOS token and an empty string for every
+        patient. Nothing raised: the reader-study builder happily wrote 31
+        blank rationales, and the arm that exists to be judged on its
+        explanation had no explanation in it.
+
+        Feeding the start token explicitly puts inference in the same state
+        training left the model in, so decoding continues into real text.
+        """
         prefix = self._prefix(region_emb)
-        attn = torch.ones(prefix.shape[:2], device=device)
+        b = prefix.shape[0]
+        start = torch.full((b, 1), self.seq_start_id, device=device, dtype=torch.long)
+        start_emb = self.lm.get_input_embeddings()(start)
+        inputs_emb = torch.cat([prefix, start_emb], dim=1)
+        attn = torch.ones(inputs_emb.shape[:2], device=device)
         out = self.lm.generate(
-            inputs_embeds=prefix,
+            inputs_embeds=inputs_emb,
             attention_mask=attn,
             max_new_tokens=self.max_new_tokens,
+            min_new_tokens=8,          # a one-token reply is not a rationale
             do_sample=False,
+            # Greedy decoding on a short, templated corpus loops: measured
+            # "attachment to pleura, attachment to pleura, attachment to
+            # pleura". Readers would mark that down for a decoding artefact
+            # rather than for anything the model got wrong about the image.
+            no_repeat_ngram_size=4,
             pad_token_id=self.tokenizer.pad_token_id,
         )
-        return self.tokenizer.batch_decode(out, skip_special_tokens=True)
+        return [t.strip() for t in
+                self.tokenizer.batch_decode(out, skip_special_tokens=True)]

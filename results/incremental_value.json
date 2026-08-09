@@ -1,0 +1,45 @@
+{
+  "gene": "EGFR",
+  "per_seed": [
+    {
+      "run_id": "run16-nogen-s1337",
+      "seed": 1337,
+      "n": 122,
+      "stalled_folds": [
+        1
+      ],
+      "clinical_auc": 0.7593749999999999,
+      "clinical_plus_theia_auc": 0.7673611111111112,
+      "delta": 0.00798611111111125,
+      "delta_lo": -0.04620149511710317,
+      "delta_hi": 0.0650333355137695,
+      "p": 0.782
+    },
+    {
+      "run_id": "ms-s42",
+      "seed": 42,
+      "n": 153,
+      "stalled_folds": [],
+      "clinical_auc": 0.779424778761062,
+      "clinical_plus_theia_auc": 0.7356194690265487,
+      "delta": -0.04380530973451324,
+      "delta_lo": -0.10661339549677977,
+      "delta_hi": 0.02050955407895522,
+      "p": 0.175
+    },
+    {
+      "run_id": "ms-s7",
+      "seed": 7,
+      "n": 153,
+      "stalled_folds": [],
+      "clinical_auc": 0.8051991150442478,
+      "clinical_plus_theia_auc": 0.776216814159292,
+      "delta": -0.02898230088495579,
+      "delta_lo": -0.0926529229161594,
+      "delta_hi": 0.03808848991267688,
+      "p": 0.372
+    }
+  ],
+  "delta_mean": -0.021600499836119263,
+  "delta_sd": 0.026673133643154864
+}

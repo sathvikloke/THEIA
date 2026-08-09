@@ -217,27 +217,46 @@ you, because 2 is a legal number.
 
 ### Current measured result
 
-| run | cohort | encoder | crops | pooled EGFR AUC |
-|---|---|---|---|---|
-| 1 | 117 pt, 23 pos | fine-tuned | centred | 0.426 [0.307, 0.546] |
-| 2 | 153 pt, 40 pos | frozen | centred | 0.573 [0.470, 0.676] |
-| 3 | 153 pt, 40 pos | last-2 unfrozen | jittered | 0.654 [0.558, 0.751] |
-| 4 | 153 pt, 40 pos | + backbone_lr_mult 0.1 | jittered | 0.632 [0.534, 0.727] — reverted |
-| **6** | **153 pt, 40 pos** | **+ composite monitor** | **jittered** | **0.656 [0.560, 0.747]** |
+Full detail, with every number's provenance and each run's trustworthiness, is
+in **[docs/RESULTS.md](docs/RESULTS.md)**. The short version:
 
-Run 3 is the first whose interval excludes chance. KRAS remains at chance
-(0.522 [0.400, 0.639]), consistent with its flat learning curve — keep it
-exploratory.
+| model | EGFR AUC | note |
+|---|---|---|
+| smoking status alone | **0.794** [0.695, 0.882] | one chart variable |
+| clinical (age, sex, ethnicity, smoking, pack-years) | 0.764–0.805 | no imaging |
+| **THEIA, 3 seeds** | **0.627 ± 0.041** | range 0.597–0.674 |
+| frozen BiomedCLIP + logistic regression, same folds | 0.617 ± 0.052 | no training |
+| radiomics | 0.526–0.662 | depends on analytic choices |
 
-Grounding works in **4 of 5 folds**: mean mass lift **+0.235 ± 0.140** against a
-0.039 chance baseline, with pointing at 0.95–1.00 in those four and 0.00 in
-fold 3. The fix was checkpoint selection — selecting on `egfr_auc` alone and then
-reporting grounding meant the grounding number came from whichever epoch won on
-AUC. A composite monitor quadrupled mean lift (+0.060 → +0.235) at no cost to
-classification (0.654 → 0.656).
+Three findings that should be read together, because individually each is
+easy to misread:
 
-One fold still does not localise. Report it as working-but-not-universal, not
-solved.
+**The images carry EGFR signal.** At n=153 a permutation test on frozen
+features gives p = 0.010 (it was p = 0.52 at n=117). This is settled.
+
+**The architecture does not exploit it.** A logistic regression on frozen
+features, scored through THEIA's own nested folds, is statistically
+indistinguishable from the full grounded multimodal model (0.617 ± 0.052 vs
+0.627 ± 0.041).
+
+**Neither beats the chart.** The question that decides the project is whether
+imaging adds anything a clinician does not already have. Repeated per seed with
+the baseline rebuilt on each seed's folds and a paired bootstrap:
+
+> **(clinical + THEIA) − clinical = −0.022 ± 0.027, and every seed's CI includes zero.**
+
+So on this cohort, whatever EGFR signal the model extracts from CT is already
+carried by smoking status. Never-smokers here are 60.6% EGFR-mutant against
+8.3% (current) and 18.8% (former); OR 7.69, Fisher p = 1.7e-6.
+
+Grounding works in 2–4 of 5 folds depending on the run, always reported against
+a per-fold shuffled baseline. KRAS remains at chance.
+
+**Quote the multi-seed number, not a single run.** Pooled EGFR moved 0.597 /
+0.612 / 0.674 across three seeds of the same configuration. An earlier single
+run gave 0.660 with a CI excluding chance; that is one draw from a distribution
+with sd 0.041, and quoting it alone overstates both the effect and the
+precision.
 
 **Report the pooled out-of-fold AUC, not the mean of per-fold AUCs.** With ~23
 positives across 5 folds, a single held-out fold holds ~5, and an AUC from 5
@@ -246,6 +265,40 @@ interval that includes chance. Pooling every fold's out-of-fold prediction into
 one ranking gives ±0.12 at the same sample size. `train.py` prints the pooled
 figure as the headline and rank-normalises within fold first, because each fold
 is a different model and their probability scales are not comparable.
+
+### Reproducing the results
+
+Everything below runs from the archived `results/*.json` alone — no checkpoints,
+no GPU, no TCIA download. That is deliberate: the weights for this project's
+earlier best run no longer exist, and its curves would otherwise be lost.
+
+```bash
+python -m theia.analysis.aggregate --pattern 'results/ms-s*.json'   # headline +/- sd
+python -m theia.analysis.incremental --pattern 'results/ms-s*.json' # the decisive test
+python -m theia.analysis.figures                                    # figures/*.png
+```
+
+Reproducing the training itself needs the cohort (see
+[docs/DATA_REQUEST.md](docs/DATA_REQUEST.md)) and then:
+
+```bash
+bash scripts/multiseed.sh 1337 7 42
+```
+
+Two things a newcomer will otherwise trip over, both measured:
+
+**Run it on CUDA if you can.** On MPS the backward pass through the unfrozen ViT
+blocks hits a marginal numerical overflow: the forward is finite everywhere, the
+backward is NaN everywhere, and a fold that lands in it skips every optimizer
+step and never trains. `train.py` detects this and marks the fold stalled rather
+than reporting an untrained model, and the aggregator excludes stalled folds and
+counts them. `loss_weights.gen = 0` reduces it from total to partial but does not
+remove it.
+
+**Hold the evaluation protocol fixed when comparing arms.** The same features and
+estimator score 0.683 under a flat StratifiedKFold and 0.617 under the nested
+protocol — 0.066 from the protocol alone, larger than most effects reported in
+this literature.
 
 ## Known limitations
 
