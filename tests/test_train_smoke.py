@@ -379,3 +379,42 @@ def test_retry_never_fires_on_a_merely_bad_result(tmp_path, stub_model, monkeypa
     assert calls["n"] == 1, "a healthy fold was retried because its score was low"
     assert result["test"]["egfr_auc"] == 0.11
     assert "init_seed_offset" not in result
+
+
+def test_cli_overrides_are_applied_and_archived(tmp_path, stub_model, monkeypatch):
+    """--set must reach the config AND be visible in the archive afterwards.
+
+    An override that changes what ran but not what is recorded is how a result
+    gets misattributed to settings it was never produced under. The archive
+    stores the RESOLVED config for exactly this reason.
+    """
+    from theia.config import load_config
+    from theia.engine import train as train_mod
+
+    rows = _synthetic_cohort(tmp_path)
+    base = _cfg(tmp_path)
+
+    def fake_load(path, overrides=None, **kw):
+        cfg = base
+        if overrides:
+            for dotted, value in overrides.items():
+                node, *rest = dotted.split(".")
+                target = cfg[node]
+                for k in rest[:-1]:
+                    target = target[k]
+                target[rest[-1]] = value
+        return cfg
+
+    monkeypatch.setattr(train_mod, "load_config", fake_load)
+    monkeypatch.setattr("sys.argv", ["train", "--device", "cpu", "--run_id", "ovr",
+                                     "--set", "train.loss_weights.gen=0.0",
+                                     "--set", "train.epochs=1"])
+    train_mod.main()
+
+    blob = json.load(open(tmp_path / "results" / "ovr.json"))
+    assert blob["config"]["train"]["loss_weights"]["gen"] == 0.0, (
+        "override did not reach the archived config")
+    assert blob["config"]["train"]["epochs"] == 1
+    # YAML parsing, not raw strings — 0.0 must be a float, not "0.0".
+    assert isinstance(blob["config"]["train"]["loss_weights"]["gen"], float)
+    del load_config

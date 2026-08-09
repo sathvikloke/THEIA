@@ -31,6 +31,7 @@ from pathlib import Path
 from statistics import mean, stdev
 
 import torch
+import yaml
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -469,8 +470,21 @@ def main() -> None:
     ap.add_argument("--run_id", default=None,
                     help="names checkpoints/<run_id>/ and results/<run_id>.json; "
                          "defaults to a timestamp. Runs no longer overwrite each other.")
+    ap.add_argument("--set", action="append", default=[], metavar="KEY=VALUE",
+                    help="dotted config override, e.g. --set train.loss_weights.gen=0 "
+                         "--set seed=7. Repeatable. The resolved config is what "
+                         "results/<run_id>.json records, so an override is never "
+                         "invisible after the fact.")
     args = ap.parse_args()
-    cfg = load_config(args.config)
+    overrides = {}
+    for item in args.set:
+        if "=" not in item:
+            ap.error(f"--set expects KEY=VALUE, got {item!r}")
+        key, _, raw = item.partition("=")
+        overrides[key] = yaml.safe_load(raw)     # ints/floats/bools/lists, not str
+    cfg = load_config(args.config, overrides or None)
+    if overrides:
+        print(f"[train] config overrides: {overrides}")
     set_seed(cfg.seed)
 
     run_id = args.run_id or datetime.now().strftime("%Y%m%d-%H%M%S")
