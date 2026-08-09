@@ -184,27 +184,41 @@ epoch 1. The hooks perturb the thing they measure. That rules out a structural
 cause; a divide-by-zero or `log(0)` would survive graph perturbation. It is a
 marginal overflow in the MPS backward, sensitive to graph structure.
 
-Two further results, both by direct test:
+Every loss term has now been ruled out individually, by dropping it from the
+graph (not scaling it by zero, which leaves the backward attached):
 
-- **The generation term is necessary.** Removing it runs clean through epoch 3.
-- **Grounding is irrelevant.** At `ground = 0.0` (the term dropped entirely, not
-  scaled by zero) the NaN reappears at the same step with the same 141/141
-  parameters. An earlier correlation — that run 12 had 0 stalls while runs 13–15
-  had 7–11 — suggested grounding was implicated. It was a coincidence of run 12
-  having a *dead* grounding loss, and the direct test refutes it.
-- **Retrying from a different initialisation does not reliably help.** Run 15's
+- **Grounding — ruled out.** At `ground = 0.0` the NaN reappears at the same step
+  with the same 141/141 parameters.
+- **Generation — ruled out.** At `gen = 0.0` the NaN still occurs, and the
+  affected set is **43/43 parameters: vision 28, grounding 7, classifier 8,
+  generation 0.** The generation head is not in the graph at all when this
+  happens. An earlier 3-epoch ablation looked clean and I reported the
+  generation head as implicated; that run was simply too short — with
+  `gen = 0` the first failure moves to fold 1 epoch 10 instead of fold 0
+  epoch 1.
+- **`nn.MultiheadAttention`'s math path — ruled out** (above).
+- **fp32 norm overflow — ruled out** (the counter reports 0 such steps).
+- **Retrying from a different initialisation — does not reliably help.** Run 15's
   fold 0 stalled on all three seeds tried.
 
-So this is a PyTorch/MPS numerical issue in the generation path, not a THEIA
-logic bug, and not something more instrumentation isolates on this hardware.
-The code now *detects* it (`_FoldStalled` when an epoch skips every optimizer
-step) and marks the fold stalled rather than reporting an untrained model as a
-result. That detection is the part that matters.
+What remains is the common factor in every configuration that fails: the
+backward through the **unfrozen BiomedCLIP ViT blocks** on MPS, whichever loss
+drives it. That matches the very first observation (the NaN parameter list begins
+at `blocks.10`) and the hook result (graph-structure sensitivity).
 
-Practical options, in order: run on CUDA, where the backward kernels differ; or
-train with `loss_weights.gen = 0`, which is measured to be stable and costs only
-the rationale head — a secondary contribution that neither the classification nor
-the grounding claims depend on.
+So this is a PyTorch/MPS numerical issue in the backbone's backward, not a THEIA
+logic bug, and not something more instrumentation isolates on this hardware.
+
+Practical position:
+
+- `loss_weights.gen = 0` **reduces** the failure from total to partial — folds
+  skip some steps and keep training rather than stalling outright — but does not
+  remove it. It is the best available setting on this machine, not a fix.
+- Running on CUDA, where the backward kernels differ, is the real test.
+- The machinery that matters is detection, not avoidance: `_FoldStalled` fires
+  when an epoch skips every optimizer step, the fold is marked stalled instead
+  of reporting an untrained model, and `theia.analysis.aggregate` excludes
+  stalled folds from the multi-seed estimate and reports how many there were.
 
 Related fix made while testing this: `total_loss` now **drops** a zero-weighted
 term instead of multiplying it by zero. `0 * NaN` is `NaN`, so scaling a term to

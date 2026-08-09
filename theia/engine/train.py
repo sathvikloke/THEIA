@@ -143,13 +143,18 @@ def train_fold_with_retry(cfg, fold: int, tr, va, te, device, max_retries: int =
     affected fold skips every optimizer step from then on, so its weights never
     change and it would report an untrained model as a result.
 
-    Measured, so nobody re-derives it: removing the GENERATION term prevents it;
-    removing the grounding term does not (tested directly at ground=0.0 — the
-    NaN reappears at the same step). Retrying from a different initialisation
-    was tried and does NOT reliably help: run 15's fold 0 stalled on all three
-    seeds. The retry is kept because it is cheap and sometimes works, but the
-    stall detection is the part that matters — without it the fold is silently
-    reported as a result.
+    Measured, so nobody re-derives it. Every loss term has been dropped from the
+    graph individually and NONE of them is the cause: at ground=0.0 the NaN
+    reappears unchanged, and at gen=0.0 it still occurs with the affected set
+    reading vision 28 / grounding 7 / classifier 8 / generation 0 — the
+    generation head is not even in the graph. What is common to every failing
+    configuration is the backward through the unfrozen ViT blocks. Retrying from
+    a different initialisation does NOT reliably help either: run 15's fold 0
+    stalled on all three seeds.
+
+    So the retry is kept only because it is cheap and occasionally works. The
+    stall DETECTION is the part that earns its place — without it the fold is
+    silently reported as a result.
 
     The retry criterion is deliberately NUMERICAL FAILURE, never performance. A
     fold is re-run only when it skipped every step of an epoch; a fold that
