@@ -17,10 +17,34 @@ over 5 nested folds, with within-fold rank normalisation, and bootstrap CIs.
 | smoking status alone | **0.794** | [0.695, 0.882] |
 | clinical (age, sex, ethnicity, smoking, pack-years) | 0.764–0.774 | [0.665, 0.859] |
 | clinical + radiomics | 0.783 | [0.690, 0.869] |
-| **THEIA** (run 12) | **0.660** | [0.556, 0.758] |
+| **THEIA, 3 seeds** | **0.627 ± 0.041** | range [0.597, 0.674] |
 | radiomics | 0.526–0.662 | see §3 |
 
-THEIA's CI excludes chance. It is also **beaten by a single chart variable.**
+**The multi-seed estimate is the one to quote, and it is lower than any single
+run suggested.** Per seed, with `gen = 0` (the measured-stable setting):
+
+| seed | EGFR AUC | 95% CI | n | stalled folds |
+|---|---|---|---|---|
+| 1337 | 0.674 | [0.558, 0.786] | 122 | 1 |
+| 7 | 0.612 | [0.497, 0.716] | 153 | 0 |
+| 42 | 0.597 | [0.482, 0.709] | 153 | 0 |
+
+Two of the three individual CIs include chance. Pooling all 428 out-of-fold
+predictions gives 0.624 [0.560, 0.685], which excludes chance — but that CI
+covers patient sampling only and absorbs none of the ±0.041 seed spread, so it
+is a point estimate and not the headline.
+
+Two things to be careful about:
+
+- **The best-looking seed is the least complete one.** 0.674 comes from the run
+  whose fold 1 stalled, so it is scored on 122 of 153 patients. The two runs on
+  the *full* cohort are the lower two, and their mean is 0.604.
+- **An earlier single run gave 0.660 [0.556, 0.758] with the CI excluding
+  chance** (run 12, generation term active). That number is real but it is one
+  draw from a distribution with sd 0.041; quoting it alone overstates both the
+  effect and the precision.
+
+THEIA is **beaten by a single chart variable** either way.
 
 In this cohort never-smokers are 60.6% EGFR-mutant against 8.3% (current) and
 18.8% (former); OR 7.69, Fisher exact p = 1.7e-6. This is the textbook
