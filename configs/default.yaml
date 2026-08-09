@@ -182,7 +182,26 @@ train:
   # reporting grounding means the grounding number comes from whichever epoch
   # won on AUC: fold 1 selected ep4 (lift +0.007) while its best grounding sat
   # at ep12 (+0.069). Weighted so AUC still leads.
-  monitor: [[egfr_auc, 1.0], [grounding_mass_lift, 0.5]]
+  #
+  # gen_loss is a LOSS, so it carries a NEGATIVE weight; monitor_value handles
+  # direction through the sign and needs no separate convention.
+  #
+  # The magnitude is measured, not guessed, and the measurement matters because
+  # the intuitive value is off by more than an order of magnitude. Over 14
+  # epochs on fold 4 the observed swings on the selection split were:
+  #
+  #   gen_loss             3.404 -> 0.587   swing 2.817
+  #   egfr_auc             0.648 -> 0.704   swing 0.056
+  #   grounding_mass_lift                   swing 0.007
+  #
+  # gen_loss moves ~50x more than egfr_auc, so a weight of -0.05 (let alone
+  # -0.25) would hand checkpoint selection entirely to the language model. At
+  # -0.01 its contribution swings 0.028, half of AUC's — enough to break ties
+  # toward an epoch whose LM has actually trained, not enough to outvote the
+  # classifier. Concretely on that fold it moves the selection off epoch 1
+  # (gen_loss 2.15, the epoch that produced confabulated rationales) onto epoch
+  # 4 (gen_loss 0.85) at identical AUC.
+  monitor: [[egfr_auc, 1.0], [grounding_mass_lift, 0.5], [gen_loss, -0.01]]
 
 grounding_pretrain:
   enabled: false               # set true to pretrain grounding on RadGenome first

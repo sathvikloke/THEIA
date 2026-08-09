@@ -1,0 +1,28 @@
+# Exact versions the archived results in results/ were produced under.
+#
+# requirements.txt uses >= so the project stays installable as the ecosystem
+# moves. This file is the opposite: it records what actually ran, because
+# library versions have already changed results in this project more than once.
+#
+#   * numpy 2.0 removed ndarray.ptp(), which broke the reader-study overlay
+#     renderer at the first case.
+#   * F.binary_cross_entropy is on PyTorch's CUDA autocast banned list, so the
+#     grounding loss raises on the first step of any CUDA run under amp: true.
+#   * The MPS backward instability documented in docs/RESULTS.md is
+#     torch-version dependent and does not reproduce under backward hooks.
+#
+# Reproducing the numbers means pinning here. Developing means requirements.txt.
+python==3.13
+torch==2.10.0
+torchvision==0.25.0
+transformers==5.2.0
+peft==0.19.1
+timm==1.0.27
+sacremoses==0.1.1
+numpy==2.1.3
+scipy==1.15.3
+scikit-learn==1.6.1
+pandas==2.2.3
+pydicom==3.0.2
+SimpleITK==2.5.5
+matplotlib==3.10.0
