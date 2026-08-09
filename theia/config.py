@@ -72,6 +72,8 @@ def validate_config(cfg: Config) -> None:
                for suffix in ("auc", "sens", "spec")} | {
         "grounding_mass", "grounding_pointing", "grounding_iou",
         "grounding_mass_lift", "grounding_pointing_lift", "grounding_iou_lift",
+        # A loss, so it belongs in a monitor with a NEGATIVE weight.
+        "gen_loss",
     }
     for mk in monitor_keys:
         if mk not in allowed:

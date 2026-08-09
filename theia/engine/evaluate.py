@@ -49,6 +49,7 @@ def evaluate(model, loader, cfg, device, full: bool = False) -> dict:
     probs = {g: [] for g in genes}
     ys = {g: [] for g in genes}
     ground: dict[str, list[float]] = {}
+    gen_losses: list[float] = []
 
     for batch in loader:
         out = model(batch, device)
@@ -62,6 +63,15 @@ def evaluate(model, loader, cfg, device, full: bool = False) -> dict:
             ys[g].extend(y[keep].tolist())
         for k, v in grounding_metrics(out["attn_maps"], batch["roi"]).items():
             ground.setdefault(k, []).extend(v)
+        # Teacher-forced rationale loss on the selection split. Emitted so
+        # train.monitor can see the generation head at all: without it, nothing
+        # stops checkpoint selection landing on an epoch whose LM is untrained,
+        # which is exactly what happened -- the selected epoch was 1, and the
+        # resulting rationales were BioGPT's prior, confabulating an age, a sex
+        # and a laterality that were nowhere in the input.
+        gl = out.get("gen_loss")
+        if gl is not None and torch.isfinite(gl):
+            gen_losses.append(float(gl))
 
     metrics: dict[str, float] = {}
     for g in genes:
@@ -100,6 +110,11 @@ def evaluate(model, loader, cfg, device, full: bool = False) -> dict:
 
     for k, v in ground.items():
         metrics[k] = float(np.mean(v)) if v else float("nan")
+    if gen_losses:
+        # Reported as a LOSS (lower is better). monitor_value handles direction
+        # through the sign of the weight, so a monitor entry reads
+        # ["gen_loss", -0.25] rather than needing a separate convention.
+        metrics["gen_loss"] = float(np.mean(gen_losses))
     for base in ("grounding_mass", "grounding_pointing", "grounding_iou"):
         real, sham = metrics.get(base), metrics.get(f"{base}_shuffled")
         if real is not None and sham is not None:

@@ -1051,3 +1051,75 @@ def test_generation_head_never_returns_an_empty_rationale(monkeypatch):
     out = head.generate(torch.randn(2, 8, 4), "cpu")
     assert len(out) == 2
     assert all(t.strip() for t in out), f"empty rationale returned: {out!r}"
+
+
+def test_monitor_treats_a_negative_weight_as_lower_is_better():
+    """gen_loss is a loss, so its weight is negative and less must win.
+
+    Without a generation term the monitor could not see the language model at
+    all, and selection landed on epoch 1 with an untrained LM whose rationales
+    confabulated an age, a sex and a laterality absent from the input.
+    """
+    from theia.engine.train import monitor_value
+
+    mon = [["egfr_auc", 1.0], ["gen_loss", -0.01]]
+    trained = monitor_value({"egfr_auc": 0.704, "gen_loss": 0.85}, mon)
+    untrained = monitor_value({"egfr_auc": 0.704, "gen_loss": 2.15}, mon)
+    assert trained > untrained, "a lower generation loss did not score better"
+
+    # ...but it must not outvote the classifier. A 0.05 AUC gain has to beat a
+    # 1.3 reduction in generation loss, or checkpoint selection becomes an LM
+    # contest. This is what pins the weight's magnitude.
+    better_auc = monitor_value({"egfr_auc": 0.754, "gen_loss": 2.15}, mon)
+    assert better_auc > trained, "generation loss outweighed a real AUC gain"
+
+
+def test_evaluate_emits_gen_loss_for_the_monitor(tmp_path):
+    """The metric has to exist, or the monitor silently scores NaN forever.
+
+    monitor_value returns NaN if any component is missing, and _is_better treats
+    NaN as "never an improvement" -- so a monitor naming a metric evaluate() does
+    not emit would stop every checkpoint from being written.
+    """
+    import torch
+
+    from theia.engine.evaluate import evaluate
+
+    class Stub:
+        genes = ["egfr"]
+
+        def eval(self):
+            return self
+
+        def __call__(self, batch, device):
+            n = batch["egfr"].shape[0]
+            return {"logits": {"egfr": torch.randn(n, 2)},
+                    "attn_maps": torch.rand(n, 4, 14, 14),
+                    "gen_loss": torch.tensor(1.234)}
+
+    roi = torch.zeros(4, 3, 1, 56, 56)
+    roi[:, :, :, 8:24, 8:24] = 1.0
+    loader = [{"egfr": torch.tensor([0, 1, 0, 1]), "roi": roi}]
+    cfg = type("C", (), {"data": type("D", (), {"target_genes": ["EGFR"]})(),
+                         "eval": type("E", (), {"bootstrap_n": 10})()})()
+
+    m = evaluate(Stub(), loader, cfg, "cpu")
+    assert "gen_loss" in m, "evaluate() does not emit gen_loss; the monitor would be NaN"
+    assert m["gen_loss"] == pytest.approx(1.234, abs=1e-6)
+
+
+def test_config_accepts_gen_loss_in_the_monitor():
+    """validate_config must know gen_loss is a real metric.
+
+    Its whole purpose is to reject a monitor naming something evaluate() never
+    emits, so adding the metric without updating the allow-list would make the
+    new default config fail to load.
+    """
+    from theia.config import load_config
+
+    cfg = load_config("configs/default.yaml")
+    keys = [m[0] if not isinstance(m, str) else m for m in cfg.train.monitor]
+    assert "gen_loss" in keys, "default monitor no longer includes generation"
+    # And an explicitly bad key must still be rejected.
+    with pytest.raises(ValueError, match="not emitted by evaluate"):
+        load_config("configs/default.yaml", {"train.monitor": [["nonsense_metric", 1.0]]})
