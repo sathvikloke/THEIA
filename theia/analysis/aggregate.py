@@ -6,10 +6,20 @@ re-running the same configuration, which on this project moved pooled EGFR
 across 0.621 / 0.656 / 0.660 from initialisation and MPS non-determinism alone.
 Quoting one run implies a precision the estimator does not have.
 
+What "seed variance" covers here, stated precisely because it is easy to
+overclaim: `cfg.seed` drives BOTH the model initialisation and
+`nested_kfold_indices`, so changing it re-partitions the cohort as well as
+re-initialising the model. The spread reported below is therefore variance over
+(split x initialisation) jointly, not initialisation alone. That is the more
+useful quantity — it answers "how much would this number move if someone
+repeated the study" — but it must not be described as initialisation variance,
+and it cannot be decomposed into the two parts without holding one fixed.
+
 Two summaries are produced, and they answer different questions:
 
-  across-seed mean +/- sd     how much the headline moves if you rerun it.
-                              This is the honest headline.
+  across-seed mean +/- sd     how much the headline moves if you rerun it,
+                              re-splitting and re-initialising. The honest
+                              headline.
   pooled-over-all-seeds AUC   every seed's out-of-fold predictions merged into
                               one ranking, rank-normalised within (seed, fold).
                               Tighter, and appropriate only as a point estimate
@@ -82,8 +92,9 @@ def main() -> None:
         out["across_seed_min"], out["across_seed_max"] = min(per_run), max(per_run)
         print(f"\n[agg] ACROSS-SEED  {a.gene} AUC {m:.3f} +/- {s:.3f} (sd, n={len(per_run)}) "
               f"range [{min(per_run):.3f}, {max(per_run):.3f}]")
-        print("[agg]   ^ this is the headline: it includes rerun variance, "
-              "which a single run's CI does not.")
+        print("[agg]   ^ the headline: includes rerun variance, which a single "
+              "run's CI does not. The seed drives both the split and the model "
+              "init, so this is (split x init) variance, not init alone.")
     elif per_run:
         out["across_seed_mean"] = per_run[0]
         print(f"\n[agg] only one run; {a.gene} AUC {per_run[0]:.3f} "
