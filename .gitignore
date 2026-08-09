@@ -11,5 +11,9 @@ checkpoints/
 *.pt
 *.log
 .DS_Store
-reader_study/cases/
+# Generated reader-study materials. The KEY file maps token -> arm and
+# would unblind the study for anyone with repo access, so it must not be
+# tracked. The previous pattern was anchored to the repo root and never
+# matched theia/reader_study/cases/, so the key was committed once.
+**/reader_study/cases/
 *.tcia

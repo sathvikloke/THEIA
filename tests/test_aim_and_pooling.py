@@ -320,3 +320,49 @@ def _roi_flat_helper():
     roi = torch.zeros(4, 4, 1, 224, 224)
     roi[:, :, :, 90:150, 90:150] = 1.0
     return roi
+
+
+def test_radlex_display_name_is_read_when_codesystem_is_absent(tmp_path):
+    """Both AIM dialects in this collection must yield readable terms.
+
+    NSCLC-Radiogenomics ships two shapes for the same fact:
+
+        AMC-*: <typeCode code="RID5828" codeSystem="peripheral"/>
+        R01-*: <typeCode code="RID5828"><iso:displayName value="peripheral"/></typeCode>
+
+    Reading only codeSystem left 117 of 158 reports as raw ids -- "A rid5801
+    rid5757 rid5741 lesion, rid5828" -- so 74% of the rationale supervision was
+    unreadable codes and the generation head learned to emit them. Nothing
+    raised; the text was simply wrong, and it only surfaced when a reader-study
+    case set was inspected by eye.
+    """
+    from theia.data.aim import parse_aim
+
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+<ImageAnnotationCollection xmlns="gme://caCORE.caCORE/4.4/edu.northwestern.radiology.AIM"
+                           aimVersion="4.0">
+ <imageAnnotations><ImageAnnotation>
+  <imagingObservationEntityCollection><ImagingObservationEntity>
+   <imagingObservationCharacteristicCollection>
+    <ImagingObservationCharacteristic>
+     <typeCode code="RID5828" codeSystemName="RadLex_3.9.1">
+       <iso:displayName xmlns:iso="uri:iso.org:21090" value="peripheral"/>
+     </typeCode>
+     <label value="Axial Location"/>
+    </ImagingObservationCharacteristic>
+    <ImagingObservationCharacteristic>
+     <typeCode code="RID46011" codeSystem="partially solid" codeSystemName="RadLex.3.10"/>
+     <label value="Texture"/>
+    </ImagingObservationCharacteristic>
+   </imagingObservationCharacteristicCollection>
+  </ImagingObservationEntity></imagingObservationEntityCollection>
+ </ImageAnnotation></imageAnnotations>
+</ImageAnnotationCollection>"""
+    p = tmp_path / "a.xml"
+    p.write_text(xml)
+
+    ann = parse_aim(str(p))
+    blob = repr(ann).lower()   # ann holds non-JSON types; repr is enough here
+    assert "peripheral" in blob, "displayName term was not read"
+    assert "partially solid" in blob, "codeSystem term was not read"
+    assert "rid5828" not in blob, "raw RadLex id leaked into the annotation"

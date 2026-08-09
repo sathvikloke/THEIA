@@ -992,3 +992,62 @@ def test_a_zero_weighted_loss_term_is_dropped_not_multiplied_by_zero():
     loss.backward()
     assert torch.isfinite(p.grad).all(), (
         "a zero-weighted term still contributed NaN to the backward pass")
+
+
+def test_generation_head_never_returns_an_empty_rationale(monkeypatch):
+    """A rationale of "" is the failure the reader study cannot survive.
+
+    BioGPT's tokenizer prepends `</s>` to every sequence and `</s>` is ALSO its
+    eos_token, so training sees [visual prefix] + [</s>] + text. At inference the
+    model's first prediction after the prefix is therefore `</s>` -- correct
+    behaviour, which generate() reads as "stop". The result was a single EOS
+    token and an empty string for every patient, and nothing raised: the
+    reader-study builder wrote 31 blank rationales, so the one arm that exists
+    to be judged on its explanation had no explanation in it.
+
+    Uses a tiny stub LM whose tokenizer has the same BOS/EOS collision, so the
+    test needs no download and still exercises the real code path.
+    """
+    import torch
+
+    from theia.models.heads import GenerationHead
+
+    class Tok:
+        pad_token, eos_token, unk_token = "<pad>", "</s>", "<unk>"
+        pad_token_id, eos_token_id = 1, 2
+        padding_side = "right"
+
+        def __call__(self, text, **kw):
+            n = 1 if isinstance(text, str) else len(text)
+            # The collision: id 2 leads every sequence AND means end-of-sequence.
+            return type("E", (), {"input_ids": torch.tensor([[2, 5, 6]] * n),
+                                  "attention_mask": torch.ones(n, 3, dtype=torch.long),
+                                  "to": lambda self, d: self})()
+
+        def batch_decode(self, ids, skip_special_tokens=True):
+            return ["a solid spiculated lesion" for _ in range(len(ids))]
+
+    class LM(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.emb = torch.nn.Embedding(16, 8)
+
+        def get_input_embeddings(self):
+            return self.emb
+
+        def generate(self, inputs_embeds=None, **kw):
+            # Emit one token per position it was given, so a caller that forgets
+            # the start token gets a length-1 (empty) result.
+            n = inputs_embeds.shape[1]
+            return torch.full((inputs_embeds.shape[0], max(n - 8, 1)), 7)
+
+    head = GenerationHead.__new__(GenerationHead)
+    torch.nn.Module.__init__(head)
+    head.tokenizer, head.lm = Tok(), LM()
+    head.max_new_tokens = 16
+    head.seq_start_id = 2
+    head.visual_proj = torch.nn.Linear(4, 8)
+
+    out = head.generate(torch.randn(2, 8, 4), "cpu")
+    assert len(out) == 2
+    assert all(t.strip() for t in out), f"empty rationale returned: {out!r}"

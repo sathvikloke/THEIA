@@ -88,9 +88,27 @@ def parse_aim(path: str) -> AimAnnotation:
                 if _tag(child) == "label":
                     label = _val(child)
                 elif _tag(child) == "typeCode":
-                    # The human-readable term sits in codeSystem, oddly, with the
-                    # RadLex id in code. Prefer codeSystem, fall back to code.
-                    value = (child.get("codeSystem") or child.get("code") or "").strip()
+                    # The readable term is present in BOTH cohorts of this
+                    # collection, but in two different places, and reading only
+                    # the first silently degrades the other to raw RadLex ids:
+                    #
+                    #   AMC-*: <typeCode code="RID5828" codeSystem="peripheral">
+                    #   R01-*: <typeCode code="RID5828">
+                    #            <iso:displayName value="peripheral"/>
+                    #          </typeCode>
+                    #
+                    # Reading codeSystem alone left 117 of 158 reports looking
+                    # like "A rid5801 rid5757 rid5741 lesion, rid5828" — 74% of
+                    # the rationale supervision was unreadable codes, and the
+                    # generation head duly learned to emit them. Nothing failed
+                    # loudly; the text was simply wrong.
+                    display = ""
+                    for sub in child.iter():
+                        if _tag(sub) == "displayName" and sub.get("value"):
+                            display = sub.get("value").strip()
+                            break
+                    value = (child.get("codeSystem") or display
+                             or child.get("code") or "").strip()
             if label and value:
                 if label in MULTI:
                     ann.findings.append(value)
