@@ -1,0 +1,113 @@
+{
+  "gene": "EGFR",
+  "arms": {
+    "clinical": {
+      "n_patients": 153.0,
+      "egfr_n": 153.0,
+      "egfr_n_pos": 40.0,
+      "egfr_auc": 0.7640486725663715,
+      "egfr_auc_lo": 0.6646154347945509,
+      "egfr_auc_hi": 0.8526343355581366,
+      "egfr_sens": 0.775,
+      "egfr_spec": 0.584070796460177,
+      "paired_vs_theia": {
+        "n": 153,
+        "n_pos": 40,
+        "delta": -0.10542035398230087,
+        "delta_lo": -0.2204945380152536,
+        "delta_hi": 0.001809943571315915,
+        "p_two_sided": 0.058
+      }
+    },
+    "radiomics_legacy": {
+      "n_patients": 153.0,
+      "egfr_n": 153.0,
+      "egfr_n_pos": 40.0,
+      "egfr_auc": 0.6040929203539822,
+      "egfr_auc_lo": 0.49806753574383866,
+      "egfr_auc_hi": 0.7070366702909805,
+      "egfr_sens": 0.6,
+      "egfr_spec": 0.5221238938053098,
+      "paired_vs_theia": {
+        "n": 153,
+        "n_pos": 40,
+        "delta": 0.05453539823008846,
+        "delta_lo": -0.086616749203383,
+        "delta_hi": 0.184384221021361,
+        "p_two_sided": 0.434
+      }
+    },
+    "radiomics": {
+      "n_patients": 153.0,
+      "egfr_n": 153.0,
+      "egfr_n_pos": 40.0,
+      "egfr_auc": 0.5778761061946902,
+      "egfr_auc_lo": 0.4751441771349105,
+      "egfr_auc_hi": 0.6782327846572033,
+      "egfr_sens": 0.6,
+      "egfr_spec": 0.5221238938053098,
+      "paired_vs_theia": {
+        "n": 153,
+        "n_pos": 40,
+        "delta": 0.08075221238938046,
+        "delta_lo": -0.04364613756971981,
+        "delta_hi": 0.2021366742233874,
+        "p_two_sided": 0.189
+      }
+    },
+    "clinical+radiomics": {
+      "n_patients": 153.0,
+      "egfr_n": 153.0,
+      "egfr_n_pos": 40.0,
+      "egfr_auc": 0.7831858407079646,
+      "egfr_auc_lo": 0.6901404679518867,
+      "egfr_auc_hi": 0.869141031575518,
+      "egfr_sens": 0.85,
+      "egfr_spec": 0.6106194690265486,
+      "paired_vs_theia": {
+        "n": 153,
+        "n_pos": 40,
+        "delta": -0.12455752212389393,
+        "delta_lo": -0.23541961185095323,
+        "delta_hi": -0.020879307007355876,
+        "p_two_sided": 0.014
+      }
+    },
+    "clinical+theia": {
+      "n_patients": 153.0,
+      "egfr_n": 153.0,
+      "egfr_n_pos": 40.0,
+      "egfr_auc": 0.7576327433628318,
+      "egfr_auc_lo": 0.6578407369210466,
+      "egfr_auc_hi": 0.8479374841088227,
+      "egfr_sens": 0.775,
+      "egfr_spec": 0.584070796460177,
+      "paired_vs_clinical": {
+        "n": 153,
+        "n_pos": 40,
+        "delta": -0.0064159292035397275,
+        "delta_lo": -0.06571432185761138,
+        "delta_hi": 0.048048219844558544,
+        "p_two_sided": 0.832
+      }
+    }
+  },
+  "theia_run_id": "run12",
+  "theia_pooled": {
+    "n_patients": 158.0,
+    "egfr_n": 153.0,
+    "egfr_n_pos": 40.0,
+    "egfr_auc": 0.6596238938053097,
+    "egfr_auc_lo": 0.5556604607028336,
+    "egfr_auc_hi": 0.7582589446589446,
+    "egfr_sens": 0.675,
+    "egfr_spec": 0.5486725663716814,
+    "kras_n": 152.0,
+    "kras_n_pos": 32.0,
+    "kras_auc": 0.5192708333333333,
+    "kras_auc_lo": 0.394383959251018,
+    "kras_auc_hi": 0.6381137904592232,
+    "kras_sens": 0.5,
+    "kras_spec": 0.49166666666666664
+  }
+}

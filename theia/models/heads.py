@@ -13,6 +13,8 @@ tumor ROI mask so "where the model looks" is anchored to real anatomy.
 """
 from __future__ import annotations
 
+import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -47,12 +49,48 @@ class GroundingHead(nn.Module):
     def forward(self, patch_tokens: torch.Tensor, grid_hw: tuple[int, int]) -> dict:
         b = patch_tokens.shape[0]
         q = self.queries.unsqueeze(0).expand(b, -1, -1)          # [B, Q, D]
-        region_emb, attn_w = self.attn(q, patch_tokens, patch_tokens,
-                                       need_weights=True, average_attn_weights=True)
+        region_emb, attn_w = self._attend(q, patch_tokens)
         region_emb = self.norm(region_emb)                       # [B, Q, D]
         h, w = grid_hw
         maps = attn_w.view(b, -1, h, w)                          # [B, Q, H', W']
         return dict(region_emb=region_emb, attn_maps=maps)
+
+    def _attend(self, q: torch.Tensor, kv: torch.Tensor):
+        """Multi-head attention computed explicitly, using self.attn's parameters.
+
+        Mathematically identical to
+            self.attn(q, kv, kv, need_weights=True, average_attn_weights=True)
+        and it deliberately keeps the nn.MultiheadAttention submodule so the
+        parameter names — and therefore every existing checkpoint — are unchanged.
+
+        Written out because this head needs the attention WEIGHTS, not just the
+        output. Asking nn.MultiheadAttention for them forces its non-fused math
+        path, and that path's backward is the leading suspect for the recurring
+        NaN: 141 parameters, all in the unfrozen ViT blocks feeding this
+        attention, go non-finite in the backward while every loss in the forward
+        stays finite. Computing it here keeps the graph explicit and the softmax
+        under our control.
+
+        The softmax is taken in float32 regardless of the incoming dtype: it is
+        the one step where a large logit spread turns into inf/NaN, and under
+        autocast it would otherwise run in a narrower type.
+        """
+        b, n_q, d = q.shape
+        n_k = kv.shape[1]
+        heads = self.attn.num_heads
+        dh = d // heads
+
+        qw, kw, vw = self.attn.in_proj_weight.chunk(3, dim=0)
+        qb, kb, vb = self.attn.in_proj_bias.chunk(3, dim=0)
+        Q = F.linear(q, qw, qb).view(b, n_q, heads, dh).transpose(1, 2)
+        K = F.linear(kv, kw, kb).view(b, n_k, heads, dh).transpose(1, 2)
+        V = F.linear(kv, vw, vb).view(b, n_k, heads, dh).transpose(1, 2)
+
+        logits = (Q @ K.transpose(-2, -1)) / math.sqrt(dh)       # [B,H,Q,K]
+        attn = torch.softmax(logits.float(), dim=-1).to(V.dtype)
+        out = (attn @ V).transpose(1, 2).reshape(b, n_q, d)
+        out = self.attn.out_proj(out)
+        return out, attn.mean(dim=1)                             # average over heads
 
     @staticmethod
     def pooled_from_regions(region_emb: torch.Tensor, mode: str = "mean") -> torch.Tensor:

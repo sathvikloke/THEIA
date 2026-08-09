@@ -99,6 +99,27 @@ def validate_config(cfg: Config) -> None:
     if errs:
         raise ValueError("invalid config:\n  - " + "\n  - ".join(errs))
 
+    _warn_coupled(cfg)
+
+
+def _warn_coupled(cfg: Config) -> None:
+    """Warn on settings that are individually legal but wrong together.
+
+    Not errors — you may legitimately sweep either one. But this exact pair has
+    already cost this project a run: backbone_lr_mult was tuned to 0.3 for the
+    warm-start experiments, and leaving it there after switching pretraining off
+    silently reproduces neither configuration. A wrong-but-plausible AUC is worse
+    than a crash, because nothing tells you to look.
+    """
+    warm = cfg.model.get("grounding_pretrain_ckpt")
+    mult = float(cfg.train.get("backbone_lr_mult", 1.0))
+    want = 0.3 if warm else 1.0
+    if mult != want:
+        state = "set" if warm else "null"
+        print(f"[config] WARNING: model.grounding_pretrain_ckpt is {state} but "
+              f"train.backbone_lr_mult is {mult}, not the measured {want} for that "
+              "case. See the comments on both keys; this pair must move together.")
+
 
 def _set_dotted(cfg: dict, dotted: str, value: Any) -> None:
     keys = dotted.split(".")

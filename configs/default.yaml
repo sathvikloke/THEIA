@@ -7,6 +7,10 @@ paths:
   pathology_dir: data/raw/tcga_wsi             # roadmap (Q2): H&E whole-slide images
   runs_dir: runs
   ckpt_dir: checkpoints
+  # Tracked in git, unlike runs/ and checkpoints/. One small JSON per run holding
+  # the resolved config, every per-fold metric and the out-of-fold predictions —
+  # enough to rebuild the pooled AUC, its CI and every ROC curve without weights.
+  results_dir: results
 
 data:
   modalities: [CT]             # roadmap: [CT, PATH] once the pathology branch lands
@@ -92,16 +96,41 @@ model:
   # "max" makes prediction and localization share the same evidence. "mean" is
   # the original behaviour and lets an unsupervised query feed the classifier.
   region_pooling: mean         # mean | max
-  # Warm-start vision + grounding from theia.engine.pretrain (label-free
-  # cohorts: NSCLC-Radiomics 421 + LIDC-IDRI 875 masked patients). null = off.
-  # Pretrained on NSCLC-Radiomics (420 masked patients, no genomic labels):
-  # val grounding lift +0.735, attention mass 16x its shuffled baseline.
-  grounding_pretrain_ckpt: checkpoints/grounding_pretrain.pt
-  # Transfer the vision encoder as well? Measured over a full 5-fold run:
-  #   true  -> grounding +0.235 -> +0.749 (5/5 folds), pooled EGFR 0.656 -> 0.528
-  #   false -> grounding head only; keeps BiomedCLIP's features for prediction
-  # Pretraining adapts the ViT to NSCLC-Radiomics' scanners and loses the
-  # texture that carries EGFR signal on this cohort.
+  # Warm-start from theia.engine.pretrain (label-free cohorts: NSCLC-Radiomics
+  # 421 masked patients). null = off, and off is the measured right answer.
+  #
+  # Pretraining itself works: val grounding lift +0.735, attention mass 16x its
+  # shuffled baseline on held-out NSCLC-Radiomics patients. What it does NOT do
+  # is help this cohort. Three full 5-fold runs, pooled EGFR / grounding lift:
+  #   off (run 6)                  0.656 [0.560, 0.747]  +0.235, 4/5 folds
+  #   vision+grounding (run 8)     0.528 [0.423, 0.633]  +0.749, 5/5 folds
+  #   grounding head only (run 9)  0.597 [0.496, 0.696]  +0.235, 2/5 folds
+  #
+  # CAVEAT, and it is a big one: runs 6-8 predate train.grad_clip. Run 8's fold 0
+  # provably diverged to NaN and kept its epoch-0 checkpoint, and its fold 2 shows
+  # the same signature (best ep0, stopped at ep8 = patience exactly). So run 8's
+  # 0.528 is not a clean measurement of what warm-starting costs -- an unknown
+  # part of that drop is one or two dead folds. Run 7 had the same dead fold 0.
+  # Run 9 is the only pretraining arm with no divergence, so 0.597 is trustworthy;
+  # run 6's training log did not survive, so its divergence status is unknown.
+  # The pretraining arms need re-running under clipping before the comparison
+  # above can be quoted in a paper. The grounding conclusions are unaffected --
+  # those were measured per fold on folds that trained normally.
+  #
+  # Transferring both buys near-perfect localisation and costs the entire
+  # classification signal: pretraining adapts the ViT to a radiotherapy-planning
+  # cohort's scanners, keeping "where is the dense thing" and losing the texture
+  # that carries EGFR. Transferring the head alone is incoherent — the head was
+  # fitted against pretrained features, and given BiomedCLIP's instead it
+  # collapses to uniform attention in 3 of 5 folds (peak ratio 1.12, 1.13, 3.88
+  # vs 43.1 and 31.3 in the two that survived). Run 9's mean lift matches run 6
+  # only because two folds carry it; it is bimodal, not better.
+  #
+  # The encoder and the grounding head must move together or not at all, and
+  # together they are worse. Set this only to reproduce runs 8/9.
+  grounding_pretrain_ckpt: null
+  # Only read when grounding_pretrain_ckpt is set. See above for why both
+  # settings lose to no pretraining at all.
   warm_start_vision: false
 
 lora:
@@ -124,8 +153,16 @@ train:
   #   with grounding_pretrain_ckpt: 0.3. The blocks arrive already localising,
   #     so the full rate destroys it and 0.1 starves the classifier. Fold 0:
   #     mult 0.1 -> EGFR 0.484 / lift +0.810;  0.3 -> EGFR 0.663 / lift +0.798.
-  backbone_lr_mult: 0.3
+  # This value tracks grounding_pretrain_ckpt. It is 1.0 because that key is
+  # null; setting the checkpoint without also setting 0.3 here reproduces
+  # neither run 6 nor run 8/9.
+  backbone_lr_mult: 1.0
   weight_decay: 0.01
+  # Max global gradient norm. There was no clipping at all until run 10, whose
+  # fold 0 went NaN at epoch 8 and then kept its epoch-0 checkpoint — an
+  # untrained model contributing 1/5 of the pooled estimate. Off CUDA the
+  # GradScaler is disabled, so nothing was skipping non-finite steps either.
+  grad_clip: 1.0
   warmup_ratio: 0.05
   amp: true                    # honoured on CUDA only; reported at startup
   loss_weights:
@@ -133,6 +170,14 @@ train:
     gen: 1.0
     ground: 0.5
   early_stop_patience: 8
+  # Patience does not start counting until this many epochs have run. Under
+  # OneCycleLR the opening epochs sit far below peak LR, so epoch 0 is an
+  # essentially untrained model whose inner-validation AUC (on ~24 patients,
+  # ~6 positives) is a draw from noise. Letting it set the bar is selection on
+  # noise: run 13's fold 2 peaked at ep0, then climbed steadily with grounding
+  # lift reaching +0.272 and still rising, and was stopped anyway. Folds 0 and 2
+  # both died this way in that run, i.e. 2 of 5 never trained.
+  early_stop_min_epochs: 10
   # One key, or several to be summed. Selecting on egfr_auc alone and then
   # reporting grounding means the grounding number comes from whichever epoch
   # won on AUC: fold 1 selected ep4 (lift +0.007) while its best grounding sat
