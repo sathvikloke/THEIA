@@ -20,6 +20,21 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Data usage: cite NSCLC-RADIOGENOMICS (TCIA), RadGenome-Chest CT, and any TCGA
-cohorts per their respective data-use agreements. This license covers the code
-only, not the datasets.
+---
+
+NOTE ON DATA AND MODEL WEIGHTS
+
+This licence covers the SOURCE CODE only.
+
+The NSCLC-Radiogenomics and NSCLC-Radiomics collections are distributed by The
+Cancer Imaging Archive under their own terms (CC BY 3.0 and CC BY-NC 3.0
+respectively at time of writing). No imaging or clinical data is included in
+this repository. Obtain them from TCIA directly and honour the Data Usage
+Policy attached to each collection.
+
+BiomedCLIP and BioGPT carry their own licences from their respective authors.
+Trained checkpoints derived from them may inherit those terms.
+
+This software is a research prototype. It is not a medical device, has not been
+reviewed or approved by any regulatory body, and must not be used to inform
+clinical care.
