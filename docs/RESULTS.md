@@ -73,6 +73,51 @@ This does not say the imaging is uninformative in principle. It says that on
 158 patients, whatever EGFR signal this model extracts from CT is already
 carried by smoking status.
 
+## 2b. The images do carry signal — and the architecture adds nothing to it
+
+At n=153 the permutation tests are significant for the first time. Both were
+null at n=117 (p = 0.52 deep, 0.94 radiomics):
+
+| features | pooled OOF AUC | permutation p (200 shuffles) |
+|---|---|---|
+| frozen BiomedCLIP + L2 logistic regression | 0.683 | **0.010** |
+| radiomics + L2 logistic regression | 0.680 | **0.010** |
+
+So there is real EGFR signal in these images. That was an open question and it
+is now answered.
+
+The uncomfortable part is the comparison against the full model. Scored through
+**exactly THEIA's nested splits**, per seed:
+
+| seed | frozen probe | THEIA | diff |
+|---|---|---|---|
+| 1337 | 0.626 | 0.674 | −0.048 |
+| 42 | 0.562 | 0.597 | −0.035 |
+| 7 | 0.665 | 0.612 | +0.053 |
+| **mean** | **0.617 ± 0.052** | **0.627 ± 0.041** | — |
+
+A logistic regression on frozen features is statistically indistinguishable from
+the whole grounded multimodal network. THEIA is nominally ahead by 0.010, which
+is a quarter of its own seed sd.
+
+One protocol caution, because it nearly became a wrong headline. The same
+features and estimator score **0.683 under `diagnostics.py`'s flat
+StratifiedKFold** and **0.617 under the nested protocol** — 0.066 of difference
+from the evaluation protocol alone, with no change to the model. Read against
+the flat number the probe appears to beat THEIA outright; read against the
+matched one it does not. Any comparison between arms has to hold the protocol
+fixed, and that gap is larger than most effects reported in this literature.
+
+Learning curves are still rising at the full cohort, and their spread is
+collapsing, so more labelled data still helps:
+
+| n train | frozen probe | radiomics |
+|---|---|---|
+| 38 | 0.484 ± 0.169 | 0.560 ± 0.126 |
+| 76 | 0.627 ± 0.066 | 0.531 ± 0.097 |
+| 115 | 0.654 ± 0.050 | 0.621 ± 0.050 |
+| 153 | 0.665 ± 0.028 | 0.624 ± 0.029 |
+
 ## 3. Radiomics is dominated by analytic choices, not biology
 
 Six pre-specifiable pipelines, same folds, same estimator family:
@@ -108,6 +153,45 @@ Every lift is reported against a per-fold shuffled baseline, and
 `grounding_peak_ratio` flags attention that is flat. That matters: run 12 scored
 0.65–1.00 on the *pointing game* while its attention map was literally constant.
 A localisation metric without a chance baseline would have called that a success.
+
+## 4b. The rationale arm is not ready for a reader study
+
+Blocking, and found only by building the case set and reading it.
+
+**The generation head decodes BioGPT's prior, not the annotation.** Given a
+patient whose annotation reads *"A spiculated round solid lesion, peripheral,
+with attachment to pleura"*, the model emits *"A 55-year-old woman was referred
+to our hospital for a solid nodule in the right lower lobe."* It invents age,
+sex and laterality that appear nowhere in its input. For a clinical rationale
+that is worse than useless — it is confident confabulation, and a reader study
+run on it would be measuring how fluent BioGPT is.
+
+The cause is checkpoint selection. `train.monitor` is
+`[[egfr_auc, 1.0], [grounding_mass_lift, 0.5]]` — it never looks at generation
+quality, so nothing stops it selecting an epoch whose LM is barely trained. On
+the refreshed fold it chose **epoch 1**.
+
+Before the rationale arm can be studied, all three of:
+
+1. a generation term in the monitor (teacher-forced loss on the inner
+   validation split is the obvious one), so the selected epoch has an LM worth
+   showing;
+2. a checkpoint with working grounding *and* a trained LM — currently no
+   checkpoint has both, because the configuration that trains grounding stably
+   (`gen = 0`) is the one that disables generation;
+3. a confabulation check — no demographic or laterality claim may appear that
+   is not derivable from the input.
+
+Two real defects were fixed along the way and are worth keeping fixed:
+
+- **Empty rationales.** BioGPT's tokenizer prepends `</s>`, which is also its
+  eos_token, so at inference the model's first prediction after the visual
+  prefix was `</s>` and `generate()` stopped immediately. Every rationale was
+  the empty string, silently.
+- **74% of training rationales were raw RadLex ids.** The AIM parser read the
+  readable term from `codeSystem`, which is where the AMC-* files put it; the
+  R01-* files put it in a nested `iso:displayName`. 117 of 158 reports read like
+  *"A rid5801 rid5757 rid5741 lesion"*. Now 0.
 
 ## 5. Runs and their trustworthiness
 

@@ -314,6 +314,11 @@ def main() -> None:
                   f"95% CI [{d['delta_lo']:+.3f}, {d['delta_hi']:+.3f}]  "
                   f"p={d['p_two_sided']:.3f}", flush=True)
 
+    # Store each arm's out-of-fold predictions, not just its metrics. Without
+    # them a comparison ROC cannot be drawn without refitting every baseline,
+    # and the whole point of the archive is that figures survive without a rerun.
+    results["oof"] = preds
+
     out = a.out or os.path.join(cfg.paths.results_dir, "baselines.json")
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, "w") as fh:

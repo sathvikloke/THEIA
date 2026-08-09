@@ -79,8 +79,33 @@ def build(cfg, ckpt: str, out_dir: str) -> None:
 
     rows = os.path.join(cfg.paths.processed_dir, "rows.jsonl")
     ds = RadiogenomicsDataset(rows, cfg.data.target_genes)
-    rng = random.Random(cfg.seed)
-    picks = rng.sample(range(len(ds)), min(cfg.reader_study.n_cases, len(ds)))
+
+    # Cases MUST come from this checkpoint's own held-out fold.
+    #
+    # Sampling the whole cohort — which is what this did — draws mostly from the
+    # fold's training set, where the prediction is optimistic and the rationale
+    # is partly memorised. Readers would then be scoring the model's recall, and
+    # a favourable result would mean nothing. The fold id is stored in the
+    # checkpoint, so the held-out indices can be regenerated exactly.
+    fold = state.get("fold")
+    if fold is None:
+        raise ValueError(f"{ckpt} does not record which fold it was trained on; "
+                         "cannot establish which patients it never saw")
+    from theia.data.dataset import nested_kfold_indices
+
+    seed = int((state.get("cfg") or {}).get("seed", cfg.seed))
+    splits = list(nested_kfold_indices(rows, cfg.split.stratify_on, cfg.split.n_folds,
+                                       seed, float(cfg.split.get("inner_val_frac", 0.2))))
+    held_out = list(splits[int(fold)][2])
+    rng = random.Random(seed)
+    n_want = int(cfg.reader_study.n_cases)
+    if len(held_out) < n_want:
+        print(f"[reader] fold {fold} holds only {len(held_out)} patients; "
+              f"n_cases={n_want} requested. Using all {len(held_out)}. To reach "
+              f"{n_want}, build from several folds' checkpoints and concatenate.")
+    picks = rng.sample(held_out, min(n_want, len(held_out)))
+    print(f"[reader] {len(picks)} case(s) drawn from fold {fold}'s held-out set "
+          f"(seed {seed}); the model never trained on any of them")
 
     Path(out_dir).mkdir(parents=True, exist_ok=True)
     img_dir = Path(out_dir) / "img"
