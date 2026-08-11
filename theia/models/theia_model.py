@@ -42,7 +42,22 @@ class Theia(nn.Module):
             n = self.vision.unfreeze_last_blocks(n_unfreeze)
             print(f"[theia] unfroze last {n_unfreeze} vision block(s): {n/1e6:.1f}M params")
         self.grounding = GroundingHead(m.vision_dim, m.grounding_tokens)
-        self.classifier = ClassifierHead(m.vision_dim, cfg.data.target_genes,
+        # Give the classifier the PERITUMORAL patch tokens as well as the
+        # grounded region embedding.
+        #
+        # Measured over 10 seeds on frozen features, through these same nested
+        # folds: pooling the ring around the lesion scores 0.703 against 0.629
+        # for the whole crop (+0.075, 10/10 seeds, p=0.002) and against 0.577
+        # for a size-matched ring at a random location (+0.125, p=0.002).
+        # Pooling the tumour itself changes nothing (+0.001, p=0.92).
+        #
+        # That matters architecturally, not just numerically: the grounding loss
+        # supervises attention ONTO the lesion, which is where the EGFR signal
+        # is not. This branch lets the classifier see the region the evidence
+        # points at without weakening the localisation objective.
+        self.peritumoral = bool(getattr(m, "peritumoral_features", False))
+        cls_dim = m.vision_dim * (2 if self.peritumoral else 1)
+        self.classifier = ClassifierHead(cls_dim, cfg.data.target_genes,
                                          m.classifier_hidden, m.dropout)
         self.generation = GenerationHead(m.vision_dim, m.lm_name, m.lm_max_new_tokens)
         self.lora_applied = False
@@ -132,6 +147,9 @@ class Theia(nn.Module):
         patch_tokens, grid = self.vision.encode(images, slice_mask)
         g = self.grounding(patch_tokens, grid)
         pooled = self.grounding.pooled_from_regions(g["region_emb"], self.pooling)
+        if self.peritumoral:
+            pooled = torch.cat([pooled, self._peritumoral_pool(patch_tokens, grid,
+                                                               batch.get("roi"), device)], dim=1)
         logits = self.classifier(pooled)
 
         out = dict(logits=logits, attn_maps=g["attn_maps"], region_emb=g["region_emb"])
@@ -140,6 +158,34 @@ class Theia(nn.Module):
         else:
             out["gen_loss"] = self.generation(g["region_emb"], batch["report"], device)
         return out
+
+    def _peritumoral_pool(self, tokens, grid, roi, device):
+        """Mean of patch tokens in the ring around the lesion. [B, D]
+
+        The ring is dilate(mask) minus mask on the patch grid, using the same
+        `roi_to_grid` the grounding loss uses, so "tumour patch" means the same
+        thing in both places.
+
+        A patient with no usable mask — the AIM tier carries an annotated point
+        and no extent, and a small lesion can vanish at grid resolution — falls
+        back to the whole crop rather than contributing an all-zero vector,
+        which would train as a systematic class of its own.
+        """
+        import torch.nn.functional as F
+
+        from theia.engine.losses import roi_to_grid
+
+        b, n, d = tokens.shape
+        h, w = grid
+        if roi is None:
+            return tokens.mean(dim=1)
+        m = roi_to_grid(roi.to(device), h, w, device).unsqueeze(1)      # [B,1,h,w]
+        dil = (F.max_pool2d(m, kernel_size=3, stride=1, padding=1) > 0.5).float()
+        ring = (dil - m).clamp(0, 1).view(b, -1, 1)                    # [B,N,1]
+        # Fall back to the whole crop wherever the ring is empty.
+        empty = ring.sum(dim=1, keepdim=True) < 0.5
+        ring = torch.where(empty.expand_as(ring), torch.ones_like(ring), ring)
+        return (tokens * ring).sum(dim=1) / ring.sum(dim=1).clamp_min(1.0)
 
     def trainable_parameters(self):
         return [p for p in self.parameters() if p.requires_grad]

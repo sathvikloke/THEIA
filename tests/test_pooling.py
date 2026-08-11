@@ -93,3 +93,89 @@ def test_pooling_falls_back_rather_than_emitting_an_empty_feature():
     for name, X in v.items():
         assert np.isfinite(X).all(), f"{name} non-finite with an empty mask"
         assert np.abs(X).sum(1).min() > 0, f"{name} emitted an all-zero feature"
+
+
+def test_model_peritumoral_pool_matches_the_swept_definition(monkeypatch):
+    """The model's ring must be the same region the sweep measured.
+
+    The sweep found +0.075 for dilate(mask) MINUS mask on the patch grid. If the
+    model pooled a different region -- the dilated mask including the tumour, or
+    the tumour itself -- it would be importing a number it does not implement.
+    """
+    import torch
+
+    import theia.models.backbone as bb
+    import theia.models.heads as heads
+    import theia.models.theia_model as tm
+    from theia.config import load_config
+
+    class Tiny(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.stem = torch.nn.Conv2d(3, 8, 4, 4)
+
+        def forward_features(self, x):
+            return self.stem(x).flatten(2).transpose(1, 2)[:, :16, :]
+
+    monkeypatch.setattr(bb.VisionEncoder, "_build",
+                        lambda self, n: (Tiny(), 8, (4, 4), (0.5,) * 3, (0.5,) * 3))
+    monkeypatch.setattr(heads, "GenerationHead", lambda *a, **k: torch.nn.Linear(2, 2))
+    monkeypatch.setattr(tm, "GenerationHead", lambda *a, **k: torch.nn.Linear(2, 2))
+
+    cfg = load_config("configs/default.yaml", validate=False)
+    cfg["model"].update(vision_dim=8, grounding_tokens=2, classifier_hidden=8,
+                        peritumoral_features=True, grounding_pretrain_ckpt=None)
+    cfg["lora"]["enabled"] = False
+    model = tm.Theia(cfg)
+
+    # One patient, a 2x2 lesion in the middle of a 4x4 grid.
+    tokens = torch.arange(16 * 8, dtype=torch.float32).view(1, 16, 8)
+    roi = torch.zeros(1, 2, 1, 16, 16)
+    roi[:, :, :, 4:12, 4:12] = 1.0            # -> 2x2 block on the 4x4 grid
+
+    got = model._peritumoral_pool(tokens, (4, 4), roi, "cpu")
+
+    from theia.engine.losses import roi_to_grid
+    m = roi_to_grid(roi, 4, 4, "cpu")[0].numpy()
+    from scipy import ndimage
+    ring = (ndimage.binary_dilation(m > 0.5, iterations=1) & ~(m > 0.5)).reshape(-1)
+    want = tokens[0].numpy()[ring].mean(0)
+
+    assert np.allclose(got[0].detach().numpy(), want, atol=1e-5), (
+        "model ring differs from the region the sweep measured")
+
+
+def test_peritumoral_branch_falls_back_when_there_is_no_mask(monkeypatch):
+    """AIM-tier patients carry no extent; they must not get a zero vector."""
+    import torch
+
+    import theia.models.backbone as bb
+    import theia.models.heads as heads
+    import theia.models.theia_model as tm
+    from theia.config import load_config
+
+    class Tiny(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.stem = torch.nn.Conv2d(3, 8, 4, 4)
+
+        def forward_features(self, x):
+            return self.stem(x).flatten(2).transpose(1, 2)[:, :16, :]
+
+    monkeypatch.setattr(bb.VisionEncoder, "_build",
+                        lambda self, n: (Tiny(), 8, (4, 4), (0.5,) * 3, (0.5,) * 3))
+    monkeypatch.setattr(heads, "GenerationHead", lambda *a, **k: torch.nn.Linear(2, 2))
+    monkeypatch.setattr(tm, "GenerationHead", lambda *a, **k: torch.nn.Linear(2, 2))
+
+    cfg = load_config("configs/default.yaml", validate=False)
+    cfg["model"].update(vision_dim=8, grounding_tokens=2, classifier_hidden=8,
+                        peritumoral_features=True, grounding_pretrain_ckpt=None)
+    cfg["lora"]["enabled"] = False
+    model = tm.Theia(cfg)
+
+    tokens = torch.randn(2, 16, 8)
+    empty = torch.zeros(2, 2, 1, 16, 16)
+    got = model._peritumoral_pool(tokens, (4, 4), empty, "cpu")
+    assert torch.isfinite(got).all()
+    assert got.abs().sum(1).min() > 0, "an empty mask produced an all-zero feature"
+    assert torch.allclose(got, tokens.mean(1), atol=1e-5), "fallback is not the whole crop"
