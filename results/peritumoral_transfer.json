@@ -1,0 +1,53 @@
+{
+  "what": "Does the frozen-feature peritumoral gain (+0.075, 10/10 seeds, p=0.002) survive end-to-end training with model.peritumoral_features=true?",
+  "answer": "Directionally yes, 3/3 seeds, but at the edge of what n=153 resolves. Significance depends on an analysis choice made after seeing the data, so it is reported as suggestive, not established.",
+  "per_seed": {
+    "1337": {
+      "base_auc": 0.6739583333333334,
+      "peri_auc": 0.6893805309734513,
+      "base_stalled_folds": [
+        1
+      ]
+    },
+    "42": {
+      "base_auc": 0.596570796460177,
+      "peri_auc": 0.655862831858407,
+      "base_stalled_folds": []
+    },
+    "7": {
+      "base_auc": 0.6117256637168141,
+      "peri_auc": 0.6790929203539823,
+      "base_stalled_folds": []
+    }
+  },
+  "paired_all3_seeds": {
+    "seeds": [
+      1337,
+      42,
+      7
+    ],
+    "n": 122,
+    "n_pos": 32,
+    "base": 0.697048611111111,
+    "peri": 0.7253472222222221,
+    "delta": 0.028298611111111094,
+    "lo": -0.03003434774548197,
+    "hi": 0.08822490409207145,
+    "p": 0.3362
+  },
+  "paired_clean_seeds_only": {
+    "seeds": [
+      42,
+      7
+    ],
+    "n": 153,
+    "n_pos": 40,
+    "base": 0.6200221238938053,
+    "peri": 0.6878318584070795,
+    "delta": 0.06780973451327421,
+    "lo": 0.0008710801393728678,
+    "hi": 0.13674558080808052,
+    "p": 0.0475
+  },
+  "caveat": "The 3-seed analysis is restricted to n=122 because the seed-1337 BASELINE has a stalled fold; the 2-seed analysis uses the full n=153 but drops a seed after the fact. Neither is pre-specified. base-s1337-rerun is training to remove the degenerate baseline so the 3-seed analysis can stand on the full cohort."
+}

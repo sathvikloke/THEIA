@@ -104,13 +104,22 @@ def clinical_features(rows: list[dict], csv_path: str) -> tuple[np.ndarray, list
     return np.nan_to_num(np.hstack(blocks).astype(np.float64)), names
 
 
-def oof_predictions(X: np.ndarray, rows: list[dict], gene: str, cfg) -> list[dict]:
+def oof_predictions(X: np.ndarray, rows: list[dict], gene: str, cfg,
+                    fit_fn=None) -> list[dict]:
     """Fit per outer fold on exactly THEIA's training portion; score its test fold.
 
     The estimator sees `train + inner_val`, which is the same data THEIA had --
     THEIA fit on train and selected its checkpoint on inner_val, so both arms
     consume identical information. C is chosen by an inner cross-validation
     inside that portion, never using the outer test fold.
+
+    `fit_fn(X, y, seed) -> fitted estimator with predict_proba` overrides the
+    default tuned logistic regression. It exists because the model family is not
+    always the right one: Gevaert et al. report that on THIS cohort "regularized
+    logistic regression modeling failed to find a significant performance", and
+    their 0.89 came from a decision tree over semantic features. Scoring a tree
+    through this same function keeps the folds identical, so the comparison
+    isolates the feature set rather than confounding it with the protocol.
     """
     rows_path = os.path.join(cfg.paths.processed_dir, "rows.jsonl")
     y = np.array([int(r.get("labels", {}).get(gene.upper(), -1)) for r in rows])
@@ -124,7 +133,7 @@ def oof_predictions(X: np.ndarray, rows: list[dict], gene: str, cfg) -> list[dic
         test_idx = np.array([i for i in te if y[i] != -1])
         if test_idx.size == 0 or len(set(y[fit_idx].tolist())) < 2:
             continue
-        clf = _tuned_logreg(X[fit_idx], y[fit_idx], cfg.seed)
+        clf = (fit_fn or _tuned_logreg)(X[fit_idx], y[fit_idx], cfg.seed)
         p = clf.predict_proba(X[test_idx])[:, 1]
         for i, prob in zip(test_idx, p):
             out.append({"patient_id": rows[i]["patient_id"], "fold": fold,
