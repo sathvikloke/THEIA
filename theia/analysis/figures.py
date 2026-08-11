@@ -11,6 +11,11 @@ unrecoverable.
                       overlapping CIs can still differ significantly when paired.
   fig3_seeds.png      Per-seed AUC for THEIA against the clinical baseline, to
                       show rerun spread next to the effect being claimed.
+  fig4_grounding.png  Each fold's attention mass joined to its OWN shuffled
+                      baseline. Paired, because chance depends on how much of
+                      the crop the tumour fills in that fold.
+  fig5_overlays.png   Attention over the CT with the tumour outlined. Needs a
+                      checkpoint (--overlay_ckpt); everything else does not.
 
 Deliberate choices, since a figure is an argument:
   * The chance line is drawn and labelled on every panel.
@@ -148,6 +153,112 @@ def fig_seeds(per_seed: list[dict], clinical: float, out: str) -> None:
     print(f"[fig] wrote {out}")
 
 
+def fig_grounding(rows: list[dict], out: str) -> None:
+    """Per-fold attention mass against each fold's OWN shuffled baseline.
+
+    Paired, not two independent distributions: the chance level depends on how
+    much of the crop the tumour occupies in that fold, so a single global
+    baseline would be wrong. Drawing the pairing is the whole point -- the claim
+    is "every fold beats its own chance level", and a bar chart of means cannot
+    show that.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    m = np.array([r["grounding_mass"] for r in rows])
+    s = np.array([r["grounding_mass_shuffled"] for r in rows])
+    order = np.argsort(m)
+    m, s = m[order], s[order]
+    x = np.arange(len(m))
+
+    fig, ax = plt.subplots(figsize=(6.2, 3.6), dpi=200)
+    for i in x:
+        ax.plot([i, i], [s[i], m[i]], color="0.75", lw=1.2, zorder=1)
+    ax.scatter(x, s, s=22, color="#8c8c8c", zorder=2, label="shuffled baseline")
+    ax.scatter(x, m, s=26, color="#08519c", zorder=3, label="model")
+    ax.set_xticks(x)
+    ax.set_xticklabels([f"f{i+1}" for i in x], fontsize=7)
+    ax.set_xlabel(f"held-out fold (n={len(m)}, sorted by model)", fontsize=9)
+    ax.set_ylabel("attention mass inside tumour", fontsize=9)
+    ax.set_ylim(0, max(m.max() * 1.15, 0.1))
+    ax.legend(fontsize=8, frameon=False, loc="upper left")
+    ax.set_title(f"mass {m.mean():.3f} vs {s.mean():.3f} chance "
+                 f"({m.mean()/s.mean():.1f}x), {int((m>s).sum())}/{len(m)} folds",
+                 fontsize=10)
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout(); fig.savefig(out); plt.close(fig)
+    print(f"[fig] wrote {out}")
+
+
+def fig_overlays(ckpt: str, cfg, out: str, n: int = 6) -> None:
+    """Attention over the CT for held-out patients, with the tumour outlined.
+
+    Qualitative panels are easy to cherry-pick, so these are the FIRST n patients
+    of the fold in index order -- not the best-scoring ones -- and the selection
+    rule is stated in the caption line printed below. The tumour contour is drawn
+    from the ROI so a reader can see where the attention should be, rather than
+    being asked to take the overlay on trust.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import torch
+
+    from theia.data.dataset import RadiogenomicsDataset, collate, nested_kfold_indices
+    from theia.models.theia_model import Theia
+    from theia.runtime import resolve_device
+
+    device = resolve_device("auto")
+    state = torch.load(ckpt, map_location=device, weights_only=False)
+    model = Theia(cfg).to(device).eval()
+    model.load_state_dict(state["model"], strict=False)
+
+    rp = os.path.join(cfg.paths.processed_dir, "rows.jsonl")
+    seed = int((state.get("cfg") or {}).get("seed", cfg.seed))
+    fold = int(state.get("fold", 0))
+    splits = list(nested_kfold_indices(rp, cfg.split.stratify_on, cfg.split.n_folds,
+                                       seed, float(cfg.split.inner_val_frac)))
+    held = list(splits[fold][2])
+    ds = RadiogenomicsDataset(rp, cfg.data.target_genes)
+
+    picks, used = [], 0
+    for i in held:
+        item = ds[i]
+        if float(item["roi"].sum()) <= 0:      # AIM-tier: no mask to outline
+            continue
+        picks.append((i, item))
+        used += 1
+        if used >= n:
+            break
+
+    fig, axes = plt.subplots(2, (len(picks) + 1) // 2, figsize=(2.1 * len(picks), 4.6),
+                             dpi=200)
+    for ax, (i, item) in zip(np.array(axes).ravel(), picks):
+        with torch.no_grad():
+            out_d = model(collate([item], genes=model.genes), device)
+        a = out_d["attn_maps"][0].amax(0).float().cpu().numpy()
+        a = (a - a.min()) / (np.ptp(a) + 1e-6)
+        img = item["images"].numpy()
+        roi = item["roi"].numpy()
+        k = int(roi.reshape(roi.shape[0], -1).sum(1).argmax())
+        mid, msk = img[k, 0], roi[k, 0]
+        ky = max(mid.shape[0] // a.shape[0], 1)
+        kx = max(mid.shape[1] // a.shape[1], 1)
+        big = np.kron(a, np.ones((ky, kx)))[: mid.shape[0], : mid.shape[1]]
+        ax.imshow(mid, cmap="gray")
+        ax.imshow(big, cmap="inferno", alpha=0.42)
+        ax.contour(msk, levels=[0.5], colors="#39d353", linewidths=0.9)
+        ax.set_axis_off()
+    for ax in np.array(axes).ravel()[len(picks):]:
+        ax.set_axis_off()
+    fig.suptitle("attention (hot) with tumour outlined (green) — first "
+                 f"{len(picks)} masked patients of held-out fold {fold}, not "
+                 "selected on score", fontsize=8.5)
+    fig.tight_layout(); fig.savefig(out); plt.close(fig)
+    print(f"[fig] wrote {out}")
+
+
 def main() -> None:
     from theia.config import load_config
 
@@ -156,6 +267,8 @@ def main() -> None:
     ap.add_argument("--pattern", default="results/ms-s*.json")
     ap.add_argument("--baselines", default="results/baselines.json")
     ap.add_argument("--outdir", default="figures")
+    ap.add_argument("--overlay_ckpt", default=None,
+                    help="checkpoint for qualitative attention panels")
     a = ap.parse_args()
 
     cfg = load_config(a.config)
@@ -232,6 +345,13 @@ def main() -> None:
     fig_forest(summary, os.path.join(a.outdir, "fig2_forest.png"))
     if per_seed and clin == clin:
         fig_seeds(per_seed, clin, os.path.join(a.outdir, "fig3_seeds.png"))
+
+    gfolds = [f["test"] for p in paths for f in json.load(open(p))["folds"]
+              if not f.get("stalled") and f["test"].get("grounding_mass") is not None]
+    if gfolds:
+        fig_grounding(gfolds, os.path.join(a.outdir, "fig4_grounding.png"))
+    if a.overlay_ckpt:
+        fig_overlays(a.overlay_ckpt, cfg, os.path.join(a.outdir, "fig5_overlays.png"))
 
 
 if __name__ == "__main__":

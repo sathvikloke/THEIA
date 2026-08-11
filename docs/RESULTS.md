@@ -193,6 +193,19 @@ For scale, the tumour occupies 3.9% of the crop on average, so "attend to the
 lesion" is not a free win: a uniform map scores ~0.039, which is exactly what
 the shuffled baseline reports.
 
+![grounding](../figures/fig4_grounding.png)
+
+Each fold is joined to its **own** shuffled baseline rather than to a global
+one, because chance depends on how much of the crop the tumour fills in that
+fold. The single fold that fails sits on its baseline and is left visible.
+
+![overlays](../figures/fig5_overlays.png)
+
+Qualitative panels are easy to cherry-pick, so these are the first six masked
+patients of the held-out fold in index order, not the best-scoring ones, and the
+tumour contour is drawn from the ROI so the claim can be checked rather than
+taken on trust.
+
 Progress across configurations, which is mostly a record of bugs removed:
 
 | run | grounding lift | folds localising | note |
