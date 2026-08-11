@@ -25,7 +25,7 @@ jobs:
           pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements.txt
       - name: Run tests
-        run: pytest -q
+        run: python -m pytest -q
       - name: Config must load and validate
         run: python -c "from theia.config import load_config; load_config('configs/default.yaml'); print('config ok')"
       - name: Analyses must reproduce from the archives alone

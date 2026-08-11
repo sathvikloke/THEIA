@@ -281,6 +281,14 @@ no GPU, no TCIA download. That is deliberate: the weights for this project's
 earlier best run no longer exist, and its curves would otherwise be lost.
 
 ```bash
+bash scripts/reproduce.sh
+```
+
+That runs the tests and re-derives every reported number: the headline with its
+rerun spread, the incremental-value test, baseline sensitivity, grounding against
+its shuffled baseline, the sample-size table, and the figures. Or individually:
+
+```bash
 python -m theia.analysis.aggregate --pattern 'results/ms-s*.json'   # headline +/- sd
 python -m theia.analysis.incremental --pattern 'results/ms-s*.json' # the decisive test
 python -m theia.analysis.figures                                    # figures/*.png
