@@ -219,7 +219,8 @@ you, because 2 is a legal number.
 
 Full detail, with every number's provenance and each run's trustworthiness, is
 in **[docs/RESULTS.md](docs/RESULTS.md)**; scope, limitations and intended use in
-**[docs/MODEL_CARD.md](docs/MODEL_CARD.md)**. The short version:
+**[docs/MODEL_CARD.md](docs/MODEL_CARD.md)**; every setting decided by measurement
+in **[docs/ABLATIONS.md](docs/ABLATIONS.md)**. The short version:
 
 | model | EGFR AUC | note |
 |---|---|---|
