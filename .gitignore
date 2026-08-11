@@ -17,3 +17,7 @@ checkpoints/
 # matched theia/reader_study/cases/, so the key was committed once.
 **/reader_study/cases/
 *.tcia
+
+# Frozen-token cache for the pooling sweep: 57 MB, regenerated in ~2 min
+# by theia.analysis.pooling_sweep. Derived data, not a result.
+results/_token_cache.npz

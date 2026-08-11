@@ -69,6 +69,48 @@ def _dilate(m: np.ndarray, h: int, w: int, iters: int = 1) -> np.ndarray:
     return out.reshape(len(m), -1).astype(np.float32)
 
 
+def _control_regions(msk: np.ndarray, ring: np.ndarray, h: int, w: int,
+                     seed: int = 1337) -> tuple[np.ndarray, np.ndarray]:
+    """Size-matched shapes and rings at a random INTERIOR location.
+
+    The control has to differ from the real region in location and nothing else.
+    np.roll wraps a shape but binary_dilation clips at the array border, so an
+    unconstrained shift makes control rings systematically smaller -- measured at
+    -3.7%, 22 of 158 -- and a smaller control carries less information, inflating
+    the very gain it exists to rule out. Shifts are constrained so the dilated
+    shape stays inside the grid, giving an exact size match on every patient with
+    a ring.
+    """
+    from scipy import ndimage
+
+    rng = np.random.default_rng(seed)
+    shifted, randring = [], []
+    for m1, real_ring in zip(msk, ring):
+        g = m1.reshape(h, w) > 0.5
+        want = int(real_ring.sum())
+        ys, xs = np.nonzero(g)
+        if ys.size == 0:
+            shifted.append(np.zeros(h * w, np.float32))
+            randring.append(np.zeros(h * w, np.float32))
+            continue
+        best, best_gap = None, None
+        for _ in range(60):
+            lo_y, hi_y = -(ys.min()) + 1, max(h - ys.max() - 1, -(ys.min()) + 2)
+            lo_x, hi_x = -(xs.min()) + 1, max(w - xs.max() - 1, -(xs.min()) + 2)
+            sh = np.roll(np.roll(g, int(rng.integers(lo_y, hi_y)), 0),
+                         int(rng.integers(lo_x, hi_x)), 1)
+            r = ndimage.binary_dilation(sh, iterations=1) & ~sh
+            gap = abs(int(r.sum()) - want)
+            if best_gap is None or gap < best_gap:
+                best, best_gap = (sh, r), gap
+            if gap == 0:
+                break
+        sh, r = best
+        shifted.append(sh.reshape(-1).astype(np.float32))
+        randring.append(r.reshape(-1).astype(np.float32))
+    return np.stack(shifted), np.stack(randring)
+
+
 def build_variants(tok: np.ndarray, msk: np.ndarray, h: int, w: int) -> dict:
     """Feature matrices, one per pooling strategy."""
     def pool(weights: np.ndarray, how: str = "mean") -> np.ndarray:
@@ -92,37 +134,8 @@ def build_variants(tok: np.ndarray, msk: np.ndarray, h: int, w: int) -> dict:
     # CONTROLS. A peritumoral win is exactly the kind of result that is a fluke
     # at n=153, so it has to beat regions that are matched on everything except
     # location before it means anything.
-    from scipy import ndimage
+    shifted, randring = _control_regions(msk, ring, h, w)
 
-    rng = np.random.default_rng(1337)
-    shifted, randring = [], []
-    for m1, real_ring in zip(msk, ring):
-        g = m1.reshape(h, w) > 0.5
-        want = int(real_ring.sum())
-        # The shift must keep the DILATED shape fully inside the grid. np.roll
-        # wraps but binary_dilation clips at the border, so an unconstrained
-        # shift makes control rings systematically smaller than real ones --
-        # measured at -3.7%, with 22 of 158 smaller. A control that is smaller
-        # carries less information and would inflate the location-specific gain
-        # it exists to rule out.
-        ys, xs = np.nonzero(g)
-        best, best_gap = None, None
-        for _ in range(60):
-            dy = int(rng.integers(-(ys.min()) + 1, h - ys.max() - 1)) if ys.size else 0
-            dx = int(rng.integers(-(xs.min()) + 1, w - xs.max() - 1)) if xs.size else 0
-            sh = np.roll(np.roll(g, dy, 0), dx, 1)
-            d = ndimage.binary_dilation(sh, iterations=1)
-            r = d & ~sh
-            gap = abs(int(r.sum()) - want)
-            if best_gap is None or gap < best_gap:
-                best, best_gap = (sh, r), gap
-            if gap == 0:
-                break
-        sh, r = best
-        shifted.append(sh.reshape(-1).astype(np.float32))
-        randring.append(r.reshape(-1).astype(np.float32))
-    shifted = np.stack(shifted).astype(np.float32)
-    randring = np.stack(randring).astype(np.float32)
     peri2 = pool(np.clip(_dilate(msk, h, w, 2) - msk, 0, 1))
 
     return {

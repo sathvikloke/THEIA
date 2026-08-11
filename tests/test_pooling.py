@@ -54,24 +54,30 @@ def test_peritumoral_ring_excludes_the_tumour_itself():
 def test_control_ring_matches_the_real_ring_in_size():
     """The control must differ from the real ring ONLY in location.
 
-    A control that is systematically larger or smaller would make the
-    comparison a size comparison, and the whole claim rests on it not being one.
+    Checked against the module's OWN control, not a re-implementation. The first
+    version of this test rebuilt the control inline and therefore tested a copy
+    of the logic rather than the logic -- and the copy was the buggy one, so it
+    failed against a module that had already been fixed.
+
+    The bug it was written for is worth keeping in view: np.roll wraps a shape
+    but binary_dilation clips at the array border, so unconstrained shifts made
+    control rings 3.7% smaller than real ones. A smaller control carries less
+    information and inflates the location-specific gain it exists to rule out.
     """
+    import numpy as np
     from scipy import ndimage
 
-    tok, msk, h, w = _toy()
-    rng = np.random.default_rng(1337)
-    real, shifted = [], []
-    for m1 in msk:
-        g = m1.reshape(h, w)
-        r = ndimage.binary_dilation(g > 0.5, iterations=1) & ~(g > 0.5)
-        real.append(r.sum())
-        dy, dx = rng.integers(-h // 3, h // 3 + 1, 2)
-        sh = np.roll(np.roll(g, int(dy), 0), int(dx), 1)
-        d = ndimage.binary_dilation(sh > 0.5, iterations=1)
-        shifted.append(np.clip(d.astype(float) - sh, 0, 1).sum())
-    assert abs(np.mean(real) - np.mean(shifted)) < 1e-6, (
-        f"control ring size {np.mean(shifted)} != real {np.mean(real)}")
+    from theia.analysis.pooling_sweep import _control_regions
+
+    tok, msk, h, w = _toy(p=16, h=10, w=10)
+    ring = np.stack([(ndimage.binary_dilation(m.reshape(h, w) > 0.5, iterations=1)
+                      & ~(m.reshape(h, w) > 0.5)).reshape(-1) for m in msk]).astype(np.float32)
+    _shifted, randring = _control_regions(msk, ring, h, w, seed=1337)
+
+    real_sizes = ring.sum(1)
+    ctrl_sizes = randring.sum(1)
+    assert np.allclose(real_sizes, ctrl_sizes), (
+        f"control ring sizes {ctrl_sizes[:5]} != real {real_sizes[:5]}")
 
 
 def test_pooling_falls_back_rather_than_emitting_an_empty_feature():
