@@ -1,0 +1,141 @@
+{
+  "luad_tcga_gdc": {
+    "n_records": 91,
+    "n_patients": 75,
+    "class_counts": {
+      "PASSENGER": 13,
+      "UNCERTAIN": 16,
+      "ACTIVATING": 59,
+      "EXON20INS": 1,
+      "RESISTANCE": 2
+    },
+    "n_patients_any": 75,
+    "n_patients_activating": 57,
+    "variants_by_class": {
+      "PASSENGER": {
+        "R222L": 1,
+        "E545Q": 1,
+        "R377S": 1,
+        "L62R": 2,
+        "G465R": 1,
+        "X210_splice": 2,
+        "V300M": 1,
+        "Q486*": 1,
+        "L387M": 1,
+        "Q432H": 1,
+        "I91V": 1
+      },
+      "UNCERTAIN": {
+        "S752Pfs*3": 1,
+        "L833F": 1,
+        "G721V": 1,
+        "A767_V769dup": 1,
+        "V769L": 1,
+        "L833V": 1,
+        "H773dup": 1,
+        "E709_T710delinsD": 2,
+        "S768_D770dup": 1,
+        "D1083Efs*11": 1,
+        "K754I": 1,
+        "G901V": 1,
+        "L907M": 1,
+        "S921R": 1,
+        "R1052I": 1
+      },
+      "ACTIVATING": {
+        "E746_S752delinsV": 3,
+        "L861Q": 3,
+        "E746_A750del": 18,
+        "L858R": 22,
+        "S768I": 3,
+        "G719C": 1,
+        "K754_I759del": 1,
+        "G719A": 2,
+        "L747_T751del": 2,
+        "L747_T751delinsP": 1,
+        "L747_E749del": 2,
+        "L747_P753delinsQ": 1
+      },
+      "EXON20INS": {
+        "D770_N771insGL": 1
+      },
+      "RESISTANCE": {
+        "T790M": 2
+      }
+    }
+  },
+  "luad_cptac_gdc": {
+    "n_records": 85,
+    "n_patients": 70,
+    "class_counts": {
+      "ACTIVATING": 70,
+      "UNCERTAIN": 7,
+      "PASSENGER": 8
+    },
+    "n_patients_any": 70,
+    "n_patients_activating": 64,
+    "variants_by_class": {
+      "ACTIVATING": {
+        "G719C": 3,
+        "S768I": 5,
+        "E746_S752delinsV": 3,
+        "L858R": 33,
+        "G719A": 2,
+        "E746_A750del": 17,
+        "L747_E749del": 3,
+        "G719S": 1,
+        "L861Q": 1,
+        "E746_T751delinsIP": 1,
+        "L747_P753delinsS": 1
+      },
+      "UNCERTAIN": {
+        "A871G": 1,
+        "L858M": 1,
+        "L747V": 1,
+        "X1054_splice": 1,
+        "V834L": 1,
+        "K757M": 1,
+        "Y978*": 1
+      },
+      "PASSENGER": {
+        "L62R": 1,
+        "K479I": 1,
+        "H358R": 1,
+        "E84K": 1,
+        "I143L": 1,
+        "E319*": 1,
+        "T39M": 1,
+        "A289T": 1
+      }
+    }
+  },
+  "lusc_tcga_gdc": {
+    "n_records": 11,
+    "n_patients": 10,
+    "class_counts": {
+      "UNCERTAIN": 3,
+      "PASSENGER": 4,
+      "ACTIVATING": 4
+    },
+    "n_patients_any": 10,
+    "n_patients_activating": 4,
+    "variants_by_class": {
+      "UNCERTAIN": {
+        "P1019L": 1,
+        "V843L": 1,
+        "Y1138C": 1
+      },
+      "PASSENGER": {
+        "P192R": 1,
+        "P589L": 1,
+        "G87C": 1,
+        "X210_splice": 1
+      },
+      "ACTIVATING": {
+        "L861Q": 2,
+        "L858R": 1,
+        "E746_A750del": 1
+      }
+    }
+  }
+}
