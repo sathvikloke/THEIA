@@ -270,21 +270,31 @@ before it means anything.
 
 ## 4. Grounding — this part works
 
-The localisation claim is the one that holds up, and in the final configuration
-it holds up robustly. Across **14 scored folds** (3 seeds x 5 folds, one fold
-stalled and excluded), on held-out patients:
+The localisation claim is the one that holds up. Across **15 scored folds**
+(the 3 canonical runs x 5 folds), on held-out patients:
 
-| metric | model | shuffled baseline | lift |
-|---|---|---|---|
-| attention mass in ROI | **0.428 ± 0.154** | 0.036 ± 0.005 | **+0.391** |
-| pointing game | **0.883 ± 0.248** | 0.049 ± 0.034 | **+0.835** |
-| area-matched IoU | **0.637 ± 0.178** | 0.017 ± 0.008 | +0.620 |
+| metric | model | shuffled baseline | lift | folds won |
+|---|---|---|---|---|
+| attention mass in ROI | **0.362 ± 0.228** | 0.037 | **+0.325** | 12/15 |
+| pointing game | **0.708 ± 0.443** | 0.037 | **+0.671** | 11/15 |
+| area-matched IoU | **0.515 ± 0.319** | 0.018 | +0.496 | 12/15 |
 
-Attention mass inside the tumour is **11.7x its shuffled baseline**, and mass
-beats its own per-fold chance level in **14 of 14 folds** (sign test
-p = 1.2e-4). By lift > 0.05, 13 of 14 folds localise. Mean peak ratio is 26.7,
-so the maps are sharply peaked rather than diffuse — the failure mode that
-produced an apparently-good pointing score in run 12 is absent here.
+Attention mass inside the tumour is **9.7x its shuffled baseline**, beating its
+own per-fold chance level in **12 of 15 folds** (sign test p = 0.018). Mean peak
+ratio is 26.2, so the maps are sharply peaked rather than diffuse — the failure
+mode that produced an apparently-good pointing score in run 12 is absent here.
+
+**This table used to read 14/14 folds, 11.7x chance, p = 1.2e-4, and it was
+computed on the old run set.** Replacing the stalled seed-1337 run with its
+retrained version changed it, and not in the flattering direction. All three
+failing folds belong to `base-s1337-rerun`: retraining that seed fixed its
+classification stall — the fold that skipped every optimizer step — at the cost
+of grounding in three of its five folds. That trade-off is real, it is a property
+of this cohort's training instability rather than of the method, and it is
+reported rather than resolved by choosing the run set that looks better.
+
+The claim that matters is not damaged by this, because the primary endpoint is
+external (§4a), evaluated over 30 checkpoints, and reaches +0.297 with 25/30.
 
 For scale, the tumour occupies 3.9% of the crop on average, so "attend to the
 lesion" is not a free win: a uniform map scores ~0.039, which is exactly what

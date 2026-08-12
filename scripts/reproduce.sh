@@ -19,11 +19,14 @@ python -m pytest -q
 
 echo
 echo "=== 1. headline, with rerun variance ==="
-python -m theia.analysis.aggregate --pattern 'results/ms-s*.json'
+# No --pattern: both read results/CANONICAL.json. Passing the old
+# 'results/ms-s*.json' glob here re-introduced the stalled run and
+# silently overwrote the regenerated archives with superseded numbers.
+python -m theia.analysis.aggregate
 
 echo
 echo "=== 2. the comparison that decides the project ==="
-python -m theia.analysis.incremental --pattern 'results/ms-s*.json'
+python -m theia.analysis.incremental
 
 echo
 echo "=== 3. baseline sensitivity to analytic choices ==="
@@ -39,9 +42,10 @@ PY
 echo
 echo "=== 4. grounding, against its own shuffled baseline ==="
 python - <<'PY'
-import glob, json
+import json
 import numpy as np
-rows = [f["test"] for p in sorted(glob.glob("results/ms-s*.json"))
+runs = json.load(open("results/CANONICAL.json"))["headline_runs"]
+rows = [f["test"] for p in runs
         for f in json.load(open(p))["folds"] if not f.get("stalled")]
 m = np.array([r["grounding_mass"] for r in rows])
 s = np.array([r["grounding_mass_shuffled"] for r in rows])

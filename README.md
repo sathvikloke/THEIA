@@ -254,11 +254,23 @@ So on this cohort, whatever EGFR signal the model extracts from CT is already
 carried by smoking status. Never-smokers here are 60.6% EGFR-mutant against
 8.3% (current) and 18.8% (former); OR 7.69, Fisher p = 1.7e-6.
 
-**Grounding is the part that works.** Across 14 scored folds (3 seeds), attention
-mass inside the tumour is 0.428 ± 0.154 against a shuffled baseline of 0.036 —
-11.7× chance — and beats its own per-fold baseline in 14 of 14 folds (sign test
-p = 1.2e-4). The pointing game reaches 0.883 against 0.049 chance. The tumour
-occupies 3.9% of the crop, so this is not a free win.
+**Grounding is the part that works, and it is the only part that generalises.**
+
+*Internally*, across 15 scored folds (3 canonical runs), attention mass inside the
+tumour is 0.362 ± 0.228 against a shuffled baseline of 0.037 — 9.7× chance —
+beating its own per-fold baseline in 12 of 15 folds (sign test p = 0.018). The
+tumour occupies 3.9% of the crop, so this is not a free win.
+
+*Externally* — the primary endpoint — the same heads evaluated on **420 held-out
+NSCLC-Radiomics patients** (Maastro, Netherlands: different scanners, a
+radiotherapy-planning rather than surgical population) give a mass lift of
+**+0.297**, beating the shuffle in **25 of 30** evaluations. Against controls:
+pointing 0.688 for the trained heads, 0.476 for a centre prior, and exactly
+**0.000** lift from a randomly-initialised head. The centre prior matters here —
+these crops are lesion-centred, so "look at the middle" is a strong baseline on
+mass and a weak one on pointing, which is why all three metrics are reported.
+
+![external grounding](figures/fig6_external_grounding.png)
 
 **KRAS is at chance**: 0.487 ± 0.005 across the same three seeds, every interval
 spanning 0.5. Reported rather than dropped — a panel quietly narrowed to its

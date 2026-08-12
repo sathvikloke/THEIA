@@ -40,9 +40,10 @@ external cohort has been tested.
 | clinical (age, sex, ethnicity, smoking, pack-years) | 0.764–0.805 |
 | smoking status alone | 0.794 |
 
-**Grounding, internal**, 14 scored folds: attention mass in ROI 0.428 ± 0.154
-against a shuffled baseline of 0.036 — 11.7× chance, beating its own baseline in
-14/14 folds (sign test p = 1.2e-4). Pointing game 0.883 vs 0.049.
+**Grounding, internal**, 15 scored folds: attention mass in ROI 0.362 ± 0.228
+against a shuffled baseline of 0.037 — 9.7× chance, beating its own baseline in
+12/15 folds (sign test p = 0.018). Pointing game 0.708 vs 0.037. All three
+failing folds belong to the retrained seed-1337 run; see RESULTS §4.
 
 **Grounding, external** — the primary endpoint. 420 held-out NSCLC-Radiomics
 patients (Maastro Clinic, Netherlands), 30 evaluations: mass lift +0.297 ± 0.167,
