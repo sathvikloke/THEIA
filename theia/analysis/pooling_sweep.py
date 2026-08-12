@@ -153,16 +153,75 @@ def build_variants(tok: np.ndarray, msk: np.ndarray, h: int, w: int) -> dict:
 
 
 def score(X: np.ndarray, rows: list[dict], cfg, gene: str, seeds: list[int]) -> tuple:
-    """Pooled OOF AUC per seed, through THEIA's own nested folds."""
-    from theia.analysis.baselines import oof_predictions
+    """Pooled OOF AUC per seed, through THEIA's own nested folds.
+
+    Also returns the per-patient seed-averaged rank, which is what the paired
+    test needs -- an AUC alone cannot support a bootstrap over patients.
+    """
+    from theia.analysis.baselines import _ranked, oof_predictions
     from theia.engine.evaluate import pooled_metrics
 
-    aucs = []
+    aucs, ranks = [], []
     for s in seeds:
         cfg["seed"] = s
         oof = oof_predictions(X, rows, gene, cfg)
         aucs.append(pooled_metrics(oof, [gene], cfg.eval.bootstrap_n)[f"{gene.lower()}_auc"])
-    return mean(aucs), (stdev(aucs) if len(aucs) > 1 else 0.0), aucs
+        ranks.append(_ranked(oof, f"{gene.lower()}_prob"))
+    ids = sorted(set.intersection(*[set(d) for d in ranks]))
+    avg = {i: float(np.mean([d[i] for d in ranks])) for i in ids}
+    return mean(aucs), (stdev(aucs) if len(aucs) > 1 else 0.0), aucs, avg
+
+
+def holm_paired(arm_ranks: dict[str, dict], truth: dict[str, int], baseline: str,
+                n_boot: int = 5000, seed: int = 1337) -> dict:
+    """Each arm vs the baseline arm: paired bootstrap over PATIENTS, Holm-corrected.
+
+    The sweep scores 10 variants on the same outer folds and reports the best, so
+    two corrections are needed and they are different corrections.
+
+    Multiplicity: 10 comparisons against one baseline, so p-values are adjusted by
+    Holm-Bonferroni. Holm rather than Bonferroni because the arms are strongly
+    correlated -- they are poolings of the same tokens -- and Bonferroni would be
+    needlessly conservative.
+
+    Unit of resampling: the earlier version of this sweep reported "10/10 seeds"
+    as though seeds were replicates. They are not. Ten seeds are ten re-splits of
+    ONE 153-patient cohort, so they measure split variance, not sampling variance,
+    and a sign test over them answers a question nobody asked. Patients are the
+    unit that generalises, so the bootstrap resamples patients and the seed spread
+    is reported separately as variance.
+    """
+    from sklearn.metrics import roc_auc_score
+
+    ids = sorted(set(truth).intersection(*[set(v) for v in arm_ranks.values()]))
+    y = np.array([truth[i] for i in ids])
+    base = np.array([arm_ranks[baseline][i] for i in ids])
+    rng = np.random.default_rng(seed)
+    idx = [rng.integers(0, len(ids), len(ids)) for _ in range(n_boot)]
+    idx = [i for i in idx if len(set(y[i].tolist())) > 1]
+
+    raw = {}
+    for name, r in arm_ranks.items():
+        if name == baseline:
+            continue
+        a = np.array([r[i] for i in ids])
+        obs = roc_auc_score(y, a) - roc_auc_score(y, base)
+        d = np.array([roc_auc_score(y[i], a[i]) - roc_auc_score(y[i], base[i])
+                      for i in idx])
+        raw[name] = {"delta": float(obs),
+                     "ci_lo": float(np.percentile(d, 2.5)),
+                     "ci_hi": float(np.percentile(d, 97.5)),
+                     "p_raw": float(2 * min((d <= 0).mean(), (d >= 0).mean()))}
+
+    # Holm-Bonferroni, step-down.
+    order = sorted(raw, key=lambda k: raw[k]["p_raw"])
+    m = len(order)
+    running = 0.0
+    for rank, name in enumerate(order):
+        adj = min(1.0, raw[name]["p_raw"] * (m - rank))
+        running = max(running, adj)          # enforce monotonicity
+        raw[name]["p_holm"] = running
+    return raw
 
 
 def main() -> None:
@@ -206,18 +265,39 @@ def main() -> None:
     print(f"[pool] grid {h}x{w}, tumour occupies {100*frac:.1f}% of patches\n")
 
     variants = build_variants(tok, msk, h, w)
-    results = {}
+    results, arm_ranks = {}, {}
     base = None
     for name, X in variants.items():
-        m, s, per = score(X, rows, cfg, gene, seeds)
+        m, s, per, avg = score(X, rows, cfg, gene, seeds)
         results[name] = {"mean": m, "sd": s, "per_seed": per, "dim": int(X.shape[1])}
+        arm_ranks[name] = avg
         if base is None:
             base = m
         print(f"[pool] {name:32s} {m:.3f} +/- {s:.3f}   ({m-base:+.3f} vs baseline, "
               f"d={X.shape[1]})")
 
+    baseline_name = next(iter(variants))
+    truth = {r["patient_id"]: int(r.get("labels", {}).get(gene.upper(), -1)) for r in rows}
+    truth = {k: v for k, v in truth.items() if v in (0, 1)}
+    paired = holm_paired(arm_ranks, truth, baseline_name)
+
+    print(f"\n[pool] paired bootstrap over PATIENTS vs '{baseline_name}', "
+          f"Holm-corrected across {len(paired)} arms:")
+    print(f"  {'arm':<32} {'delta':>7}  {'95% CI':>18} {'p_raw':>7} {'p_holm':>7}")
+    for name in sorted(paired, key=lambda k: -paired[k]["delta"]):
+        v = paired[name]
+        star = " *" if v["p_holm"] < 0.05 else ""
+        print(f"  {name:<32} {v['delta']:>+7.3f}  "
+              f"[{v['ci_lo']:+.3f},{v['ci_hi']:+.3f}] {v['p_raw']:>7.3f} "
+              f"{v['p_holm']:>7.3f}{star}")
+    print("\n[pool] seed spread is reported as variance, not replication: ten seeds are "
+          "ten\n       re-splits of one 153-patient cohort, so they measure split "
+          "variance. Patients\n       are the unit that generalises, so they are what "
+          "the bootstrap resamples.")
+
     json.dump({"gene": gene, "seeds": seeds, "tumour_patch_frac": frac,
-               "variants": results}, open(a.out, "w"), indent=2)
+               "variants": results, "baseline_arm": baseline_name,
+               "paired_vs_baseline_holm": paired}, open(a.out, "w"), indent=2)
     print(f"\n[pool] wrote {a.out}")
     best = max(results.items(), key=lambda kv: kv[1]["mean"])
     print(f"[pool] best: {best[0]} at {best[1]['mean']:.3f} "

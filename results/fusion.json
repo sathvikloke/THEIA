@@ -1,0 +1,59 @@
+{
+  "gene": "egfr",
+  "n": 153,
+  "n_pos": 40,
+  "arms": [
+    "THEIA",
+    "clinical",
+    "radiomics"
+  ],
+  "best_single": "clinical",
+  "results": {
+    "THEIA": 0.655862831858407,
+    "clinical": 0.7640486725663715,
+    "radiomics": 0.5778761061946902,
+    "hard voting": {
+      "auc": 0.6899336283185842,
+      "vs_best_single": -0.07411504424778736,
+      "ci_lo": -0.15727056981703444,
+      "ci_hi": 0.006527523073685474,
+      "p": 0.072
+    },
+    "soft voting (equal weights)": {
+      "auc": 0.7121681415929204,
+      "vs_best_single": -0.05188053097345113,
+      "ci_lo": -0.12565321007274538,
+      "ci_hi": 0.01817781298293331,
+      "p": 0.1532
+    },
+    "stacking (cross-fitted)": {
+      "auc": 0.7353982300884956,
+      "vs_best_single": -0.02865044247787596,
+      "ci_lo": -0.06445793233583935,
+      "ci_hi": 0.006636443549105604,
+      "p": 0.1124
+    },
+    "soft voting (THEIA + clinical)": {
+      "auc": 0.7482300884955752,
+      "vs_best_single": -0.015818584070796393,
+      "ci_lo": -0.0767960786323619,
+      "ci_hi": 0.04368729278514724,
+      "p": 0.5896
+    },
+    "soft voting (THEIA + radiomics)": {
+      "auc": 0.6337389380530973,
+      "vs_best_single": -0.1303097345132742,
+      "ci_lo": -0.24617080291252377,
+      "ci_hi": -0.020578944864659183,
+      "p": 0.0204
+    },
+    "soft voting (clinical + radiomics)": {
+      "auc": 0.7030973451327434,
+      "vs_best_single": -0.06095132743362819,
+      "ci_lo": -0.11799768518518511,
+      "ci_hi": -0.008469749579589488,
+      "p": 0.0224
+    }
+  },
+  "early_fusion": "not computed; requires archived feature matrices"
+}
