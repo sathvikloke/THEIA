@@ -21,3 +21,7 @@ checkpoints/
 # Frozen-token cache for the pooling sweep: 57 MB, regenerated in ~2 min
 # by theia.analysis.pooling_sweep. Derived data, not a result.
 results/_token_cache.npz
+
+# Outreach drafts stay local until sent — they name real people and
+# contain negotiating posture that should not be public before the email is.
+docs/OUTREACH.md
