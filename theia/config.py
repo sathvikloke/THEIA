@@ -83,6 +83,17 @@ def validate_config(cfg: Config) -> None:
             errs.append(f"train.monitor '{mk}' is not emitted by evaluate(). "
                         f"Valid: {', '.join(sorted(allowed))}")
 
+    # Monitoring a term that is not being optimised selects checkpoints on noise.
+    # This is not hypothetical: with gen 0.0 and gen_loss in the monitor, one
+    # canonical run selected partly on an untrained language model's teacher-forced
+    # loss while the other two did not, so three runs that were reported as three
+    # seeds of one configuration differed by more than the seed.
+    if "gen_loss" in monitor_keys and float(cfg.train.loss_weights.gen) == 0.0:
+        errs.append(
+            "train.monitor includes 'gen_loss' but train.loss_weights.gen is 0.0, "
+            "so the language model is never trained and its loss is noise. Either "
+            "drop gen_loss from the monitor or give gen a non-zero weight.")
+
     if cfg.data.slice_strategy not in VALID_SLICE_STRATEGIES:
         errs.append(f"data.slice_strategy '{cfg.data.slice_strategy}' not in "
                     f"{sorted(VALID_SLICE_STRATEGIES)}")

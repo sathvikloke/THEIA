@@ -102,19 +102,29 @@ model:
   region_pooling: mean         # mean | max
   # Concatenate peritumoral patch tokens onto the classifier's input.
   #
-  # Measured over 10 seeds on frozen features, through these same nested folds:
-  #   whole crop (what the classifier effectively saw)   0.629 +/- 0.035
-  #   tumour only                                        0.629 +/- 0.021
-  #   PERITUMORAL ring                                   0.703 +/- 0.031
-  #   size-matched ring at a random location (control)   0.577 +/- 0.043
-  # peritumoral vs whole crop  +0.075, 10/10 seeds, p = 0.002
-  # peritumoral vs control     +0.125, 10/10 seeds, p = 0.002
+  # OFF by default, so that this file reproduces the REPORTED HEADLINE
+  # (0.617 +/- 0.024, results/CANONICAL.json). Turn it on with
+  #   --set model.peritumoral_features=true
+  # to reproduce the variant (0.675 +/- 0.017, results/peri-s*.json).
   #
-  # Pooling the tumour itself changes nothing (+0.001, p = 0.92). The signal is
-  # in the ring, which is also where ground-glass and margin spiculation live.
-  # Note the tension this exposes: the grounding loss supervises attention ONTO
-  # the lesion, which is where the classification signal is not.
-  peritumoral_features: true
+  # Measured over 10 seeds on frozen features, through these same nested folds:
+  #   whole crop (what the classifier effectively saw)   0.632 +/- 0.038
+  #   tumour only                                        0.629 +/- 0.028
+  #   PERITUMORAL ring                                   0.695 +/- 0.032
+  #   size-matched ring at a random location (control)   0.575 +/- 0.038
+  #
+  # The direction is consistent and the location control behaves, but the effect
+  # is NOT significant: the sweep scores 10 arms on the same folds, and under a
+  # paired bootstrap over patients with Holm correction the best arm has
+  # p_raw 0.031 and p_holm 0.281. An earlier version of this comment claimed
+  # "+0.075, 10/10 seeds, p = 0.002" from a sign test over seeds -- ten seeds are
+  # ten re-splits of one 153-patient cohort, not ten replicates. End-to-end the
+  # branch is worth +0.058 (95% CI [-0.008, +0.128], p = 0.086).
+  #
+  # It is kept because the tension it exposes is real: the grounding loss
+  # supervises attention ONTO the lesion, and the classification signal is in the
+  # ring around it.
+  peritumoral_features: false
   # Warm-start from theia.engine.pretrain (label-free cohorts: NSCLC-Radiomics
   # 421 masked patients). null = off, and off is the measured right answer.
   #
@@ -193,7 +203,11 @@ train:
   amp: true                    # honoured on CUDA only; reported at startup
   loss_weights:
     cls: 1.0
-    gen: 1.0
+    # 0.0, not 1.0. Every run in results/CANONICAL.json was trained with the
+    # generation term off, and RESULTS documents gen: 1.0 as the setting that
+    # produces the seed-dependent NaN in the vision backbone's backward pass.
+    # A default this file cannot itself reproduce is not a default.
+    gen: 0.0
     ground: 0.5
   early_stop_patience: 8
   # Patience does not start counting until this many epochs have run. Under
@@ -227,7 +241,15 @@ train:
   # classifier. Concretely on that fold it moves the selection off epoch 1
   # (gen_loss 2.15, the epoch that produced confabulated rationales) onto epoch
   # 4 (gen_loss 0.85) at identical AUC.
-  monitor: [[egfr_auc, 1.0], [grounding_mass_lift, 0.5], [gen_loss, -0.01]]
+  # gen_loss is OMITTED here because loss_weights.gen is 0.0. The LM is not being
+  # trained, so its teacher-forced loss is a fixed function of an untrained head
+  # and selecting on it is selecting on noise. It also made the canonical run set
+  # inhomogeneous: base-s1337-rerun was trained with the 3-term monitor while
+  # ms-s7 and ms-s42 used the 2-term one, so those three "seeds" differed by more
+  # than the seed. Put gen_loss back the moment gen goes above zero:
+  #   --set train.loss_weights.gen=1.0 \
+  #   --set 'train.monitor=[[egfr_auc,1.0],[grounding_mass_lift,0.5],[gen_loss,-0.01]]'
+  monitor: [[egfr_auc, 1.0], [grounding_mass_lift, 0.5]]
 
 grounding_pretrain:
   enabled: false               # set true to pretrain grounding on RadGenome first

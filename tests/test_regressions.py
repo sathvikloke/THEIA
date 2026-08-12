@@ -1112,14 +1112,26 @@ def test_config_accepts_gen_loss_in_the_monitor():
     """validate_config must know gen_loss is a real metric.
 
     Its whole purpose is to reject a monitor naming something evaluate() never
-    emits, so adding the metric without updating the allow-list would make the
-    new default config fail to load.
+    emits, so adding the metric without updating the allow-list would make a
+    generation-enabled config fail to load.
+
+    This used to assert that the SHIPPED DEFAULT monitors gen_loss. It no longer
+    does, and that is deliberate rather than a regression: the default now sets
+    loss_weights.gen to 0.0 to match the canonical runs, and monitoring the loss
+    of a language model that is never trained selects checkpoints on noise. That
+    combination is now rejected by validate_config, and the shipped default is
+    covered by tests/test_external_integrity.py. What this test protects is the
+    allow-list, so it exercises the monitor with generation actually enabled.
     """
     from theia.config import load_config
 
-    cfg = load_config("configs/default.yaml")
+    cfg = load_config("configs/default.yaml", {
+        "train.loss_weights.gen": 1.0,
+        "train.monitor": [["egfr_auc", 1.0], ["grounding_mass_lift", 0.5],
+                          ["gen_loss", -0.01]],
+    })
     keys = [m[0] if not isinstance(m, str) else m for m in cfg.train.monitor]
-    assert "gen_loss" in keys, "default monitor no longer includes generation"
+    assert "gen_loss" in keys, "gen_loss was dropped from the monitor allow-list"
     # And an explicitly bad key must still be rejected.
     with pytest.raises(ValueError, match="not emitted by evaluate"):
         load_config("configs/default.yaml", {"train.monitor": [["nonsense_metric", 1.0]]})
