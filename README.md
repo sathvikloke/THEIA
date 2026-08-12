@@ -241,7 +241,7 @@ features gives p = 0.010 (it was p = 0.52 at n=117). This is settled.
 features, scored through THEIA's own nested folds, is statistically
 indistinguishable from the full grounded multimodal model (0.617 ± 0.052 vs
 0.618 ± 0.025). Read that with the sample size, though: Riley's minimum n for a
-512-feature probe is 42,363 and we have 153, so "the probe matches the model" is
+512-feature probe is 42,362 and we have 153, so "the probe matches the model" is
 as much a statement about the cohort as about the architecture.
 
 **Neither beats the chart.** The question that decides the project is whether

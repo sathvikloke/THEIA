@@ -203,7 +203,7 @@ the whole grounded multimodal network — the two means are **identical to three
 decimals**, and THEIA's advantage over its own frozen features is exactly nothing.
 
 Read that with the sample size, though. Riley's minimum n for a 512-feature
-prediction model is **42,363** and this cohort has 153, so "the probe matches the
+prediction model is **42,362** and this cohort has 153, so "the probe matches the
 model" is as much a statement about the cohort being too small to identify either
 arm as it is about the architecture. Both readings are reported.
 

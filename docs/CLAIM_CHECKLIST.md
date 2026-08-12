@@ -108,7 +108,7 @@ does not have to assemble them.
    robustness and is explicitly not a substitute.
 
 3. **The classification arm is not identifiable at this cohort size.** Riley's
-   minimum n is 42,363 for the 512-feature frozen probe against 153 available.
+   minimum n is 42,362 for the 512-feature frozen probe against 153 available.
    Consequently "the frozen probe matches the full model" is reported as
    ambiguous evidence, not as proof the architecture is redundant.
 

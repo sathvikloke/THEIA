@@ -144,7 +144,7 @@ frozen 88M-parameter ViT):
 | arm | predictors | Riley minimum n | have |
 |---|---|---|---|
 | clinical | 5 | **414** | 153 ✗ |
-| frozen-feature probe | 512 | **42,363** | 153 ✗ |
+| frozen-feature probe | 512 | **42,362** | 153 ✗ |
 
 **Neither arm is identifiable at this cohort size — not even the five-variable
 clinical model.** So the frozen probe matching the full model (0.617 vs 0.617) is

@@ -138,7 +138,7 @@ for developing a clinical prediction model.** *BMJ* 2020;368:m441.
 
 Minimum sample size, applied in `power.riley_min_n` only where its inputs are
 defined — the 5-variable clinical model (needs 414, has 153) and the 512-feature
-frozen probe (needs 42,363, has 153). Deliberately not quoted for the deep arm.
+frozen probe (needs 42,362, has 153). Deliberately not quoted for the deep arm.
 
 **14. Mongan J, Moy L, Kahn CE Jr. Checklist for Artificial Intelligence in
 Medical Imaging (CLAIM): a guide for authors and reviewers.** *Radiol Artif
