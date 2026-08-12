@@ -77,8 +77,8 @@ simultaneously.
 **What does work, and what the data is actually for.** Attention supervised
 against tumour segmentations localises the lesion, and it **transfers**. On 420
 held-out NSCLC-Radiomics patients (Maastro, different country and scanner fleet)
-the attention-mass lift is **+0.297**, beating a per-fold spatial shuffle in 25 of
-30 evaluations, with pointing 0.688 against 0.476 for a centre prior and exactly
+the attention-mass lift is **+0.244**, beating a per-fold spatial shuffle in 25 of
+15 evaluations, with pointing 0.609 against 0.476 for a centre prior and exactly
 0.000 from a randomly-initialised head. None of those checkpoints had seen the
 cohort, which is asserted mechanically in the test suite rather than claimed.
 

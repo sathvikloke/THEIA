@@ -12,8 +12,8 @@ abstract: >-
   predict EGFR mutation status. The result that holds is the localisation:
   attention supervised against tumour segmentations transfers to 420 held-out
   NSCLC-Radiomics patients from a different country and scanner fleet, with an
-  attention-mass lift of +0.297 over a per-fold spatial shuffle, beating a centre
-  prior on the pointing game (0.688 vs 0.476) and a randomly-initialised head
+  attention-mass lift of +0.244 over a per-fold spatial shuffle, beating a centre
+  prior on the pointing game (0.609 vs 0.476) and a randomly-initialised head
   (+0.000). The genotype prediction does not hold. On NSCLC-Radiogenomics (153
   labelled patients, 40 EGFR-mutant) it reaches a pooled out-of-fold AUC of
   0.618 +/- 0.025, against 0.794 for smoking status alone; adding it on top of

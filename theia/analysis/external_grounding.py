@@ -124,7 +124,7 @@ def main() -> None:
                     help="comma-separated run_ids under checkpoints/")
     ap.add_argument("--rows", default="data/processed_pretrain/rows.jsonl")
     ap.add_argument("--limit", type=int, default=None, help="cap patients, for a smoke run")
-    ap.add_argument("--out", default="results/external_grounding.json")
+    ap.add_argument("--out", default="results/external_grounding_canonical.json")
     a = ap.parse_args()
 
     cfg = load_config(a.config)

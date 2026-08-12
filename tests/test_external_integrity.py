@@ -15,7 +15,7 @@ import os
 
 import pytest
 
-EXTERNAL = "results/external_grounding.json"
+EXTERNAL = "results/external_grounding_canonical.json"
 EXTERNAL_ROWS = "data/processed_pretrain/rows.jsonl"
 INTERNAL_ROWS = "data/processed/rows.jsonl"
 
@@ -64,6 +64,22 @@ def test_the_external_evaluation_covers_the_whole_cohort():
     assert blob["n_external"] >= 420, (
         f"only {blob['n_external']} external patients evaluated; a --limit was left on")
     assert blob["n_folds"] >= 15, f"only {blob['n_folds']} checkpoints evaluated"
+
+
+def test_the_external_endpoint_uses_the_canonical_runs():
+    """The primary endpoint must be computed on the runs the plan names.
+
+    It was not: the first evaluation covered 30 checkpoints including the
+    superseded run16-nogen-s1337 and 15 folds of the peritumoral variant, whose
+    grounding is better, and reported +0.297 / 25-of-30 where the canonical three
+    give +0.244 / 11-of-15. An endpoint evaluated on a different model set than
+    the one being reported is not that endpoint.
+    """
+    import json as _json
+    canon = {p.split("/")[-1][:-5] for p in
+             _json.load(open("results/CANONICAL.json"))["headline_runs"]}
+    evaluated = {r["run"] for r in _json.load(open(EXTERNAL))["rows"]}
+    assert evaluated == canon, f"evaluated {sorted(evaluated)} against canonical {sorted(canon)}"
 
 
 @pytest.mark.skipif(not os.path.exists(EXTERNAL), reason="external grounding not run")

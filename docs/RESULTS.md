@@ -336,43 +336,63 @@ claim is generalised.
 The result above is one cohort. This is the same grounding heads, unchanged,
 evaluated on **420 NSCLC-Radiomics patients** (Lung1, Maastro Clinic,
 Netherlands): a different country, different scanners, and a radiotherapy-planning
-population rather than a surgical one. 30 evaluations — 6 runs × 5 folds.
+population rather than a surgical one. 15 evaluations — the 3 canonical runs × 5
+folds.
 
-| metric | trained (all 30) | trained (25 live) | centre prior | shuffled | random-init head |
+| metric | trained (all 15) | trained (11 live) | centre prior | shuffled | random-init head |
 |---|---|---|---|---|---|
-| attention mass in ROI | 0.346 | **0.407** | 0.269 | 0.049 | 0.049 |
-| pointing game | 0.688 | **0.825** | 0.476 | 0.046 | 0.043 |
-| area-matched IoU | 0.448 | **0.537** | 0.287 | 0.026 | 0.033 |
+| attention mass in ROI | 0.292 | **0.384** | 0.269 | 0.048 | 0.049 |
+| pointing game | 0.609 | **0.831** | 0.476 | 0.041 | 0.005 |
+| area-matched IoU | 0.394 | **0.536** | 0.287 | 0.026 | 0.008 |
 
-Mass lift **+0.297 ± 0.167**, beating the per-fold shuffle in **25 of 30**
-evaluations. Against +0.325 internally, so it does decay — but it clears the
-pre-specified +0.20 gate with room, on data the model has never seen.
+Mass lift **+0.244**, beating the per-fold shuffle in **11 of 15** evaluations.
+Gate D passes on all four pre-specified criteria — but read the margin before
+quoting it.
+
+**The margin is one fold.** The gate requires beating the shuffle in ≥ 10/14 =
+71.4% of evaluations. 11/15 is 73.3%. One more dead fold and the primary endpoint
+fails.
+
+**And it must be quoted at this number, not the larger one.** An earlier run of
+this evaluation covered 30 checkpoints and reported +0.297 with 25/30. That set
+is not the endpoint the analysis plan names: it included the superseded
+`run16-nogen-s1337` and 15 folds from the peritumoral variant, whose grounding is
+better than the canonical configuration's. Restricting to the three canonical
+runs costs 0.053 of lift and 4 percentage points of fold rate. The larger figure
+is retained in `results/external_grounding.json` for provenance and is not the
+reported result.
 
 **The centre prior is the control that matters**, and it is why this table has
 five columns instead of three. These crops are lesion-centred: external ROI
 centroids sit at (0.50, 0.51) of the frame with sd ≈ 0.08, covering 5.8% of the
 area. A model that learned nothing except "look at the middle" scores **0.269**
-on mass — most of the way to the trained model's 0.346. On mass alone the claim
-would be thin. On pointing it is not: 0.688 against 0.476, and 0.825 among the
+on mass — 92% of the trained model's 0.292. On mass alone the claim would be
+nearly empty. On pointing it is not: 0.609 against 0.476, and 0.831 among the
 folds that localise at all. Pointing and area-matched IoU are provably invariant
-to the prior's width (`tests/test_fov_and_subgroups.py`), so that margin cannot
-be manufactured by choosing a flattering sigma.
+to the prior's width (`tests/test_fov_and_subgroups.py`), so that margin cannot be
+manufactured by choosing a flattering sigma.
 
 The randomly-initialised head returns lift **+0.000** at peak ratio 1.01 — a
 uniform map. Whatever the trained heads are doing, it is learned, not
 architectural.
 
-Five of 30 evaluations are dead: `ms-s42/fold1`, `run16-nogen-s1337/fold1`,
-`peri-s42/fold2`, `peri-s7/fold4`, `peri-s1337/fold3`. All show pointing of
-**exactly 0.000** at peak ratios of 9–24 — sharply peaked attention aimed
-confidently somewhere other than the tumour. This is the same failure flagged in
-§4 for seed 42 fold 1, and it reproduces externally, so it is a property of those
-checkpoints rather than of the internal cohort. They are left in the pooled
-numbers; the "25 live" column exists so the reader can see both.
+Failures are not evenly distributed, and that is the most useful thing in this
+section:
 
-Gate D, pre-specified in [ANALYSIS_PLAN.md](ANALYSIS_PLAN.md) §5, passes on all
-four criteria: lift ≥ 0.20, beats shuffle in ≥ 71% of folds, random head ≈ 0, and
-pointing above the centre prior.
+| run | folds that localise |
+|---|---|
+| `ms-s7` | 5/5 |
+| `ms-s42` | 4/5 |
+| **`base-s1337-v2`** | **2/5** |
+
+Seed 1337 fails externally exactly as it fails internally (2/5 both ways). Its
+dead folds show pointing of **exactly 0.000** at peak ratios of 4–23 — sharply
+peaked attention aimed confidently somewhere other than the tumour. So the
+localisation is not a property of the method alone; one of three training runs
+largely does not acquire it, and that run is also the one whose classification
+AUC is highest. Both facts belong in the paper.
+
+![external grounding](../figures/fig6_external_grounding.png)
 
 ## 4b. The rationale arm is not ready for a reader study
 

@@ -416,7 +416,10 @@ def main() -> None:
     if a.overlay_ckpt:
         fig_overlays(a.overlay_ckpt, cfg, os.path.join(a.outdir, "fig5_overlays.png"))
 
-    ext = "results/external_grounding.json"
+    # Canonical run set. The 30-checkpoint file mixes in a superseded run and
+    # the peritumoral variant, whose grounding is better, so it overstates
+    # the endpoint the plan actually names.
+    ext = "results/external_grounding_canonical.json"
     if os.path.exists(ext):
         fig_external_grounding(json.load(open(ext)),
                                os.path.join(a.outdir, "fig6_external_grounding.png"))

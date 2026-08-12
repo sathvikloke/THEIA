@@ -64,7 +64,9 @@ echo
 echo "=== 5. THE PRIMARY ENDPOINT: grounding on an unseen cohort ==="
 python - <<'PY'
 import json
-d = json.load(open("results/external_grounding.json"))
+# Canonical runs only. The 30-checkpoint file mixes in a superseded run
+# and the peritumoral variant and overstates the endpoint by +0.053.
+d = json.load(open("results/external_grounding_canonical.json"))
 rows, cp, rnd = d["rows"], d["control_centre_prior"], d["control_random_init"]
 mean = lambda k, rs=rows: sum(r[k] for r in rs) / len(rs)
 live = [r for r in rows if r["grounding_pointing"] > 0.05]

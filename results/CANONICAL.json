@@ -37,5 +37,28 @@
     "mean": 0.489,
     "sd": 0.005,
     "note": "at chance; exploratory only. Gevaert et al. (Sci Rep 2017) also report no significant KRAS model on this cohort."
+  },
+  "external_endpoint": {
+    "_what": "The primary endpoint (H1), computed on the CANONICAL runs only.",
+    "file": "results/external_grounding_canonical.json",
+    "runs": [
+      "base-s1337-v2",
+      "ms-s7",
+      "ms-s42"
+    ],
+    "n_external": 420,
+    "n_evaluations": 15,
+    "mass_lift": 0.244,
+    "beats_shuffle": "11/15",
+    "pointing_trained": 0.609,
+    "pointing_centre_prior": 0.476,
+    "random_init_lift": 0.0,
+    "gate_d_passed": true,
+    "margin_note": "Gate D requires beating the shuffle in >= 10/14 = 71.4% of folds. 11/15 = 73.3%. ONE more dead fold would fail it. The earlier 30-checkpoint figure (+0.297, 25/30) is not comparable: it included the superseded run16-nogen-s1337 and 15 folds from the peritumoral variant, whose grounding is better. Reported at the canonical number, with the margin stated.",
+    "per_run_localising": {
+      "base-s1337-v2": "2/5",
+      "ms-s7": "5/5",
+      "ms-s42": "4/5"
+    }
   }
 }

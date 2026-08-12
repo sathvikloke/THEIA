@@ -182,7 +182,7 @@ def test_external_grounding_figure_renders_from_the_real_archive(tmp_path):
 
     from theia.analysis.figures import fig_external_grounding
 
-    src = "results/external_grounding.json"
+    src = "results/external_grounding_canonical.json"
     if not os.path.exists(src):
         pytest.skip("external grounding has not been run")
     blob = json.load(open(src))
@@ -206,7 +206,7 @@ def test_external_grounding_controls_are_far_below_the_trained_model():
     import json
     import os
 
-    src = "results/external_grounding.json"
+    src = "results/external_grounding_canonical.json"
     if not os.path.exists(src):
         pytest.skip("external grounding has not been run")
     b = json.load(open(src))

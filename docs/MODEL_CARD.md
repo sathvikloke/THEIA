@@ -46,8 +46,8 @@ against a shuffled baseline of 0.037 — 9.7× chance, beating its own baseline 
 failing folds belong to the retrained seed-1337 run; see RESULTS §4.
 
 **Grounding, external** — the primary endpoint. 420 held-out NSCLC-Radiomics
-patients (Maastro Clinic, Netherlands), 30 evaluations: mass lift +0.297 ± 0.167,
-beating the shuffle in 25/30. Pointing 0.688 against 0.476 for a centre prior and
+patients (Maastro Clinic, Netherlands), 15 evaluations: mass lift +0.244 ± 0.167,
+beating the shuffle in 11/15. Pointing 0.609 against 0.476 for a centre prior and
 0.046 for the shuffle; a randomly-initialised head returns +0.000.
 
 **Calibration is poor and the probabilities should not be used.** Slope 0.180

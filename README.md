@@ -264,8 +264,8 @@ tumour occupies 3.9% of the crop, so this is not a free win.
 *Externally* — the primary endpoint — the same heads evaluated on **420 held-out
 NSCLC-Radiomics patients** (Maastro, Netherlands: different scanners, a
 radiotherapy-planning rather than surgical population) give a mass lift of
-**+0.297**, beating the shuffle in **25 of 30** evaluations. Against controls:
-pointing 0.688 for the trained heads, 0.476 for a centre prior, and exactly
+**+0.244**, beating the shuffle in **11 of 15** evaluations. Against controls:
+pointing 0.609 for the trained heads, 0.476 for a centre prior, and exactly
 **0.000** lift from a randomly-initialised head. The centre prior matters here —
 these crops are lesion-centred, so "look at the middle" is a strong baseline on
 mass and a weak one on pointing, which is why all three metrics are reported.
