@@ -68,8 +68,11 @@ def validate_config(cfg: Config) -> None:
     monitor = cfg.train.monitor
     monitor_keys = [monitor] if isinstance(monitor, str) else [
         m if isinstance(m, str) else m[0] for m in monitor]
-    allowed = {f"{g}_{suffix}" for g in genes
-               for suffix in ("auc", "sens", "spec")} | {
+    # No sens/spec. The analysis plan pre-specifies the index test as continuous
+    # with no intended binary decision, so evaluate() no longer emits an operating
+    # point and monitoring one would select checkpoints on a threshold the study
+    # has declared meaningless. See docs/ANALYSIS_PLAN.md section 3.
+    allowed = {f"{g}_auc" for g in genes} | {
         "grounding_mass", "grounding_pointing", "grounding_iou",
         "grounding_mass_lift", "grounding_pointing_lift", "grounding_iou_lift",
         # A loss, so it belongs in a monitor with a NEGATIVE weight.

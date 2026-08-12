@@ -1,0 +1,278 @@
+{
+  "flow": [
+    {
+      "stage": "patients in the clinical sheet",
+      "n": 211,
+      "lost": null,
+      "reason": null
+    },
+    {
+      "stage": "with an imaging series present",
+      "n": 188,
+      "lost": 23,
+      "reason": "no CT series in the collection for this patient"
+    },
+    {
+      "stage": "successfully preprocessed",
+      "n": 158,
+      "lost": 30,
+      "reason": "no usable tumour localisation: no segmentation and no AIM point, AIM point unresolvable to a slice, or AIM point landing in air (< -700 HU)"
+    },
+    {
+      "stage": "with a known EGFR label",
+      "n": 153,
+      "lost": 5,
+      "reason": "EGFR status recorded as Unknown or Not collected"
+    },
+    {
+      "stage": "adenocarcinoma (primary analysis set, before tier)",
+      "n": 133,
+      "lost": 20,
+      "reason": "squamous cell or NSCLC-NOS; all are EGFR wild-type, so including them makes 13% of the cohort classifiable from histology alone"
+    },
+    {
+      "stage": "PRIMARY ANALYSIS SET: segmented adenocarcinoma",
+      "n": 97,
+      "lost": 36,
+      "reason": "AIM-only supervision tier: an annotated point but no pixel mask, so the crop geometry differs and the ROI is all zeros"
+    }
+  ],
+  "acquisition": {
+    "dicom_patient_dirs": 188,
+    "dicom_files_on_disk": 0,
+    "headers_readable": false,
+    "import_log_entries": 44,
+    "series_descriptions": {
+      "Thorax  1.0  B45f": 9,
+      "Chest  1.0  B45f": 8,
+      "THORAX LUNG 1MM": 2,
+      "LUNG 1MM B45f": 2,
+      "CTAC": 2,
+      "LUNG 1MM B45": 2,
+      "1.25MM CHEST BONE PLUS": 2,
+      "A/P 1MM": 1,
+      "ABD/PEL  1.0  B31f": 1,
+      "1.25MM CHEST BONE": 1,
+      "Gated Chest  1.0  B25f  BestDiast 70 %": 1,
+      "Thorax  1.0  B70f": 1,
+      "Chest  1.0  B45s": 1,
+      "IN REACH": 1,
+      "Chest_Screen  1.0  B45f": 1
+    },
+    "ct_slices": {
+      "n": 44,
+      "median": 319,
+      "min": 199,
+      "max": 769
+    },
+    "note": "Slice thickness, convolution kernel and scanner vendor/model come from DICOM headers and cannot be recomputed: the imaging was deleted from local disk to reclaim space. Re-download from TCIA is required to populate the acquisition table. Series descriptions above are the residue preserved in import_log.json and cover only the subset it records."
+  },
+  "interval_days": {
+    "n": 211,
+    "median": 38.0,
+    "q1": 19.5,
+    "q3": 65.5,
+    "min": 1.0,
+    "max": 735.0
+  },
+  "table_one": [
+    {
+      "characteristic": "n",
+      "EGFR mutant": "40",
+      "EGFR wild-type": "113",
+      "all": "153"
+    },
+    {
+      "characteristic": "age, median [IQR]",
+      "EGFR mutant": "68 [63-76]",
+      "EGFR wild-type": "69 [64-75]",
+      "all": "69 [64-76]"
+    },
+    {
+      "characteristic": "pack-years, median [IQR]",
+      "EGFR mutant": "15 [9-34]",
+      "EGFR wild-type": "42 [26-56]",
+      "all": "40 [20-50]"
+    },
+    {
+      "characteristic": "Gender: Female",
+      "EGFR mutant": "22 (55%)",
+      "EGFR wild-type": "33 (29%)",
+      "all": "55 (36%)"
+    },
+    {
+      "characteristic": "Gender: Male",
+      "EGFR mutant": "18 (45%)",
+      "EGFR wild-type": "80 (71%)",
+      "all": "98 (64%)"
+    },
+    {
+      "characteristic": "Ethnicity: African-American",
+      "EGFR mutant": "0 (0%)",
+      "EGFR wild-type": "4 (4%)",
+      "all": "4 (3%)"
+    },
+    {
+      "characteristic": "Ethnicity: Asian",
+      "EGFR mutant": "9 (22%)",
+      "EGFR wild-type": "6 (5%)",
+      "all": "15 (10%)"
+    },
+    {
+      "characteristic": "Ethnicity: Caucasian",
+      "EGFR mutant": "13 (32%)",
+      "EGFR wild-type": "77 (68%)",
+      "all": "90 (59%)"
+    },
+    {
+      "characteristic": "Ethnicity: Hispanic/Latino",
+      "EGFR mutant": "1 (2%)",
+      "EGFR wild-type": "4 (4%)",
+      "all": "5 (3%)"
+    },
+    {
+      "characteristic": "Ethnicity: Native Hawaiian/Pacific Islander",
+      "EGFR mutant": "0 (0%)",
+      "EGFR wild-type": "3 (3%)",
+      "all": "3 (2%)"
+    },
+    {
+      "characteristic": "Ethnicity: Not Recorded In Database",
+      "EGFR mutant": "17 (42%)",
+      "EGFR wild-type": "19 (17%)",
+      "all": "36 (24%)"
+    },
+    {
+      "characteristic": "Smoking status: Current",
+      "EGFR mutant": "2 (5%)",
+      "EGFR wild-type": "22 (19%)",
+      "all": "24 (16%)"
+    },
+    {
+      "characteristic": "Smoking status: Former",
+      "EGFR mutant": "18 (45%)",
+      "EGFR wild-type": "78 (69%)",
+      "all": "96 (63%)"
+    },
+    {
+      "characteristic": "Smoking status: Nonsmoker",
+      "EGFR mutant": "20 (50%)",
+      "EGFR wild-type": "13 (12%)",
+      "all": "33 (22%)"
+    },
+    {
+      "characteristic": "Histology: Adenocarcinoma",
+      "EGFR mutant": "40 (100%)",
+      "EGFR wild-type": "93 (82%)",
+      "all": "133 (87%)"
+    },
+    {
+      "characteristic": "Histology: NSCLC NOS (not otherwise specified)",
+      "EGFR mutant": "0 (0%)",
+      "EGFR wild-type": "3 (3%)",
+      "all": "3 (2%)"
+    },
+    {
+      "characteristic": "Histology: Squamous cell carcinoma",
+      "EGFR mutant": "0 (0%)",
+      "EGFR wild-type": "17 (15%)",
+      "all": "17 (11%)"
+    },
+    {
+      "characteristic": "Pathological T stage: T1a",
+      "EGFR mutant": "2 (5%)",
+      "EGFR wild-type": "27 (24%)",
+      "all": "29 (19%)"
+    },
+    {
+      "characteristic": "Pathological T stage: T1b",
+      "EGFR mutant": "8 (20%)",
+      "EGFR wild-type": "17 (15%)",
+      "all": "25 (16%)"
+    },
+    {
+      "characteristic": "Pathological T stage: T2a",
+      "EGFR mutant": "7 (18%)",
+      "EGFR wild-type": "25 (22%)",
+      "all": "32 (21%)"
+    },
+    {
+      "characteristic": "Pathological T stage: T2b",
+      "EGFR mutant": "1 (2%)",
+      "EGFR wild-type": "7 (6%)",
+      "all": "8 (5%)"
+    },
+    {
+      "characteristic": "Pathological T stage: T3",
+      "EGFR mutant": "3 (8%)",
+      "EGFR wild-type": "11 (10%)",
+      "all": "14 (9%)"
+    },
+    {
+      "characteristic": "Pathological T stage: T4",
+      "EGFR mutant": "1 (2%)",
+      "EGFR wild-type": "4 (4%)",
+      "all": "5 (3%)"
+    },
+    {
+      "characteristic": "Pathological T stage: Tis",
+      "EGFR mutant": "1 (2%)",
+      "EGFR wild-type": "3 (3%)",
+      "all": "4 (3%)"
+    },
+    {
+      "characteristic": "Pathological N stage: N0",
+      "EGFR mutant": "19 (48%)",
+      "EGFR wild-type": "71 (63%)",
+      "all": "90 (59%)"
+    },
+    {
+      "characteristic": "Pathological N stage: N1",
+      "EGFR mutant": "2 (5%)",
+      "EGFR wild-type": "10 (9%)",
+      "all": "12 (8%)"
+    },
+    {
+      "characteristic": "Pathological N stage: N2",
+      "EGFR mutant": "2 (5%)",
+      "EGFR wild-type": "13 (12%)",
+      "all": "15 (10%)"
+    },
+    {
+      "characteristic": "%GG: 0%",
+      "EGFR mutant": "8 (20%)",
+      "EGFR wild-type": "63 (56%)",
+      "all": "71 (46%)"
+    },
+    {
+      "characteristic": "%GG: >0 - 25%",
+      "EGFR mutant": "7 (18%)",
+      "EGFR wild-type": "26 (23%)",
+      "all": "33 (22%)"
+    },
+    {
+      "characteristic": "%GG: 25 - 50%",
+      "EGFR mutant": "2 (5%)",
+      "EGFR wild-type": "1 (1%)",
+      "all": "3 (2%)"
+    },
+    {
+      "characteristic": "%GG: 50 - 75%",
+      "EGFR mutant": "3 (8%)",
+      "EGFR wild-type": "3 (3%)",
+      "all": "6 (4%)"
+    },
+    {
+      "characteristic": "%GG: 75 - < 100%",
+      "EGFR mutant": "3 (8%)",
+      "EGFR wild-type": "0 (0%)",
+      "all": "3 (2%)"
+    },
+    {
+      "characteristic": "%GG: 100%",
+      "EGFR mutant": "0 (0%)",
+      "EGFR wild-type": "1 (1%)",
+      "all": "1 (1%)"
+    }
+  ]
+}

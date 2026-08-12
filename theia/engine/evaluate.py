@@ -100,9 +100,8 @@ def evaluate(model, loader, cfg, device, full: bool = False) -> dict:
         metrics[f"{g}_auc"] = float(auc)
         metrics[f"{g}_n_pos"] = float(sum(ys[g]))
         metrics[f"{g}_n"] = float(len(ys[g]))
-        sens, spec = _sens_spec(np.array(ys[g]), np.array(probs[g]))
-        metrics[f"{g}_sens"] = sens
-        metrics[f"{g}_spec"] = spec
+        # No sensitivity/specificity. See _sens_spec's docstring: a 0.5 threshold on
+        # these probabilities is not an operating point, it is an artefact.
         if full:
             lo, hi = _bootstrap_auc(np.array(ys[g]), np.array(probs[g]), cfg.eval.bootstrap_n)
             metrics[f"{g}_auc_lo"] = float(lo)
@@ -233,8 +232,10 @@ def pooled_metrics(rows: list[dict], genes: list[str], bootstrap_n: int = 2000) 
         out[f"{g}_auc"] = float(roc_auc_score(y, p))
         lo, hi = _bootstrap_auc(y, p, bootstrap_n)
         out[f"{g}_auc_lo"], out[f"{g}_auc_hi"] = float(lo), float(hi)
-        sens, spec = _sens_spec(y, p)
-        out[f"{g}_sens"], out[f"{g}_spec"] = sens, spec
+        # Sensitivity/specificity used to be emitted here. They were worse than
+        # arbitrary: `p` is rank-normalised within fold, so a 0.5 cut is "the top
+        # half of each fold" -- a quantity fixed by the cohort's prevalence rather
+        # than by the model. Removed; see _sens_spec.
     return out
 
 
@@ -317,7 +318,26 @@ def _bootstrap_auc(y, p, n_boot: int) -> tuple[float, float]:
     return float(np.percentile(stats, 2.5)), float(np.percentile(stats, 97.5))
 
 
-def _sens_spec(y, p, thresh: float = 0.5) -> tuple[float, float]:
+def _sens_spec(y, p, thresh: float) -> tuple[float, float]:
+    """Sensitivity and specificity at an EXPLICIT threshold. Not called by default.
+
+    `thresh` has no default on purpose. This used to default to 0.5 and its output
+    was emitted into every metrics dict, which invited exactly one mistake: quoting
+    "sensitivity 0.70, specificity 0.56" as though it were a validated operating
+    point. It is not, for two independent reasons.
+
+    First, the model is badly calibrated -- measured calibration slope 0.180, and a
+    Brier score worse than predicting the base rate for everyone (see
+    `theia.analysis.calibration`), so 0.5 marks nothing in particular.
+
+    Second, in `pooled_metrics` the scores are rank-normalised within fold, so 0.5
+    selects the top half of each fold. That makes sensitivity a function of the
+    cohort's prevalence rather than of the model.
+
+    The analysis plan pre-specifies the index test as continuous with no intended
+    binary decision, and STARD cross-tabulation as not applicable. Anything that
+    calls this has to name its own threshold and justify it.
+    """
     pred = (p >= thresh).astype(int)
     tp = int(((pred == 1) & (y == 1)).sum())
     tn = int(((pred == 0) & (y == 0)).sum())

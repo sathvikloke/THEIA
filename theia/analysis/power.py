@@ -96,6 +96,72 @@ def power_at(n: int, img_auc: float, y_pool: np.ndarray, clin_pool: np.ndarray,
     return wins / max(n_sim, 1), float(np.mean(deltas_obs)) if deltas_obs else float("nan")
 
 
+def hanley_mcneil_se(auc: float, n_pos: int, n_neg: int) -> float:
+    """Standard error of an AUC (Hanley & McNeil 1982).
+
+    Uses the exponential approximation for the two conditional probabilities
+    Q1 = P(two positives both rank above a negative) and Q2 = P(a positive ranks
+    above two negatives). It is the standard closed form behind every "how many
+    patients do I need" answer in this literature, and it is what CLAIM item 21
+    is asking for when it wants a sample-size justification.
+    """
+    a = float(np.clip(auc, 1e-6, 1 - 1e-6))
+    q1 = a / (2 - a)
+    q2 = 2 * a * a / (1 + a)
+    var = (a * (1 - a) + (n_pos - 1) * (q1 - a * a)
+           + (n_neg - 1) * (q2 - a * a)) / (n_pos * n_neg)
+    return float(np.sqrt(max(var, 0.0)))
+
+
+def n_for_auc_ci(auc: float, halfwidth: float, prevalence: float,
+                 max_n: int = 200_000) -> int:
+    """Smallest total n whose 95% CI on the AUC is no wider than +/- halfwidth.
+
+    This answers the question that actually binds an external validation set,
+    which is PRECISION, not power: with ~17 positives available, the CI on an AUC
+    near 0.63 is about +/- 0.14, which spans chance and simultaneously spans the
+    0.80s the literature reports. Such a test set cannot confirm or refute
+    anything, and knowing that in advance is the difference between a
+    pre-specified finding and a disappointment.
+    """
+    if not 0 < prevalence < 1:
+        raise ValueError(f"prevalence must be in (0,1), got {prevalence}")
+    lo, hi = 4, max_n
+    if 1.96 * hanley_mcneil_se(auc, max(int(max_n * prevalence), 1),
+                               max(max_n - int(max_n * prevalence), 1)) > halfwidth:
+        return -1                                  # unreachable within max_n
+    while lo < hi:
+        mid = (lo + hi) // 2
+        n_pos = max(int(round(mid * prevalence)), 1)
+        n_neg = max(mid - n_pos, 1)
+        if 1.96 * hanley_mcneil_se(auc, n_pos, n_neg) <= halfwidth:
+            hi = mid
+        else:
+            lo = mid + 1
+    return lo
+
+
+def riley_min_n(n_predictors: int, prevalence: float, r2_cs: float | None = None) -> int:
+    """Riley et al. minimum sample size for a binary prediction model.
+
+    Applied ONLY to the clinical model and the frozen-feature probe. It needs a
+    candidate-predictor count and a target Cox-Snell R^2, and neither is defined
+    for an 88M-parameter frozen ViT, so quoting it for the deep arm would be
+    arithmetic dressed as justification.
+
+    Criterion used here is Riley's shrinkage requirement (expected shrinkage
+    <= 10%), which is the binding one at these effect sizes.
+    """
+    p = float(prevalence)
+    if r2_cs is None:
+        # Max possible Cox-Snell R^2 for a binary outcome, scaled by a
+        # conservative 0.15 of it -- Riley's own recommendation when no prior
+        # model exists to estimate R^2 from.
+        max_r2 = 1 - (p ** p * (1 - p) ** (1 - p)) ** 2
+        r2_cs = 0.15 * max_r2
+    return int(np.ceil(n_predictors / ((1 - 0.10 / 1) * np.log(1 - r2_cs / 0.9) * -1)))
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--baselines", default="results/baselines.json")
@@ -134,8 +200,43 @@ def main() -> None:
 
     print("\n[power] read as a floor: assumes the external cohort resembles this one "
           "in prevalence, clinical-model strength and arm correlation.")
-    json.dump({"n_observed": int(len(y)), "prevalence": float(y.mean()),
-               "clinical_auc": float(roc_auc_score(y, clin)), "table": table},
+
+    # --- precision, which is what actually binds an external test set ----------
+    prev = float(y.mean())
+    print(f"\n[power] PRECISION (Hanley-McNeil), at prevalence {prev:.3f}")
+    print("  n needed for a 95% CI half-width of:")
+    print(f"  {'AUC':>6}" + "".join(f"{f'+/-{h}':>12}" for h in (0.15, 0.10, 0.05)))
+    precision = {}
+    for auc in (0.63, 0.70, 0.80):
+        cells = [n_for_auc_ci(auc, h, prev) for h in (0.15, 0.10, 0.05)]
+        precision[str(auc)] = {str(h): n for h, n in zip((0.15, 0.10, 0.05), cells)}
+        print(f"  {auc:>6.2f}" + "".join(
+            f"{('unreachable' if n < 0 else n):>12}" for n in cells))
+
+    n_obs = len(y)
+    n_pos = int(y.sum())
+    se = hanley_mcneil_se(0.63, n_pos, n_obs - n_pos)
+    print(f"\n  observed cohort n={n_obs} ({n_pos} positive): "
+          f"95% CI half-width at AUC 0.63 is +/-{1.96*se:.3f}")
+    ext_pos, ext_n = 17, 96
+    se_ext = hanley_mcneil_se(0.63, ext_pos, ext_n - ext_pos)
+    print(f"  attainable external set n~{ext_n} ({ext_pos} positive): "
+          f"+/-{1.96*se_ext:.3f}  <- spans chance AND the published 0.80s")
+
+    riley = {"clinical (5 predictors)": riley_min_n(5, prev),
+             "frozen probe (512 features)": riley_min_n(512, prev)}
+    print("\n[power] Riley minimum n (shrinkage <= 10%), applicable arms only:")
+    for k, v in riley.items():
+        print(f"  {k:<30} {v}")
+    print("  not computed for the deep arm: Riley needs a candidate-predictor count\n"
+          "  and a target Cox-Snell R^2, neither defined for a frozen 88M-parameter ViT.")
+
+    json.dump({"n_observed": int(len(y)), "prevalence": prev,
+               "clinical_auc": float(roc_auc_score(y, clin)), "table": table,
+               "precision_n_for_ci": precision,
+               "observed_ci_halfwidth_at_063": float(1.96 * se),
+               "attainable_external_ci_halfwidth_at_063": float(1.96 * se_ext),
+               "riley_min_n": riley},
               open(a.out, "w"), indent=2)
     print(f"[power] wrote {a.out}")
 

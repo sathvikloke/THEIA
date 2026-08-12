@@ -121,10 +121,33 @@ morphology, so a real arm of the same standalone AUC delivers less.
 For the external test set specifically, precision — not power — is the binding
 constraint. The open world is ~327 EGFR-labelled CT cases with ~64 positives
 (TCGA-LUAD 60/10, CPTAC-LUAD 36/10, NSCLC-Radiogenomics 153/40, squamous
-collections ~59/1). A test set with ~17 positives has a Hanley–McNeil 95% CI of
-roughly ±0.14 at AUC 0.63 — it spans chance *and* spans the published 0.80s.
+collections ~59/1). From `theia.analysis.power.n_for_auc_ci`, at the observed
+26.1% prevalence:
+
+| target 95% CI half-width | n needed at AUC 0.63 |
+|---|---|
+| ±0.15 | 75 |
+| ±0.10 | 167 |
+| ±0.05 | 661 |
+
+The observed cohort (n=153, 40 positive) already sits at **±0.104**. An
+attainable external set of ~96 patients with ~17 positives gives **±0.154** — it
+spans chance *and* spans the published 0.80s simultaneously.
 **"External testing was attempted and is uninformative at the available scale" is
 the pre-specified finding**, not a reason to defer.
+
+Riley's minimum sample size, applied only where it is defined (it needs a
+candidate-predictor count and a target Cox–Snell R², neither meaningful for a
+frozen 88M-parameter ViT):
+
+| arm | predictors | Riley minimum n | have |
+|---|---|---|---|
+| clinical | 5 | **46** | 153 ✓ |
+| frozen-feature probe | 512 | **4,707** | 153 ✗ |
+
+So the frozen probe matching the full model (0.617 vs 0.617) is not evidence that
+the architecture is redundant so much as evidence that **neither arm is
+identifiable at this cohort size**. Both readings are reported.
 
 ## 5. What would falsify the project's premise
 
