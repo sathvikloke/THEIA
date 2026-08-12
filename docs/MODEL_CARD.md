@@ -34,21 +34,33 @@ external cohort has been tested.
 
 | | EGFR AUC |
 |---|---|
-| **THEIA, 3 seeds** | **0.627 ± 0.041** (range 0.597–0.674) |
+| **THEIA, 3 seeds** | **0.617 ± 0.024** (range 0.597–0.643) |
+| THEIA + peritumoral branch, 3 seeds | 0.675 ± 0.017 — suggestive, see RESULTS §1 |
 | frozen BiomedCLIP + logistic regression, same folds | 0.617 ± 0.052 |
 | clinical (age, sex, ethnicity, smoking, pack-years) | 0.764–0.805 |
 | smoking status alone | 0.794 |
 
-**Grounding**, 14 scored folds: attention mass in ROI 0.428 ± 0.154 against a
-shuffled baseline of 0.036 — 11.7× chance, beating its own baseline in 14/14
-folds (sign test p = 1.2e-4). Pointing game 0.883 vs 0.049.
+**Grounding, internal**, 14 scored folds: attention mass in ROI 0.428 ± 0.154
+against a shuffled baseline of 0.036 — 11.7× chance, beating its own baseline in
+14/14 folds (sign test p = 1.2e-4). Pointing game 0.883 vs 0.049.
 
-KRAS is at chance and is exploratory only.
+**Grounding, external** — the primary endpoint. 420 held-out NSCLC-Radiomics
+patients (Maastro Clinic, Netherlands), 30 evaluations: mass lift +0.297 ± 0.167,
+beating the shuffle in 25/30. Pointing 0.688 against 0.476 for a centre prior and
+0.046 for the shuffle; a randomly-initialised head returns +0.000.
+
+**Calibration is poor and the probabilities should not be used.** Slope 0.180
+against a perfect 1.0; Brier 0.217–0.248 against a base-rate floor of 0.193, so
+the raw outputs are worse than predicting the prevalence for every patient. No
+operating point is defined, and none should be inferred.
+
+KRAS is at chance and is exploratory only. Gevaert et al. (Sci Rep 2017) also
+report no significant KRAS model on this cohort.
 
 ## Limitations, in the order that matters
 
 **It adds nothing to a clinician's existing information.** Paired per seed,
-(clinical + THEIA) − clinical = **−0.022 ± 0.027**, with every seed's CI
+(clinical + THEIA) − clinical = **−0.028 ± 0.016**, with every seed's CI
 including zero. Whatever EGFR signal it extracts from CT is already carried by
 smoking status, which is free and in the chart.
 

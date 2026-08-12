@@ -47,7 +47,7 @@ answerable at any cohort size this project can reach:
    **1,646 patients, 11,473 segmented lesions**, NGS-confirmed EGFR, reporting
    internal AUC 0.62–0.68 and external 0.55–0.63 — where their external cohort
    *is* NSCLC-Radiogenomics, this project's internal cohort. Ten times the
-   patients and seventy-five times the lesions reproduce our 0.627.
+   patients and seventy-five times the lesions reproduce our 0.617.
 
 Reporting H₂ as a null is therefore a finding, not a failure, and it must not be
 softened into "future work with more data".
@@ -86,10 +86,11 @@ Grounding comparators, all three mandatory in every table:
 | co-primary | incremental ΔAUC vs clinical, pre-declared null | §1 |
 | **primary analysis set** | **adenocarcinoma only** | all 43 EGFR-mutants are adenocarcinoma; the 35 squamous and 4 NSCLC-NOS patients are wild-type without exception, so 20 patients (13%) are guaranteed-negative on histology alone. `MODEL_CARD.md` already declares non-adenocarcinoma out of scope |
 | supervision tier | segmented-only primary; full cohort with a `tier` covariate as sensitivity | `has_mask` scores 0.583 on its own through these folds, so tier is readable from pixels and is a confound, not a nuisance |
+| canonical run set | named in `results/CANONICAL.json`, never a glob | `results/ms-s*.json` silently included a run whose fold 1 stalled — 122 of 153 patients, and the highest AUC of the three seeds — which kept a superseded headline alive in three documents |
 | acquisition sensitivity | ≤1.5 mm slice thickness (161/188 series), exploratory | pre-declared so it cannot be promoted later |
 | training config | `configs/default.yaml` at the commit that seals the model | prevents post-hoc tuning against external data |
 | seeds | 1337, 7, 42 | the same three used internally |
-| headline statistic | across-seed mean ± sd | a single run's sd here is 0.041 |
+| headline statistic | across-seed mean ± sd | the across-seed sd is 0.024, and a single run's CI absorbs none of it |
 | CV protocol | nested, 5-fold, stratified on EGFR | flat CV is worth +0.066 on identical features |
 | pooling | within-fold rank normalisation, recomputed within any subgroup | a rank is a statement about the patients being compared |
 | operating point | **none** — index test is continuous | at AUC 0.63 a 90%-sensitivity point has ~20% specificity and is clinically meaningless; STARD cross-tabulation is NA and the `_sens_spec` key is removed |
@@ -158,7 +159,7 @@ Stated in advance so it cannot be renegotiated later.
   radiogenomic framing should be abandoned rather than re-cut.
 - A frozen-feature logistic regression matches the full model on matched folds
   → the architecture is not earning its complexity. **This is already true
-  internally** (0.617 ± 0.052 vs 0.627 ± 0.041) and must be re-reported on the
+  internally** (0.617 ± 0.052 vs 0.617 ± 0.024) and must be re-reported on the
   external cohort either way.
 - **Grounding lift on the external cohort falls below +0.20, or beats its
   shuffled baseline in fewer than 10/14 (71%) of evaluation folds, or fails to
@@ -179,7 +180,7 @@ Stated in advance so it cannot be renegotiated later.
 - The primary analysis set (segmented adenocarcinoma, n = 97, 23 positives)
   carries the headline; the full cohort appears as sensitivity. Both numbers are
   reported whichever way they fall — internally that costs **−0.056**
-  (0.627 → 0.572).
+  (0.617 → 0.563).
 - Calibration is reported: calibration plot, slope, intercept, Brier score and
   O:E ratio, computed from the archived per-patient probabilities.
 - Stalled folds, excluded patients and any deviation from this plan are reported

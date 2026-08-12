@@ -92,12 +92,12 @@ reconciling them costs:
 
 | subset | n | pos | EGFR AUC |
 |---|---|---|---|
-| full cohort | 153 | 40 | 0.627 ± 0.041 |
-| adenocarcinoma only | 133 | 40 | 0.610 ± 0.044 |
-| segmented only | 117 | 23 | 0.591 ± 0.047 |
-| **segmented adenocarcinoma** | **97** | **23** | **0.572 ± 0.047** |
+| full cohort | 153 | 40 | 0.617 ± 0.024 |
+| adenocarcinoma only | 133 | 40 | 0.602 ± 0.031 |
+| segmented only | 117 | 23 | 0.579 ± 0.026 |
+| **segmented adenocarcinoma** | **97** | **23** | **0.563 ± 0.032** |
 
-(Computed from the archived per-patient probabilities of the original three runs,
+(Computed from the archived per-patient probabilities of the canonical runs,
 with ranks recomputed within each subset — a rank is a statement about the
 patients being compared, so inheriting full-cohort ranks would import information
 about the patients just excluded.) The analysis plan now makes segmented
@@ -149,11 +149,14 @@ set entirely — and compared by paired bootstrap:
 
 | seed | clinical | + THEIA | ΔAUC | 95% CI | p |
 |---|---|---|---|---|---|
-| 1337 | 0.759 | 0.767 | +0.008 | [−0.046, +0.065] | 0.782 |
+| 1337 | 0.764 | 0.752 | −0.012 | [−0.068, +0.044] | 0.677 |
 | 42 | 0.779 | 0.736 | −0.044 | [−0.107, +0.021] | 0.175 |
 | 7 | 0.805 | 0.776 | −0.029 | [−0.093, +0.038] | 0.372 |
 
-> **Δ = −0.022 ± 0.027 across seeds, and every seed's CI includes zero.**
+> **Δ = −0.028 ± 0.016 across seeds, and every seed's CI includes zero.**
+
+All three seeds are now scored on the full 153 patients. The seed-1337 row
+previously read +0.008 on 122 patients, from the run whose fold 1 stalled.
 
 **THEIA adds nothing on top of five chart variables**, and the point estimate is
 slightly negative in two of three seeds.
@@ -190,14 +193,19 @@ The uncomfortable part is the comparison against the full model. Scored through
 
 | seed | frozen probe | THEIA | diff |
 |---|---|---|---|
-| 1337 | 0.626 | 0.674 | −0.048 |
+| 1337 | 0.626 | 0.643 | −0.017 |
 | 42 | 0.562 | 0.597 | −0.035 |
 | 7 | 0.665 | 0.612 | +0.053 |
-| **mean** | **0.617 ± 0.052** | **0.627 ± 0.041** | — |
+| **mean** | **0.617 ± 0.052** | **0.617 ± 0.024** | — |
 
 A logistic regression on frozen features is statistically indistinguishable from
-the whole grounded multimodal network. THEIA is nominally ahead by 0.010, which
-is a quarter of its own seed sd.
+the whole grounded multimodal network — the two means are **identical to three
+decimals**, and THEIA's advantage over its own frozen features is exactly nothing.
+
+Read that with the sample size, though. Riley's minimum n for a 512-feature
+prediction model is **4,707** and this cohort has 153, so "the probe matches the
+model" is as much a statement about the cohort being too small to identify either
+arm as it is about the architecture. Both readings are reported.
 
 One protocol caution, because it nearly became a wrong headline. The same
 features and estimator score **0.683 under `diagnostics.py`'s flat
@@ -228,7 +236,7 @@ the method and a panel quietly narrowed to its best member is not a result.
 | 42 | 0.483 | [0.362, 0.603] | 152 | 32 |
 | 7 | 0.493 | [0.386, 0.603] | 152 | 32 |
 
-**0.509 ± 0.037 across seeds**; every interval spans chance and the point
+**0.487 ± 0.005 across seeds**; every interval spans chance and the point
 estimate is indistinguishable from 0.5. At 21% prevalence (32 of 152) the study
 is underpowered for KRAS on its own, but nothing here suggests an effect being
 missed rather than absent — unlike EGFR, whose permutation test is significant

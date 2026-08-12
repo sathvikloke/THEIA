@@ -1,0 +1,40 @@
+{
+  "_what": "The runs that constitute the reported headline. One definition, in one place, because a glob over results/ms-s*.json silently included a degenerate run and kept a superseded number alive in three documents.",
+  "gene": "EGFR",
+  "headline_runs": [
+    "results/base-s1337-rerun.json",
+    "results/ms-s7.json",
+    "results/ms-s42.json"
+  ],
+  "headline": {
+    "mean": 0.617,
+    "sd": 0.024,
+    "per_seed": {
+      "1337": 0.643,
+      "7": 0.612,
+      "42": 0.597
+    },
+    "n": 153,
+    "n_pos": 40,
+    "stalled_folds": 0
+  },
+  "variant_runs": {
+    "_what": "model.peritumoral_features = true. Reported as suggestive, not established: +0.058 over the headline, 95% CI [-0.008, +0.128], p = 0.086.",
+    "runs": [
+      "results/peri-s1337.json",
+      "results/peri-s7.json",
+      "results/peri-s42.json"
+    ],
+    "mean": 0.675,
+    "sd": 0.017
+  },
+  "superseded": {
+    "results/ms-s1337.json": "Fold 1 stalled, so this run is scored on 122 of 153 patients and reports 0.674 -- the highest of the three seeds and the least complete. Retrained as base-s1337-rerun.json (0.643, no stalled folds, full cohort), which is the canonical seed-1337 run. Kept on disk as the record of what was originally run, and deliberately NOT deleted; excluded from the headline set."
+  },
+  "note": "Anything that reports the headline must read this file rather than globbing. The glob pattern results/ms-s*.json is no longer a valid definition of the headline set.",
+  "headline_kras": {
+    "mean": 0.487,
+    "sd": 0.005,
+    "note": "at chance; exploratory only. Gevaert et al. (Sci Rep 2017) also report no significant KRAS model on this cohort."
+  }
+}

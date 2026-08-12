@@ -46,7 +46,10 @@ def main() -> None:
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/default.yaml")
-    ap.add_argument("--pattern", default="results/ms-s*.json")
+    ap.add_argument("--pattern", default=None,
+                    help="glob. Overrides the canonical run set; use with care, "
+                         "since a glob is what let a stalled run into the headline.")
+    ap.add_argument("--canonical", default="results/CANONICAL.json")
     ap.add_argument("--gene", default=None)
     ap.add_argument("--out", default="results/incremental_value.json")
     a = ap.parse_args()
@@ -58,10 +61,21 @@ def main() -> None:
     Xc, _ = clinical_features(rows, os.path.join(cfg.paths.raw_dir, "clinical",
                                                  "clinical.csv"))
 
-    paths = sorted(glob.glob(a.pattern))
-    if not paths:
-        raise SystemExit(f"no results matched {a.pattern!r}")
-    print(f"[inc] {len(paths)} run(s); gene={gene}\n")
+    # Default to the named canonical set rather than a glob. `results/ms-s*.json`
+    # used to be the definition of the headline, and it silently swept in a run
+    # whose fold 1 stalled -- 122 of 153 patients, and the highest AUC of the
+    # three seeds. Naming the runs in one file is what stops that recurring.
+    if a.pattern:
+        paths = sorted(glob.glob(a.pattern))
+        if not paths:
+            raise SystemExit(f"no results matched {a.pattern!r}")
+        print(f"[inc] {len(paths)} run(s) from glob {a.pattern!r}; gene={gene}\n")
+    else:
+        paths = json.load(open(a.canonical))["headline_runs"]
+        missing = [p for p in paths if not os.path.exists(p)]
+        if missing:
+            raise SystemExit(f"{a.canonical} names runs that do not exist: {missing}")
+        print(f"[inc] {len(paths)} canonical run(s) from {a.canonical}; gene={gene}\n")
 
     per_seed = []
     for path in paths:

@@ -38,33 +38,52 @@ from __future__ import annotations
 import argparse
 import glob
 import json
+import os
 from statistics import mean, stdev
 
 from theia.engine.evaluate import pooled_metrics
 
 
-def load(pattern: str) -> list[dict]:
+def load(pattern: str | None, canonical: str = "results/CANONICAL.json") -> list[dict]:
+    """Load the canonical headline runs, or an explicit glob if one is given.
+
+    Globbing is the default no longer. `results/ms-s*.json` used to define the
+    headline set and it silently included a run whose fold 1 stalled -- scored on
+    122 of 153 patients, and the highest AUC of the three seeds -- which kept a
+    superseded number alive in three documents.
+    """
+    if pattern:
+        paths = sorted(glob.glob(pattern))
+        if not paths:
+            raise SystemExit(f"no results matched {pattern!r}")
+    else:
+        paths = json.load(open(canonical))["headline_runs"]
+        missing = [p for p in paths if not os.path.exists(p)]
+        if missing:
+            raise SystemExit(f"{canonical} names runs that do not exist: {missing}")
     blobs = []
-    for path in sorted(glob.glob(pattern)):
+    for path in paths:
         with open(path) as fh:
             blob = json.load(fh)
         blob["_path"] = path
         blobs.append(blob)
-    if not blobs:
-        raise SystemExit(f"no results matched {pattern!r}")
     return blobs
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--pattern", default="results/ms-s*.json")
+    ap.add_argument("--pattern", default=None,
+                    help="glob. Overrides the canonical run set named in "
+                         "results/CANONICAL.json; use with care.")
+    ap.add_argument("--canonical", default="results/CANONICAL.json")
     ap.add_argument("--gene", default="EGFR")
     ap.add_argument("--out", default="results/multiseed_summary.json")
     a = ap.parse_args()
 
     g = a.gene.lower()
-    blobs = load(a.pattern)
-    print(f"[agg] {len(blobs)} run(s) matching {a.pattern}")
+    blobs = load(a.pattern, a.canonical)
+    src = f"glob {a.pattern!r}" if a.pattern else a.canonical
+    print(f"[agg] {len(blobs)} run(s) from {src}")
 
     per_run, merged, stalled_total = [], [], 0
     for blob in blobs:
