@@ -166,3 +166,54 @@ def test_offcentre_lesion_defeats_the_centre_prior():
     cp = centre_prior((2, 4, 14, 14), 0.06)
     out = summarise([cp], [roi], seed=0)
     assert out["grounding_pointing"] == pytest.approx(0.0)
+
+
+def test_external_grounding_figure_renders_from_the_real_archive(tmp_path):
+    """Smoke test for the figure attached to the collaboration email.
+
+    Not a check on how it looks -- that is not testable -- but on the two things
+    that would make it wrong rather than ugly: that it reads the archive this
+    project actually produced, and that it renders every control. A figure that
+    silently dropped the centre-prior bar would overstate the result to the one
+    audience most able to check it.
+    """
+    import json
+    import os
+
+    from theia.analysis.figures import fig_external_grounding
+
+    src = "results/external_grounding.json"
+    if not os.path.exists(src):
+        pytest.skip("external grounding has not been run")
+    blob = json.load(open(src))
+
+    for key in ("rows", "control_centre_prior", "control_random_init",
+                "mean_mass_lift", "folds_beating_shuffle", "n_folds", "n_external"):
+        assert key in blob, f"{src} is missing {key}, which the figure needs"
+
+    out = tmp_path / "fig6.png"
+    fig_external_grounding(blob, str(out))
+    assert out.exists() and out.stat().st_size > 5000
+
+
+def test_external_grounding_controls_are_far_below_the_trained_model():
+    """The claim the figure makes, asserted as numbers.
+
+    If a randomly-initialised head ever produced a non-trivial lift, the metric
+    would be measuring architecture rather than learning and the whole primary
+    endpoint would be void.
+    """
+    import json
+    import os
+
+    src = "results/external_grounding.json"
+    if not os.path.exists(src):
+        pytest.skip("external grounding has not been run")
+    b = json.load(open(src))
+    trained_pointing = np.mean([r["grounding_pointing"] for r in b["rows"]])
+
+    assert abs(b["control_random_init"]["grounding_mass_lift"]) < 0.10
+    assert b["control_random_init"]["grounding_peak_ratio"] < 1.5, \
+        "a random head should produce a near-uniform map"
+    assert trained_pointing > b["control_centre_prior"]["grounding_pointing"], \
+        "trained model must beat 'look at the middle' on pointing"

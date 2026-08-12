@@ -24,7 +24,7 @@ size.* European Radiology 2026. doi 10.1007/s00330-026-12601-9. PMID 42142113.
 0.55–0.63 — **their external cohort is NSCLC-Radiogenomics, which is ours.**
 
 **Framing, and this matters.** Do not write as though they outperformed us. They
-did not: 0.62–0.68 against our 0.627, from ten times the patients. The offer is a
+did not: 0.62–0.68 against our 0.617, from ten times the patients. The offer is a
 convergence, not a request for rescue.
 
 ---
@@ -38,7 +38,7 @@ convergence, not a request for rescue.
 > own work is built on.
 >
 > Working independently and without knowledge of your results, I get a pooled
-> out-of-fold AUC of 0.627 ± 0.041 for EGFR from CT on those 153 patients, under
+> out-of-fold AUC of 0.617 ± 0.024 for EGFR from CT on those 153 patients, under
 > nested cross-validation with within-fold rank pooling. Your 1,646 patients and
 > 11,473 lesions give 0.62–0.68 internally and 0.55–0.63 externally. Two
 > independent pipelines, an order of magnitude apart in sample size, landing in
@@ -56,13 +56,16 @@ convergence, not a request for rescue.
 >    the cohort sizes they are reported from. The simulation reproduces our own
 >    observed null as a consistency check.
 >
-> 2. **A localisation result that survives where discrimination does not.**
->    Attention supervised against tumour masks reaches 11.7× chance attention
->    mass and beats a per-fold spatial shuffle in 14/14 folds (p = 1.2e-4),
->    replicated across seeds, and I am currently evaluating it on 420 held-out
->    NSCLC-Radiomics patients with a centre-prior and a randomly-initialised-head
->    control. It is orthogonal to the genotype question and speaks to the same
->    label-fidelity theme as your biopsy anchoring.
+> 2. **A localisation result that survives where discrimination does not, and
+>    that is already externally validated.** Attention supervised against tumour
+>    masks, evaluated on 420 held-out NSCLC-Radiomics patients (Maastro, so
+>    different scanners and a radiotherapy-planning population): attention-mass
+>    lift +0.297, beating a per-fold spatial shuffle in 25 of 30 evaluations.
+>    Against controls — a centre prior scores 0.476 on the pointing game and a
+>    randomly-initialised head returns exactly 0.000 lift, while the trained
+>    heads reach 0.688. So the model localises the lesion reliably across
+>    institutions even though it cannot genotype it, which is a cleaner
+>    separation of those two claims than I have seen reported.
 >
 > 3. **A measurement of how much analytic choice is worth here.** On identical
 >    features, our radiomics arm moves 0.136 AUC across six defensible
@@ -92,10 +95,16 @@ convergence, not a request for rescue.
 ---
 
 **Before sending, fill in:** repository URL, name, affiliation (stating
-"independent researcher" is fine and better than vagueness), email. Confirm the
-external grounding result in point 2 has actually landed — if Gate D failed,
-soften that paragraph to what the internal result supports and say the external
-evaluation is in progress. Do not describe a result that has not been measured.
+"independent researcher" is fine and better than vagueness), email.
+
+Every number in this draft is measured and current as of commit `31b4c1b`:
+0.617 ± 0.024 from `results/CANONICAL.json`, the external grounding figures from
+`results/external_grounding.json` (Gate D passed on all four pre-specified
+criteria), and the analytic-choice spreads from `results/radiomics_sensitivity.json`.
+
+**Consider attaching `figures/fig6_external_grounding.png`.** It is one panel
+showing the external result against all three controls, and it makes the second
+point land without the recipient having to take it on trust.
 
 ---
 

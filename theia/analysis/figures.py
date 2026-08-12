@@ -191,6 +191,57 @@ def fig_grounding(rows: list[dict], out: str) -> None:
     print(f"[fig] wrote {out}")
 
 
+def fig_external_grounding(blob: dict, out: str) -> None:
+    """The primary endpoint: grounding on a cohort the model never saw.
+
+    Drawn with all three controls in every panel, because the trained bars alone
+    would overstate the result. The centre prior is the one that matters: these
+    crops are lesion-centred, so "look at the middle" is a genuinely strong
+    baseline on attention MASS and a weak one on pointing and area-matched IoU.
+    Showing all three metrics side by side is what makes that visible -- the
+    trained model's margin over the prior is small on the left panel and large on
+    the other two, and a reader should be able to see that rather than be told it.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    rows = blob["rows"]
+    cp, rnd = blob["control_centre_prior"], blob["control_random_init"]
+    live = [r for r in rows if r["grounding_pointing"] > 0.05]
+    keys = ["grounding_mass", "grounding_pointing", "grounding_iou"]
+    titles = ["attention mass in ROI", "pointing game", "area-matched IoU"]
+
+    fig, axes = plt.subplots(1, 3, figsize=(9.6, 3.4), dpi=200)
+    for ax, k, title in zip(axes, keys, titles):
+        vals = [np.mean([r[k] for r in rows]), np.mean([r[k] for r in live]),
+                cp[k], np.mean([r[k + "_shuffled"] for r in rows]), rnd[k]]
+        labels = ["trained\n(all 30)", "trained\n(25 live)", "centre\nprior",
+                  "spatial\nshuffle", "random\ninit"]
+        colours = ["#08519c", "#3182bd", "#e6550d", "#8c8c8c", "#bdbdbd"]
+        ax.bar(range(5), vals, color=colours, width=0.68)
+        # Per-fold spread on the trained bars only; the controls are single
+        # numbers computed once over the whole cohort, so an error bar there
+        # would imply a variability that was never measured.
+        spread = np.std([r[k] for r in rows])
+        ax.errorbar(0, vals[0], yerr=spread, color="0.2", capsize=3, lw=1)
+        ax.set_xticks(range(5))
+        ax.set_xticklabels(labels, fontsize=7)
+        ax.set_title(title, fontsize=9)
+        ax.set_ylim(0, max(vals) * 1.25)
+        ax.spines[["top", "right"]].set_visible(False)
+        ax.tick_params(axis="y", labelsize=7)
+    axes[0].set_ylabel("score", fontsize=9)
+    fig.suptitle(
+        f"External validation: {blob['n_external']} held-out NSCLC-Radiomics patients "
+        f"(Maastro, NL) — mass lift {blob['mean_mass_lift']:+.3f}, "
+        f"beats shuffle {blob['folds_beating_shuffle']}/{blob['n_folds']}",
+        fontsize=9.5)
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    fig.savefig(out); plt.close(fig)
+    print(f"[fig] wrote {out}")
+
+
 def fig_overlays(ckpt: str, cfg, out: str, n: int = 6) -> None:
     """Attention over the CT for held-out patients, with the tumour outlined.
 
@@ -352,6 +403,14 @@ def main() -> None:
         fig_grounding(gfolds, os.path.join(a.outdir, "fig4_grounding.png"))
     if a.overlay_ckpt:
         fig_overlays(a.overlay_ckpt, cfg, os.path.join(a.outdir, "fig5_overlays.png"))
+
+    ext = "results/external_grounding.json"
+    if os.path.exists(ext):
+        fig_external_grounding(json.load(open(ext)),
+                               os.path.join(a.outdir, "fig6_external_grounding.png"))
+    else:
+        print(f"[fig] skipping fig6: {ext} not found "
+              "(run theia.analysis.external_grounding)")
 
 
 if __name__ == "__main__":
