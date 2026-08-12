@@ -234,13 +234,25 @@ was computed. The gate was also tightened, not loosened, in the same edit: it no
 additionally requires beating the centre prior on pointing.
 
 **2026-08-11 — the peritumoral architecture result is reported as suggestive, not
-established.** `model.peritumoral_features` moves pooled EGFR AUC from 0.627 to
-0.675 (+0.047, 3/3 seeds). Every per-seed paired bootstrap CI includes zero
-(p = 0.59 / 0.21 / 0.10). Pooling seeds gives +0.028 (p = 0.34, n = 122) or
-+0.068 (p = 0.048, n = 153) depending on whether seed 1337 is included — and
-seed 1337's *baseline* had a stalled fold. Rather than choose the analysis that
-clears p < 0.05, the degenerate baseline run was relaunched. Whichever way it
-lands is what gets reported.
+established.** `model.peritumoral_features` moves pooled EGFR AUC from 0.617 to
+0.675 (3/3 seeds). Every per-seed paired bootstrap CI includes zero. The
+degenerate seed-1337 baseline was **retrained** rather than analysed around, so
+the answer no longer depends on which seeds are included: on all three seeds at
+full n = 153 the delta is **+0.058, 95% CI [−0.008, +0.128], p = 0.086**. An
+intermediate analysis that dropped a seed had shown p = 0.048; that was a
+selection artifact and was correctly not relied upon.
+
+**2026-08-11 — the pooling sweep's significance claim is withdrawn.** The sweep
+previously reported the peritumoral arm at +0.075, 10/10 seeds, p = 0.002. That
+p came from a sign test over seeds, which treats ten re-splits of one
+153-patient cohort as ten replicates. Replaced, as §3 commits, with a paired
+bootstrap over patients and Holm correction across the 10 arms scored on the same
+folds. Result: the best arm has p_raw = 0.031 and **p_holm = 0.281**, and
+**nothing in the sweep is significant**. The location controls still behave — a
+size- and shape-matched ring at a random location scores 0.575 against the real
+ring's 0.695 — so the direction survives even though the significance does not.
+This correction was applied to `theia/models/theia_model.py`, `tests/test_pooling.py`
+and RESULTS.md, all of which had propagated the old number.
 
 ## 8. Actions required before registration
 

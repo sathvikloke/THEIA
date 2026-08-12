@@ -1,13 +1,23 @@
 """Tests for the pooling sweep that located the EGFR signal.
 
 The finding this protects: mean-pooling the whole crop, and mean-pooling the
-tumour, both score ~0.628, while pooling the PERITUMORAL ring scores 0.703
-(+0.075, 10/10 seeds, p=0.002). A size- and shape-matched ring at a random
-location scores 0.648, so the gain is location-specific rather than an artefact
-of pooling a thin annulus.
+tumour, both score ~0.63, while pooling the PERITUMORAL ring scores 0.695
+(+0.064). A size- and shape-matched ring at a random location scores 0.575, so
+the gain is location-specific rather than an artefact of pooling a thin annulus.
 
-That conclusion rests entirely on the control being built correctly, so the
-control is what these tests check hardest.
+Two things about the strength of that claim, since this docstring previously
+overstated it as "+0.075, 10/10 seeds, p=0.002".
+
+The sweep scores 10 arms on the same folds and reports the best, so it needs a
+multiplicity correction. Under a paired bootstrap over patients with Holm across
+the arms, the best arm has p_raw 0.031 and **p_holm 0.281** -- nothing in the
+sweep is significant. The old p=0.002 came from a sign test over seeds, and ten
+seeds are ten re-splits of one 153-patient cohort, not ten replicates.
+
+So the effect is directionally consistent, survives its location controls, and
+reproduces end-to-end (+0.058, p=0.086), but it is not established. These tests
+check the CONTROL construction rather than the effect size, because a broken
+control is the failure mode that would make even the direction meaningless.
 """
 import numpy as np
 import pytest
@@ -98,9 +108,9 @@ def test_pooling_falls_back_rather_than_emitting_an_empty_feature():
 def test_model_peritumoral_pool_matches_the_swept_definition(monkeypatch):
     """The model's ring must be the same region the sweep measured.
 
-    The sweep found +0.075 for dilate(mask) MINUS mask on the patch grid. If the
-    model pooled a different region -- the dilated mask including the tumour, or
-    the tumour itself -- it would be importing a number it does not implement.
+    The sweep measured dilate(mask) MINUS mask on the patch grid. If the model
+    pooled a different region -- the dilated mask including the tumour, or the
+    tumour itself -- it would be importing a number it does not implement.
     """
     import torch
 

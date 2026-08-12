@@ -46,15 +46,28 @@ class Theia(nn.Module):
         # grounded region embedding.
         #
         # Measured over 10 seeds on frozen features, through these same nested
-        # folds: pooling the ring around the lesion scores 0.703 against 0.629
-        # for the whole crop (+0.075, 10/10 seeds, p=0.002) and against 0.577
-        # for a size-matched ring at a random location (+0.125, p=0.002).
-        # Pooling the tumour itself changes nothing (+0.001, p=0.92).
+        # folds: pooling the ring around the lesion scores 0.695 against 0.632
+        # for the whole crop (+0.064), while a size- and shape-matched ring at a
+        # random location scores 0.575. Pooling the tumour itself changes nothing
+        # (-0.006). The direction is consistent and the location controls behave.
         #
-        # That matters architecturally, not just numerically: the grounding loss
-        # supervises attention ONTO the lesion, which is where the EGFR signal
-        # is not. This branch lets the classifier see the region the evidence
-        # points at without weakening the localisation objective.
+        # But the effect does NOT survive multiplicity correction, and this
+        # comment used to claim it did. The sweep scores 10 arms on the same
+        # folds; under a paired bootstrap over patients with Holm across those
+        # arms, the best arm has p_raw 0.031 and p_holm 0.281. Nothing in the
+        # sweep is significant. The earlier "+0.075, 10/10 seeds, p=0.002" came
+        # from a sign test over seeds, which treats ten re-splits of one
+        # 153-patient cohort as ten replicates -- they are not.
+        #
+        # End-to-end this branch is worth +0.058 (95% CI [-0.008, +0.128],
+        # p=0.086, 3/3 seeds). So: kept, because the direction is consistent
+        # across both frozen and trained settings and the controls rule out a
+        # location artifact, but reported as SUGGESTIVE and not established.
+        #
+        # The architectural reading, which is what makes it worth keeping: the
+        # grounding loss supervises attention ONTO the lesion, and this branch
+        # lets the classifier also see the ring around it, without weakening the
+        # localisation objective.
         self.peritumoral = bool(getattr(m, "peritumoral_features", False))
         cls_dim = m.vision_dim * (2 if self.peritumoral else 1)
         self.classifier = ClassifierHead(cls_dim, cfg.data.target_genes,

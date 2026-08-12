@@ -18,7 +18,7 @@ over 5 nested folds, with within-fold rank normalisation, and bootstrap CIs.
 | clinical (age, sex, ethnicity, smoking, pack-years) | 0.764–0.774 | [0.665, 0.859] |
 | clinical + radiomics | 0.783 | [0.690, 0.869] |
 | **THEIA, 3 seeds** | **0.617 ± 0.024** | range [0.597, 0.643] |
-| THEIA + peritumoral branch, 3 seeds | 0.675 ± 0.017 | range [0.656, 0.689] |
+| THEIA + peritumoral branch, 3 seeds † | 0.675 ± 0.017 | range [0.656, 0.689] |
 | radiomics | 0.526–0.662 | see §3 |
 
 **The multi-seed estimate is the one to quote, and it is lower than any single
@@ -46,6 +46,40 @@ distribution with sd 0.024–0.041; quoting it alone overstates both the effect 
 the precision.
 
 THEIA is **beaten by a single chart variable** either way.
+
+### † The peritumoral branch is suggestive, not established
+
+Feeding the classifier the ring around the lesion as well as the grounded region
+moves the pooled AUC from 0.617 to 0.675, improving in 3/3 seeds. It is kept, and
+it is deliberately not claimed as a result.
+
+It was first found on frozen features, where a sweep over 10 poolings gave the
+peritumoral ring 0.695 against 0.632 for the whole crop, with a size- and
+shape-matched ring at a **random location** scoring 0.575 — so the gain is
+location-specific rather than an artefact of pooling a thin annulus. That part
+holds.
+
+What does not hold is the significance this repository previously claimed for it
+(+0.075, 10/10 seeds, p = 0.002). That p came from a sign test across seeds, and
+ten seeds are ten re-splits of **one** 153-patient cohort — split variance, not
+sampling variance. Re-run as a paired bootstrap over patients, with Holm
+correction across the 10 arms the sweep scores on the same folds:
+
+| arm | Δ vs whole-crop | 95% CI | p raw | **p Holm** |
+|---|---|---|---|---|
+| peritumoral (2-ring) | +0.066 | [+0.007, +0.130] | 0.031 | **0.281** |
+| peritumoral (1-ring) | +0.064 | [−0.005, +0.137] | 0.077 | **0.614** |
+| tumour + peritumoral | +0.042 | [−0.027, +0.113] | 0.246 | 1.000 |
+| CONTROL shifted-ring | −0.059 | [−0.131, +0.009] | 0.092 | 0.641 |
+
+**Nothing in the sweep survives correction.** End-to-end the branch is worth
++0.058 (95% CI [−0.008, +0.128], p = 0.086). Direction consistent, controls
+clean, significance absent — which is the honest summary and is how it is
+reported.
+
+Independently, this is a **replication rather than a discovery**: peritumoral
+radiomics for EGFR has been reported at least six times since 2022, with optimal
+ring widths of 1, 2, 3, 4, 6 and 15 mm ([REFERENCES.md](REFERENCES.md) §6–11).
 
 ### The headline is softer still on the subset that should carry it
 
