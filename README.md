@@ -279,7 +279,7 @@ best member is not a result.
 **Quote the multi-seed number, not a single run.** Pooled EGFR moved 0.597 /
 0.612 / 0.674 across three seeds of the same configuration. An earlier single
 run gave 0.660 with a CI excluding chance; that is one draw from a distribution
-with sd 0.041, and quoting it alone overstates both the effect and the
+with sd 0.025, and quoting it alone overstates both the effect and the
 precision.
 
 **Report the pooled out-of-fold AUC, not the mean of per-fold AUCs.** With ~23

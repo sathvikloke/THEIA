@@ -84,7 +84,7 @@ validation AUC **0.62–0.68**; external validation **0.55–0.63**.
 
 Their external cohort is NSCLC-Radiogenomics — this project's *internal* cohort.
 Ten times the patients and seventy-five times the lesions reproduce THEIA's
-0.617. That is why [ANALYSIS_PLAN.md](ANALYSIS_PLAN.md) demotes incremental value
+0.618. That is why [ANALYSIS_PLAN.md](ANALYSIS_PLAN.md) demotes incremental value
 to a pre-declared null rather than treating it as an open question.
 
 Their positive finding — that biopsy-anchored labels beat all-lesion labels
@@ -111,7 +111,7 @@ large-cohort study with external validation (5, above) does not reproduce them.
 
 Note on **9**: its all-histology 0.774 falls to 0.687 when restricted to
 adenocarcinoma. That is the same effect this project measures internally
-(0.627 → 0.572 on segmented adenocarcinoma), and it is why comparisons in the
+(0.618 → 0.563 on segmented adenocarcinoma), and it is why comparisons in the
 manuscript must be made against adenocarcinoma-only and external numbers rather
 than against headline figures.
 

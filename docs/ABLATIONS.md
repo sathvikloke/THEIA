@@ -7,7 +7,8 @@ counter-intuitive enough that someone will otherwise re-derive them the hard way
 
 Two things to read this with:
 
-- **Rerun variance is ±0.041 AUC** on the same configuration. Differences below
+- **Rerun variance is ±0.025 AUC** on the same configuration (it was ±0.041
+  before the stalled seed-1337 run was retrained). Differences below
   that are not differences. Where an ablation was measured on a single fold or a
   single run, it says so, and those should be treated as directional.
 - **Several early ablations predate `grad_clip`**, which means a fold could have
@@ -42,7 +43,7 @@ Two things to read this with:
 | `loss_weights.ground` | 5.0 | lift −0.001 | More pressure is *worse*. Raising it on top of unfreezing breaks grounding. |
 | | **0.5** | lift +0.302 | Adopted. |
 | grounding BCE form | clamped probabilities | **fixed point**: loss 9.30 with gradient exactly 0.000 | Normalising by the max pins the peak cell on the upper clamp. A map that flattens has every cell clamped at once and can never recover. Run 12 collapsed into this: lift +0.001, peak ratio 1.000, in all five folds. |
-| | **BCE-with-logits** | lift +0.391 in 13/14 folds | Adopted. No clamp, so no dead zone; gradient bounded in [−1, 1] by construction. |
+| | **BCE-with-logits** | lift +0.325 in 12/15 folds | Adopted. No clamp, so no dead zone; gradient bounded in [−1, 1] by construction. (Was reported as +0.391 in 13/14 on the superseded run set.) |
 | `grad_clip` | absent | folds went NaN and trained on garbage to completion | Off CUDA `GradScaler` is disabled, so nothing skipped non-finite steps. Killed folds in runs 7, 8 and 10. |
 | | **1.0** + skip on non-finite | a bad batch is skipped | Adopted. |
 | `early_stop_min_epochs` | 0 | **2 of 5 folds died before training** | Patience counted from epoch 0, which under OneCycleLR is 4% of peak LR — an untrained model whose validation AUC on ~24 patients is noise. One fold was stopped while grounding was still climbing. |

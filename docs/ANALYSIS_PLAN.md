@@ -47,7 +47,7 @@ answerable at any cohort size this project can reach:
    **1,646 patients, 11,473 segmented lesions**, NGS-confirmed EGFR, reporting
    internal AUC 0.62–0.68 and external 0.55–0.63 — where their external cohort
    *is* NSCLC-Radiogenomics, this project's internal cohort. Ten times the
-   patients and seventy-five times the lesions reproduce our 0.617.
+   patients and seventy-five times the lesions reproduce our 0.618.
 
 Reporting H₂ as a null is therefore a finding, not a failure, and it must not be
 softened into "future work with more data".
@@ -90,7 +90,7 @@ Grounding comparators, all three mandatory in every table:
 | acquisition sensitivity | ≤1.5 mm slice thickness (161/188 series), exploratory | pre-declared so it cannot be promoted later |
 | training config | `configs/default.yaml` at the commit that seals the model | prevents post-hoc tuning against external data |
 | seeds | 1337, 7, 42 | the same three used internally |
-| headline statistic | across-seed mean ± sd | the across-seed sd is 0.024, and a single run's CI absorbs none of it |
+| headline statistic | across-seed mean ± sd | the across-seed sd is 0.025, and a single run's CI absorbs none of it |
 | CV protocol | nested, 5-fold, stratified on EGFR | flat CV is worth +0.066 on identical features |
 | pooling | within-fold rank normalisation, recomputed within any subgroup | a rank is a statement about the patients being compared |
 | operating point | **none** — index test is continuous | at AUC 0.63 a 90%-sensitivity point has ~20% specificity and is clinically meaningless; STARD cross-tabulation is NA and the `_sens_spec` key is removed |
@@ -147,7 +147,7 @@ frozen 88M-parameter ViT):
 | frozen-feature probe | 512 | **42,362** | 153 ✗ |
 
 **Neither arm is identifiable at this cohort size — not even the five-variable
-clinical model.** So the frozen probe matching the full model (0.617 vs 0.617) is
+clinical model.** So the frozen probe matching the full model (0.617 vs 0.618) is
 not evidence that the architecture is redundant; it is evidence that 153 patients
 cannot distinguish them. Both readings are reported.
 
@@ -185,7 +185,7 @@ Stated in advance so it cannot be renegotiated later.
 - The primary analysis set (segmented adenocarcinoma, n = 97, 23 positives)
   carries the headline; the full cohort appears as sensitivity. Both numbers are
   reported whichever way they fall — internally that costs **−0.056**
-  (0.617 → 0.563).
+  (0.618 → 0.563).
 - Calibration is reported: calibration plot, slope, intercept, Brier score and
   O:E ratio, computed from the archived per-patient probabilities.
 - Stalled folds, excluded patients and any deviation from this plan are reported
@@ -266,7 +266,7 @@ was computed. The gate was also tightened, not loosened, in the same edit: it no
 additionally requires beating the centre prior on pointing.
 
 **2026-08-11 — the peritumoral architecture result is reported as suggestive, not
-established.** `model.peritumoral_features` moves pooled EGFR AUC from 0.617 to
+established.** `model.peritumoral_features` moves pooled EGFR AUC from 0.618 to
 0.675 (3/3 seeds). Every per-seed paired bootstrap CI includes zero. The
 degenerate seed-1337 baseline was **retrained** rather than analysed around, so
 the answer no longer depends on which seeds are included: on all three seeds at

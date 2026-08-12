@@ -75,7 +75,7 @@ enforced by a gate in `theia.analysis.confabulation`; `build_cases` refuses to
 produce reader materials that fail it.
 
 **Single cohort, single site distribution, no external validation of the classification arm (grounding is externally validated).** 40 positives
-is small. The rerun spread of ±0.041 is comparable to many published effects in
+is small. The rerun spread of ±0.025 is comparable to many published effects in
 this literature.
 
 **Training is numerically unstable on Apple Silicon.** The backward pass through

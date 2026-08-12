@@ -35,14 +35,16 @@ All three individual CIs include chance.
 
 This table previously read 0.627 ± 0.041, with seed 1337 at 0.674 on 122
 patients because one of its folds stalled. That run was **retrained rather than
-analysed around** (`base-s1337-rerun`), and the complete version scores 0.643 on
-all 153. The headline therefore moves down slightly and the seed spread nearly
+analysed around**, twice: once to remove the stall (`base-s1337-rerun`, 0.643)
+and once more to match the shipped default's monitor exactly (`base-s1337-v2`,
+0.645, the canonical run). Both retrains selected the same epoch in all five
+folds, so the monitor difference was real in configuration and nil in effect. The headline therefore moves down slightly and the seed spread nearly
 halves. The old caveat — "the best-looking seed is the least complete one" — is
 now resolved rather than merely disclosed.
 
 **An earlier single run gave 0.660 [0.556, 0.758] with the CI excluding chance**
 (run 12, generation term active). That number is real but it is one draw from a
-distribution with sd 0.024–0.041; quoting it alone overstates both the effect and
+distribution with sd 0.025; quoting it alone overstates both the effect and
 the precision.
 
 THEIA is **beaten by a single chart variable** either way.
@@ -50,7 +52,7 @@ THEIA is **beaten by a single chart variable** either way.
 ### † The peritumoral branch is suggestive, not established
 
 Feeding the classifier the ring around the lesion as well as the grounded region
-moves the pooled AUC from 0.617 to 0.675, improving in 3/3 seeds. It is kept, and
+moves the pooled AUC from 0.618 to 0.675, improving in 3/3 seeds. It is kept, and
 it is deliberately not claimed as a result.
 
 It was first found on frozen features, where a sweep over 10 poolings gave the
@@ -127,7 +129,7 @@ set, are worse than that constant.** Resolution — the component only a better
 model can improve — is 0.009–0.017.
 
 So the honest summary of the classification arm is: it ranks slightly better than
-chance (AUC 0.617) while emitting probabilities that are actively misleading. The
+chance (AUC 0.618) while emitting probabilities that are actively misleading. The
 two statements are compatible and both belong in the paper.
 
 Two consequences already written into [ANALYSIS_PLAN.md](ANALYSIS_PLAN.md):
@@ -168,7 +170,7 @@ observations, shrinking the interval by roughly √3 for no added information.
 
 For reference, the single-run version of this test (run 12, generation term
 active) gave −0.006 [−0.066, +0.048], p = 0.832. It agrees in direction, but it
-inherited ±0.041 of seed noise without showing it; the per-seed table above is
+inherited ±0.025 of seed noise without showing it; the per-seed table above is
 the one to quote.
 
 This does not say imaging is uninformative in principle — §2b shows the images
@@ -320,7 +322,7 @@ Progress across configurations, which is mostly a record of bugs removed:
 | 6 | +0.235 | 4/5 | pre-clipping |
 | 12 | +0.001 | 0/5 | the clamp fixed-point bug |
 | 13 | +0.180 | 2/5 | 2 folds died in warmup |
-| **multi-seed (final)** | **+0.391** | **13/14** | logit-BCE loss, warmup floor |
+| **multi-seed (final)** | **+0.325** | **12/15** | logit-BCE loss, warmup floor |
 
 Two caveats that belong with the number. These runs set `loss_weights.gen = 0`,
 so this is grounding alongside classification with the rationale head switched
@@ -343,7 +345,7 @@ population rather than a surgical one. 30 evaluations — 6 runs × 5 folds.
 | area-matched IoU | 0.448 | **0.537** | 0.287 | 0.026 | 0.033 |
 
 Mass lift **+0.297 ± 0.167**, beating the per-fold shuffle in **25 of 30**
-evaluations. Against +0.391 internally, so it does decay — but it clears the
+evaluations. Against +0.325 internally, so it does decay — but it clears the
 pre-specified +0.20 gate with room, on data the model has never seen.
 
 **The centre prior is the control that matters**, and it is why this table has
