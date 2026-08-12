@@ -1,7 +1,7 @@
 """Does the grounding result survive on a cohort the model never saw?
 
-This is THEIA's strongest internal result -- attention mass lift +0.391, 11.7x
-chance, beating its own per-fold shuffled baseline in 14/14 folds -- and it is
+This is THEIA's strongest internal result -- attention mass lift +0.325, 9.7x
+chance, beating its own per-fold shuffled baseline in 12/15 folds -- and it is
 the endpoint the analysis plan promotes to primary. An internal result that
 replicates across seeds on ONE cohort is still one cohort. This evaluates the
 trained grounding heads on the 420 NSCLC-Radiomics (Lung1, Maastro Clinic,
@@ -26,10 +26,17 @@ WEIGHT RANDOMIZATION. A freshly initialised grounding head, same architecture,
 no training. If this produces a non-trivial lift, the metric is measuring the
 architecture's inductive bias rather than anything that was learned.
 
-GATE D (pre-specified): external mass lift >= +0.20, beating the shuffle in >=10
-of 14 evaluation folds, with the randomized head collapsing to ~0.
+GATE D (pre-specified): external mass lift >= +0.20, beating the shuffle in >=
+10/14 = 71.4% of evaluations, the randomized head collapsing to ~0, and pointing
+above the centre prior.
 
-Run: python -m theia.analysis.external_grounding --runs ms-s42,ms-s7,peri-s42
+Evaluate the CANONICAL runs, and only those. An earlier run of this covered 30
+checkpoints including a superseded run and the peritumoral variant, and reported
++0.297 / 25-of-30 where the canonical three give +0.244 / 11-of-15. The margin
+matters: 11/15 is 73.3% against a 71.4% threshold, so one more dead fold fails
+the primary endpoint.
+
+Run: python -m theia.analysis.external_grounding --runs base-s1337-v2,ms-s7,ms-s42
 """
 from __future__ import annotations
 
@@ -120,7 +127,7 @@ def main() -> None:
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/default.yaml")
-    ap.add_argument("--runs", default="ms-s42,ms-s7,peri-s42,peri-s7",
+    ap.add_argument("--runs", default="base-s1337-v2,ms-s7,ms-s42",
                     help="comma-separated run_ids under checkpoints/")
     ap.add_argument("--rows", default="data/processed_pretrain/rows.jsonl")
     ap.add_argument("--limit", type=int, default=None, help="cap patients, for a smoke run")
