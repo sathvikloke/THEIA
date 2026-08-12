@@ -141,25 +141,40 @@ def n_for_auc_ci(auc: float, halfwidth: float, prevalence: float,
     return lo
 
 
-def riley_min_n(n_predictors: int, prevalence: float, r2_cs: float | None = None) -> int:
-    """Riley et al. minimum sample size for a binary prediction model.
+def riley_min_n(n_predictors: int, prevalence: float, r2_cs: float | None = None,
+                shrinkage: float = 0.9) -> int:
+    """Riley et al. (BMJ 2020;368:m441) minimum sample size, criterion 1.
 
-    Applied ONLY to the clinical model and the frozen-feature probe. It needs a
-    candidate-predictor count and a target Cox-Snell R^2, and neither is defined
-    for an 88M-parameter frozen ViT, so quoting it for the deep arm would be
-    arithmetic dressed as justification.
+        n = P / ( (S - 1) * ln(1 - R2_cs / S) )
 
-    Criterion used here is Riley's shrinkage requirement (expected shrinkage
-    <= 10%), which is the binding one at these effect sizes.
+    with S the target expected shrinkage (0.9 = at most 10% overfitting), P the
+    number of candidate predictors, and R2_cs the anticipated Cox-Snell R^2.
+
+    NOTE: an earlier version of this function divided by (1 - 0.10/1) = 0.9 where
+    the criterion needs |S - 1| = 0.1, so every number it produced was 9x too
+    small. It reported 46 for the clinical model against a true 414, and 4,707
+    for the frozen probe against 42,363 -- and the wrong 46 was quoted in
+    ANALYSIS_PLAN next to the BMJ DOI, with a tick mark saying 153 patients
+    sufficed. They do not. Correcting it strengthens the argument it was
+    supporting, since it means neither arm is identifiable at this cohort size.
+
+    Applied ONLY where its inputs are defined: the 5-variable clinical model and
+    the frozen-feature probe. It needs a candidate-predictor count and a target
+    Cox-Snell R^2, and neither is meaningful for an 88M-parameter frozen ViT, so
+    quoting it for the deep arm would be arithmetic dressed as justification.
     """
     p = float(prevalence)
+    if not 0 < p < 1:
+        raise ValueError(f"prevalence must be in (0,1), got {prevalence}")
     if r2_cs is None:
-        # Max possible Cox-Snell R^2 for a binary outcome, scaled by a
-        # conservative 0.15 of it -- Riley's own recommendation when no prior
-        # model exists to estimate R^2 from.
+        # Maximum attainable Cox-Snell R^2 for a binary outcome at this
+        # prevalence, scaled to 15% of it -- Riley's recommendation when no
+        # prior model exists to estimate R^2 from.
         max_r2 = 1 - (p ** p * (1 - p) ** (1 - p)) ** 2
         r2_cs = 0.15 * max_r2
-    return int(np.ceil(n_predictors / ((1 - 0.10 / 1) * np.log(1 - r2_cs / 0.9) * -1)))
+    if not 0 < r2_cs < shrinkage:
+        raise ValueError(f"need 0 < r2_cs < shrinkage, got {r2_cs} and {shrinkage}")
+    return int(np.ceil(n_predictors / ((shrinkage - 1) * np.log(1 - r2_cs / shrinkage))))
 
 
 def main() -> None:

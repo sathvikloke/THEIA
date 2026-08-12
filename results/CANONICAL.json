@@ -2,15 +2,15 @@
   "_what": "The runs that constitute the reported headline. One definition, in one place, because a glob over results/ms-s*.json silently included a degenerate run and kept a superseded number alive in three documents.",
   "gene": "EGFR",
   "headline_runs": [
-    "results/base-s1337-rerun.json",
+    "results/base-s1337-v2.json",
     "results/ms-s7.json",
     "results/ms-s42.json"
   ],
   "headline": {
-    "mean": 0.617,
-    "sd": 0.024,
+    "mean": 0.618,
+    "sd": 0.025,
     "per_seed": {
-      "1337": 0.643,
+      "1337": 0.645,
       "7": 0.612,
       "42": 0.597
     },
@@ -29,11 +29,12 @@
     "sd": 0.017
   },
   "superseded": {
-    "results/ms-s1337.json": "Fold 1 stalled, so this run is scored on 122 of 153 patients and reports 0.674 -- the highest of the three seeds and the least complete. Retrained as base-s1337-rerun.json (0.643, no stalled folds, full cohort), which is the canonical seed-1337 run. Kept on disk as the record of what was originally run, and deliberately NOT deleted; excluded from the headline set."
+    "results/ms-s1337.json": "Fold 1 stalled, so this run is scored on 122 of 153 patients and reports 0.674 -- the highest of the three seeds and the least complete. Retrained as base-s1337-rerun.json (0.643, no stalled folds, full cohort), which is the canonical seed-1337 run. Kept on disk as the record of what was originally run, and deliberately NOT deleted; excluded from the headline set.",
+    "results/base-s1337-rerun.json": "Trained with a 3-term monitor including gen_loss while loss_weights.gen was 0.0, so it selected partly on an untrained language model's loss while ms-s7 and ms-s42 did not. Replaced by base-s1337-v2, which matches the shipped default exactly. The difference turned out to be nil in practice -- 0.643 vs 0.645, and the SAME epoch selected in all five folds -- so the confound was real in configuration and absent in effect. Kept as the record."
   },
   "note": "Anything that reports the headline must read this file rather than globbing. The glob pattern results/ms-s*.json is no longer a valid definition of the headline set.",
   "headline_kras": {
-    "mean": 0.487,
+    "mean": 0.489,
     "sd": 0.005,
     "note": "at chance; exploratory only. Gevaert et al. (Sci Rep 2017) also report no significant KRAS model on this cohort."
   }

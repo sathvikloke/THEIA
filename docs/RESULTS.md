@@ -17,7 +17,7 @@ over 5 nested folds, with within-fold rank normalisation, and bootstrap CIs.
 | smoking status alone | **0.794** | [0.695, 0.882] |
 | clinical (age, sex, ethnicity, smoking, pack-years) | 0.764–0.774 | [0.665, 0.859] |
 | clinical + radiomics | 0.783 | [0.690, 0.869] |
-| **THEIA, 3 seeds** | **0.617 ± 0.024** | range [0.597, 0.643] |
+| **THEIA, 3 seeds** | **0.618 ± 0.025** | range [0.597, 0.645] |
 | THEIA + peritumoral branch, 3 seeds † | 0.675 ± 0.017 | range [0.656, 0.689] |
 | radiomics | 0.526–0.662 | see §3 |
 
@@ -27,7 +27,7 @@ seed now on the full cohort:
 
 | seed | EGFR AUC | 95% CI | n | stalled folds |
 |---|---|---|---|---|
-| 1337 | 0.643 | [0.534, 0.746] | 153 | 0 |
+| 1337 | 0.645 | [0.534, 0.746] | 153 | 0 |
 | 7 | 0.612 | [0.497, 0.716] | 153 | 0 |
 | 42 | 0.597 | [0.482, 0.709] | 153 | 0 |
 
@@ -92,8 +92,8 @@ reconciling them costs:
 
 | subset | n | pos | EGFR AUC |
 |---|---|---|---|
-| full cohort | 153 | 40 | 0.617 ± 0.024 |
-| adenocarcinoma only | 133 | 40 | 0.602 ± 0.031 |
+| full cohort | 153 | 40 | 0.618 ± 0.025 |
+| adenocarcinoma only | 133 | 40 | 0.603 ± 0.032 |
 | segmented only | 117 | 23 | 0.579 ± 0.026 |
 | **segmented adenocarcinoma** | **97** | **23** | **0.563 ± 0.032** |
 
@@ -112,12 +112,12 @@ softmax outputs, with no retraining:
 
 | run | slope | intercept | Brier | reliability | resolution | O:E |
 |---|---|---|---|---|---|---|
-| base-s1337-rerun | 0.302 | −0.211 | 0.217 | 0.041 | 0.017 | 0.89 |
+| base-s1337-v2 | 0.331 | −0.286 | 0.215 | 0.036 | 0.014 | 0.86 |
 | ms-s7 | 0.123 | 0.750 | 0.246 | 0.068 | 0.017 | 1.27 |
 | ms-s42 | 0.115 | −0.373 | 0.248 | 0.064 | 0.009 | 0.86 |
-| **mean** | **0.180** | 0.056 | **0.237** | | | |
+| **mean** | **0.190** | 0.056 | **0.237** | | | |
 
-A calibration slope of 1.0 is perfect. **0.180 means the predictions are roughly
+A calibration slope of 1.0 is perfect. **0.190 means the predictions are roughly
 five times too extreme.**
 
 Worse, the base rate is 26.1%, so a model that ignores the image and predicts
@@ -149,11 +149,11 @@ set entirely — and compared by paired bootstrap:
 
 | seed | clinical | + THEIA | ΔAUC | 95% CI | p |
 |---|---|---|---|---|---|
-| 1337 | 0.764 | 0.752 | −0.012 | [−0.068, +0.044] | 0.677 |
+| 1337 | 0.764 | 0.750 | −0.014 | [−0.070, +0.042] | 0.640 |
 | 42 | 0.779 | 0.736 | −0.044 | [−0.107, +0.021] | 0.175 |
 | 7 | 0.805 | 0.776 | −0.029 | [−0.093, +0.038] | 0.372 |
 
-> **Δ = −0.028 ± 0.016 across seeds, and every seed's CI includes zero.**
+> **Δ = −0.029 ± 0.015 across seeds, and every seed's CI includes zero.**
 
 All three seeds are now scored on the full 153 patients. The seed-1337 row
 previously read +0.008 on 122 patients, from the run whose fold 1 stalled.
@@ -196,14 +196,14 @@ The uncomfortable part is the comparison against the full model. Scored through
 | 1337 | 0.626 | 0.643 | −0.017 |
 | 42 | 0.562 | 0.597 | −0.035 |
 | 7 | 0.665 | 0.612 | +0.053 |
-| **mean** | **0.617 ± 0.052** | **0.617 ± 0.024** | — |
+| **mean** | **0.617 ± 0.052** | **0.618 ± 0.025** | — |
 
 A logistic regression on frozen features is statistically indistinguishable from
 the whole grounded multimodal network — the two means are **identical to three
 decimals**, and THEIA's advantage over its own frozen features is exactly nothing.
 
 Read that with the sample size, though. Riley's minimum n for a 512-feature
-prediction model is **4,707** and this cohort has 153, so "the probe matches the
+prediction model is **42,363** and this cohort has 153, so "the probe matches the
 model" is as much a statement about the cohort being too small to identify either
 arm as it is about the architecture. Both readings are reported.
 
@@ -236,7 +236,7 @@ the method and a panel quietly narrowed to its best member is not a result.
 | 42 | 0.483 | [0.362, 0.603] | 152 | 32 |
 | 7 | 0.493 | [0.386, 0.603] | 152 | 32 |
 
-**0.487 ± 0.005 across seeds**; every interval spans chance and the point
+**0.489 ± 0.005 across seeds**; every interval spans chance and the point
 estimate is indistinguishable from 0.5. At 21% prevalence (32 of 152) the study
 is underpowered for KRAS on its own, but nothing here suggests an effect being
 missed rather than absent — unlike EGFR, whose permutation test is significant

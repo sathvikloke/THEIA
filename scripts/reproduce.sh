@@ -11,6 +11,13 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Steps that need the cohort on disk are skipped rather than fatal. With
+# `set -e` a missing data/processed/rows.jsonl killed the script at step 2 of 10
+# on a fresh clone, taking the eight steps that DO work from the archives with
+# it -- and this is the first command a new reader runs.
+have_cohort() { [ -f data/processed/rows.jsonl ] && [ -f data/raw/nsclc_radiogenomics/clinical/clinical.csv ]; }
+skip_note() { echo "  SKIPPED: needs the cohort on disk (see docs/DATA_REQUEST.md)."; }
+
 echo "=== tests ==="
 # python -m pytest, not bare pytest: the module form puts the repo on
 # sys.path. conftest.py covers the bare form too, but this is one less thing
@@ -26,7 +33,7 @@ python -m theia.analysis.aggregate
 
 echo
 echo "=== 2. the comparison that decides the project ==="
-python -m theia.analysis.incremental
+if have_cohort; then python -m theia.analysis.incremental; else skip_note; fi
 
 echo
 echo "=== 3. baseline sensitivity to analytic choices ==="
@@ -122,11 +129,11 @@ PY
 
 echo
 echo "=== 9. cohort flow and Table 1 ==="
-python -m theia.analysis.cohort
+if have_cohort; then python -m theia.analysis.cohort; else skip_note; fi
 
 echo
 echo "=== 10. figures ==="
-python -m theia.analysis.figures
+python -m theia.analysis.figures || skip_note
 
 echo
 echo "Done. Provenance: docs/RESULTS.md   Scope: docs/MODEL_CARD.md"

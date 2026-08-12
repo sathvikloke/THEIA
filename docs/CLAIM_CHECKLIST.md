@@ -56,7 +56,7 @@ forgotten, not claimed as done.
 | 25 | Software libraries, frameworks, and packages | **Yes** | [requirements-lock.txt](../requirements-lock.txt) |
 | 26 | Initialization of model parameters | **Yes** | BiomedCLIP ViT-B/16 pretrained, last 2 blocks unfrozen; BioGPT + LoRA. MODEL_CARD |
 | 27 | Details of training approach | **Yes** | `configs/default.yaml`; OneCycleLR, gradient clipping at 1.0 with non-finite-step skipping, early stopping with `early_stop_min_epochs` |
-| 28 | Method of selecting the final model | **Yes** | Composite monitor on inner validation: `[[egfr_auc, 1.0], [grounding_mass_lift, 0.5], [gen_loss, −0.01]]` |
+| 28 | Method of selecting the final model | **Yes** | Composite monitor on inner validation: `[[egfr_auc, 1.0], [grounding_mass_lift, 0.5]]` — gen_loss is omitted because `loss_weights.gen` is 0.0 and monitoring an untrained term selects on noise |
 | 29 | Ensembling techniques, if applicable | **NA** | No ensembling in the reported models. Seed-averaged ranks appear only in a clearly-labelled secondary analysis |
 | 30 | Metrics of model performance | **Yes** | AUC with bootstrap CI; calibration slope/intercept, Brier with Murphy decomposition, O:E; grounding mass/pointing/area-matched IoU each against a shuffled baseline, a centre prior and a random-init head |
 | 31 | Statistical measures of significance and uncertainty | **Yes** | Paired bootstrap over patients, permutation tests, sign tests; Holm correction across the 10 pooling-sweep arms |
@@ -84,7 +84,7 @@ forgotten, not claimed as done.
 | # | Item | Y/N/NA | Where |
 |---|---|---|---|
 | 40 | Registration number and name of registry | **NA** | *Justification:* a retrospective secondary analysis of a public de-identified imaging archive is not a clinical trial, so the ICMJE registration statement does not apply. An OSF Open-Ended Registration of the analysis plan is provided instead — ANALYSIS_PLAN §0 |
-| 41 | Where the full study protocol can be accessed | **Yes** | [ANALYSIS_PLAN.md](ANALYSIS_PLAN.md), registered at OSF and archived at Zenodo |
+| 41 | Where the full study protocol can be accessed | **Partial** | [ANALYSIS_PLAN.md](ANALYSIS_PLAN.md) is public in-repo. OSF registration and the Zenodo DOI are **pending** — §0 of that file still reads "(to be pasted)". An unearned Yes on a reporting checklist reads as intent |
 | 42 | Sources of funding and other support; role of funders | — | *(manuscript)* |
 
 ---
@@ -108,7 +108,7 @@ does not have to assemble them.
    robustness and is explicitly not a substitute.
 
 3. **The classification arm is not identifiable at this cohort size.** Riley's
-   minimum n is 4,707 for the 512-feature frozen probe against 153 available.
+   minimum n is 42,363 for the 512-feature frozen probe against 153 available.
    Consequently "the frozen probe matches the full model" is reported as
    ambiguous evidence, not as proof the architecture is redundant.
 

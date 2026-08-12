@@ -8,14 +8,20 @@ authors:
 repository-code: "https://github.com/sathvikloke/THEIA"
 license: MIT
 abstract: >-
-  A vision-language model that predicts EGFR mutation status from lung CT while
-  supervising its attention against tumour segmentations. On NSCLC-Radiogenomics
-  (153 labelled patients, 40 EGFR-mutant) it reaches a pooled out-of-fold AUC of
-  0.627 +/- 0.041 across seeds. Reported alongside it, and central to
-  interpreting it: smoking status alone reaches 0.794, a logistic regression on
-  frozen features matches the full model on identical folds, and adding the
-  model on top of five clinical variables changes AUC by -0.022 +/- 0.027 with
-  every seed's confidence interval including zero. See docs/RESULTS.md.
+  A vision-language model that localises lung tumours from CT while attempting to
+  predict EGFR mutation status. The result that holds is the localisation:
+  attention supervised against tumour segmentations transfers to 420 held-out
+  NSCLC-Radiomics patients from a different country and scanner fleet, with an
+  attention-mass lift of +0.297 over a per-fold spatial shuffle, beating a centre
+  prior on the pointing game (0.688 vs 0.476) and a randomly-initialised head
+  (+0.000). The genotype prediction does not hold. On NSCLC-Radiogenomics (153
+  labelled patients, 40 EGFR-mutant) it reaches a pooled out-of-fold AUC of
+  0.618 +/- 0.025, against 0.794 for smoking status alone; adding it on top of
+  five clinical variables changes AUC by -0.029 +/- 0.015 with every seed's
+  confidence interval including zero; a logistic regression on frozen features
+  matches it exactly; and its probabilities score worse on Brier than predicting
+  the base rate for every patient. An independent 1,646-patient cohort reports
+  the same ceiling. See docs/RESULTS.md.
 keywords:
   - radiogenomics
   - non-small cell lung cancer

@@ -315,7 +315,9 @@ def main() -> None:
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/default.yaml")
-    ap.add_argument("--pattern", default="results/ms-s*.json")
+    ap.add_argument("--pattern", default=None,
+                    help="glob; overrides the canonical run set")
+    ap.add_argument("--canonical", default="results/CANONICAL.json")
     ap.add_argument("--baselines", default="results/baselines.json")
     ap.add_argument("--outdir", default="figures")
     ap.add_argument("--overlay_ckpt", default=None,
@@ -327,9 +329,19 @@ def main() -> None:
     g = gene.lower()
     os.makedirs(a.outdir, exist_ok=True)
 
-    paths = sorted(glob.glob(a.pattern))
-    if not paths:
-        raise SystemExit(f"no results matched {a.pattern!r}")
+    # Canonical set by default, not a glob. fig4_grounding.png was being drawn
+    # from results/ms-s*.json, which includes the superseded stalled run, and the
+    # committed figure was titled "11.7x, 14/14 folds" -- the exact numbers
+    # RESULTS retracts sixteen lines above where the image is embedded.
+    if a.pattern:
+        paths = sorted(glob.glob(a.pattern))
+        if not paths:
+            raise SystemExit(f"no results matched {a.pattern!r}")
+    else:
+        paths = json.load(open(a.canonical))["headline_runs"]
+        missing = [q for q in paths if not os.path.exists(q)]
+        if missing:
+            raise SystemExit(f"{a.canonical} names runs that do not exist: {missing}")
 
     # ROC uses the single most complete THEIA run rather than a merge: a merged
     # curve over patients x seeds is not a curve any one model produced.

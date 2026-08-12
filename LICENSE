@@ -32,6 +32,15 @@ respectively at time of writing). No imaging or clinical data is included in
 this repository. Obtain them from TCIA directly and honour the Data Usage
 Policy attached to each collection.
 
+That statement was untrue between 2026-07-20 and 2026-08-12: data/processed_pretrain/
+held 421 derived NSCLC-Radiomics .npz files (16 x 224 x 224 windowed CT plus tumour
+masks per patient, ~1.0 GB) because .gitignore named data/raw/ and data/processed/
+but not the directory added later for the pretraining corpus. The files have been
+removed from the working tree and purged from git history, .gitignore now matches
+data/ wholesale, and the repository was made private on discovery. Recorded here
+rather than quietly corrected, because a licence that misdescribes what it covers
+is worse than one that admits it did.
+
 BiomedCLIP and BioGPT carry their own licences from their respective authors.
 Trained checkpoints derived from them may inherit those terms.
 

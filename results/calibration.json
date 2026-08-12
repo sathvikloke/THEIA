@@ -1,6 +1,6 @@
 {
   "runs": [
-    "results/base-s1337-rerun.json",
+    "results/base-s1337-v2.json",
     "results/ms-s7.json",
     "results/ms-s42.json"
   ],
@@ -10,18 +10,18 @@
         {
           "n": 153,
           "n_pos": 40,
-          "calibration_slope": 0.30186927742924186,
-          "calibration_intercept": -0.2106980157639407,
+          "calibration_slope": 0.3314854311824956,
+          "calibration_intercept": -0.2860022293663732,
           "observed": 40.0,
-          "expected": 44.95213827909902,
-          "oe_ratio": 0.8898353122080164,
-          "mean_predicted": 0.2938048253535884,
-          "brier": 0.21696663999619453,
-          "reliability": 0.04131188151474672,
-          "resolution": 0.016896484351085893,
+          "expected": 46.7723881630227,
+          "oe_ratio": 0.8552054229213635,
+          "mean_predicted": 0.305701883418449,
+          "brier": 0.21490324754103363,
+          "reliability": 0.035868115514170816,
+          "resolution": 0.013513151991663601,
           "uncertainty": 0.19308812849758641,
           "base_rate": 0.26143790849673204,
-          "run": "base-s1337-rerun.json"
+          "run": "base-s1337-v2.json"
         },
         {
           "n": 153,
@@ -59,28 +59,28 @@
       "curve_first_run": [
         {
           "n": 31,
-          "mean_predicted": 0.06839335362817492,
-          "observed_rate": 0.0967741935483871
+          "mean_predicted": 0.08223109388904225,
+          "observed_rate": 0.06451612903225806
         },
         {
           "n": 31,
-          "mean_predicted": 0.16277946627909137,
-          "observed_rate": 0.25806451612903225
-        },
-        {
-          "n": 31,
-          "mean_predicted": 0.21489802435521158,
+          "mean_predicted": 0.16606790452234207,
           "observed_rate": 0.3225806451612903
         },
         {
-          "n": 30,
-          "mean_predicted": 0.36033355494340263,
-          "observed_rate": 0.3333333333333333
+          "n": 31,
+          "mean_predicted": 0.2149264048184118,
+          "observed_rate": 0.2903225806451613
         },
         {
           "n": 30,
-          "mean_predicted": 0.6771311819553375,
-          "observed_rate": 0.3
+          "mean_predicted": 0.38993168870608014,
+          "observed_rate": 0.26666666666666666
+        },
+        {
+          "n": 30,
+          "mean_predicted": 0.6904816667238871,
+          "observed_rate": 0.36666666666666664
         }
       ]
     },
@@ -89,18 +89,18 @@
         {
           "n": 97,
           "n_pos": 23,
-          "calibration_slope": 0.46585129052711766,
-          "calibration_intercept": -0.17524853390953254,
+          "calibration_slope": 0.48100195235226617,
+          "calibration_intercept": -0.25094286782322484,
           "observed": 23.0,
-          "expected": 25.555526181589812,
-          "oe_ratio": 0.9000010344756348,
-          "mean_predicted": 0.26345903279989497,
-          "brier": 0.18513291186896594,
-          "reliability": 0.022336373663065238,
-          "resolution": 0.01811452779436478,
+          "expected": 26.701946451328695,
+          "oe_ratio": 0.861360427110568,
+          "mean_predicted": 0.27527779846730616,
+          "brier": 0.18542984137887228,
+          "reliability": 0.017287435730928103,
+          "resolution": 0.012916265930621227,
           "uncertainty": 0.18089063662450844,
           "base_rate": 0.23711340206185566,
-          "run": "base-s1337-rerun.json"
+          "run": "base-s1337-v2.json"
         },
         {
           "n": 97,
@@ -138,27 +138,27 @@
       "curve_first_run": [
         {
           "n": 20,
-          "mean_predicted": 0.05824524273630231,
+          "mean_predicted": 0.07546555097214877,
           "observed_rate": 0.05
         },
         {
           "n": 20,
-          "mean_predicted": 0.15975491963326932,
+          "mean_predicted": 0.16148504689335824,
           "observed_rate": 0.2
         },
         {
           "n": 19,
-          "mean_predicted": 0.21338710110438497,
+          "mean_predicted": 0.21352640813902804,
           "observed_rate": 0.3157894736842105
         },
         {
           "n": 19,
-          "mean_predicted": 0.28946595521349655,
+          "mean_predicted": 0.3078591580453672,
           "observed_rate": 0.2631578947368421
         },
         {
           "n": 19,
-          "mean_predicted": 0.6127007823241385,
+          "mean_predicted": 0.6345583545534235,
           "observed_rate": 0.3684210526315789
         }
       ]

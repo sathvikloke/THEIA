@@ -34,7 +34,7 @@ external cohort has been tested.
 
 | | EGFR AUC |
 |---|---|
-| **THEIA, 3 seeds** | **0.617 ± 0.024** (range 0.597–0.643) |
+| **THEIA, 3 seeds** | **0.618 ± 0.025** (range 0.597–0.643) |
 | THEIA + peritumoral branch, 3 seeds | 0.675 ± 0.017 — suggestive, see RESULTS §1 |
 | frozen BiomedCLIP + logistic regression, same folds | 0.617 ± 0.052 |
 | clinical (age, sex, ethnicity, smoking, pack-years) | 0.764–0.805 |
@@ -61,7 +61,7 @@ report no significant KRAS model on this cohort.
 ## Limitations, in the order that matters
 
 **It adds nothing to a clinician's existing information.** Paired per seed,
-(clinical + THEIA) − clinical = **−0.028 ± 0.016**, with every seed's CI
+(clinical + THEIA) − clinical = **−0.029 ± 0.015**, with every seed's CI
 including zero. Whatever EGFR signal it extracts from CT is already carried by
 smoking status, which is free and in the chart.
 
@@ -74,7 +74,7 @@ significantly patient-specific (permutation p ≈ 0.07, 23% distinct). Both are
 enforced by a gate in `theia.analysis.confabulation`; `build_cases` refuses to
 produce reader materials that fail it.
 
-**Single cohort, single site distribution, no external validation.** 40 positives
+**Single cohort, single site distribution, no external validation of the classification arm (grounding is externally validated).** 40 positives
 is small. The rerun spread of ±0.041 is comparable to many published effects in
 this literature.
 

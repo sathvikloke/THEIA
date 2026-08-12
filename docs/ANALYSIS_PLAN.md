@@ -143,12 +143,17 @@ frozen 88M-parameter ViT):
 
 | arm | predictors | Riley minimum n | have |
 |---|---|---|---|
-| clinical | 5 | **46** | 153 ✓ |
-| frozen-feature probe | 512 | **4,707** | 153 ✗ |
+| clinical | 5 | **414** | 153 ✗ |
+| frozen-feature probe | 512 | **42,363** | 153 ✗ |
 
-So the frozen probe matching the full model (0.617 vs 0.617) is not evidence that
-the architecture is redundant so much as evidence that **neither arm is
-identifiable at this cohort size**. Both readings are reported.
+**Neither arm is identifiable at this cohort size — not even the five-variable
+clinical model.** So the frozen probe matching the full model (0.617 vs 0.617) is
+not evidence that the architecture is redundant; it is evidence that 153 patients
+cannot distinguish them. Both readings are reported.
+
+(These numbers were previously stated as 46 and 4,707. The implementation divided
+by 0.9 where Riley's criterion needs |S−1| = 0.1, understating every requirement
+ninefold. Corrected; see the deviations log.)
 
 ## 5. What would falsify the project's premise
 
@@ -159,7 +164,7 @@ Stated in advance so it cannot be renegotiated later.
   radiogenomic framing should be abandoned rather than re-cut.
 - A frozen-feature logistic regression matches the full model on matched folds
   → the architecture is not earning its complexity. **This is already true
-  internally** (0.617 ± 0.052 vs 0.617 ± 0.024) and must be re-reported on the
+  internally** (0.617 ± 0.052 vs 0.618 ± 0.025) and must be re-reported on the
   external cohort either way.
 - **Grounding lift on the external cohort falls below +0.20, or beats its
   shuffled baseline in fewer than 10/14 (71%) of evaluation folds, or fails to
@@ -199,8 +204,34 @@ Stated in advance so it cannot be renegotiated later.
 ## 7. Deviations
 
 Any departure from this plan is recorded here, with the date, the reason, and
-whether it was decided before or after seeing the external outcome. **No external
-cohort has been obtained, so every entry below predates any external outcome.**
+whether it was decided before or after seeing the outcome it concerns.
+
+**What "pre-specified" does and does not mean for H₁, stated precisely, because
+the timeline does not support the strong reading.**
+
+H₁ and the code that evaluates it (`theia/analysis/external_grounding.py`) were
+written in the same commit. The external cohort was not newly obtained: 420
+preprocessed NSCLC-Radiomics patients had been on disk since 2026-08-07 for the
+label-free grounding-pretraining experiments, and a grounding model had already
+been measured on those same patients at +0.735 lift. The internal lift was known
+to be ≈+0.33–0.39 when Gate D's threshold was set at +0.20. So the threshold was
+chosen below a quantity already measured on a closely related setup. That is not
+blind pre-specification and should not be described as such.
+
+What **is** true, and is the defensible claim:
+
+* The threshold was fixed before the 30 evaluated checkpoints were scored, and it
+  is recorded in the commit that precedes the result.
+* None of the evaluated runs had seen NSCLC-Radiomics: `grounding_pretrain_ckpt`
+  is null and `warm_start_vision` false in all six runs' archived configs, and the
+  two cohorts share zero patients. `tests/test_external_integrity.py` asserts
+  both, so the held-out claim is mechanically checkable rather than asserted.
+* The controls (centre prior, weight randomisation) were specified before the
+  result and the gate was **tightened** after a smoke run, not loosened.
+
+A reader should treat H₁ as *confirmatory of a pre-existing observation on an
+independent patient set*, not as a blind prospective test. The distinction
+matters and is easier to make here than to defend in review.
 
 **2026-08-11 — primary endpoint changed from H₂ to H₁.** Decided after seeing
 internal results and the Rodríguez Sánchez et al. external replication, before

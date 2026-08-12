@@ -12,7 +12,7 @@
 #     torch-version dependent and does not reproduce under backward hooks.
 #
 # Reproducing the numbers means pinning here. Developing means requirements.txt.
-python==3.13
+# python==3.13   <- not installable by pip; recorded as a comment
 torch==2.10.0
 torchvision==0.25.0
 transformers==5.2.0
@@ -26,3 +26,5 @@ pandas==2.2.3
 pydicom==3.0.2
 SimpleITK==2.5.5
 matplotlib==3.10.0
+pyyaml
+scikit-image

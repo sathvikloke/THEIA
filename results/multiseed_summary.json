@@ -2,16 +2,16 @@
   "gene": "EGFR",
   "n_runs": 3,
   "stalled_folds": 0,
-  "across_seed_mean": 0.6170353982300885,
-  "across_seed_sd": 0.02357233141886135,
+  "across_seed_mean": 0.6177728613569321,
+  "across_seed_sd": 0.024785262395103935,
   "across_seed_min": 0.596570796460177,
-  "across_seed_max": 0.6428097345132744,
+  "across_seed_max": 0.6450221238938053,
   "pooled_all_seeds": {
     "n_patients": 474.0,
     "egfr_n": 459.0,
     "egfr_n_pos": 120.0,
-    "egfr_auc": 0.6170353982300885,
-    "egfr_auc_lo": 0.555085088554455,
-    "egfr_auc_hi": 0.676893846046252
+    "egfr_auc": 0.6177728613569321,
+    "egfr_auc_lo": 0.5557131316020442,
+    "egfr_auc_hi": 0.67848129526336
   }
 }

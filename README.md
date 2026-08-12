@@ -226,7 +226,7 @@ in **[docs/ABLATIONS.md](docs/ABLATIONS.md)**. The short version:
 |---|---|---|
 | smoking status alone | **0.794** [0.695, 0.882] | one chart variable |
 | clinical (age, sex, ethnicity, smoking, pack-years) | 0.764–0.805 | no imaging |
-| **THEIA, 3 seeds** | **0.617 ± 0.024** | range 0.597–0.643 |
+| **THEIA, 3 seeds** | **0.618 ± 0.025** | range 0.597–0.643 |
 | THEIA + peritumoral branch, 3 seeds | 0.675 ± 0.017 | suggestive, not established |
 | frozen BiomedCLIP + logistic regression, same folds | 0.617 ± 0.052 | no training |
 | radiomics | 0.526–0.662 | depends on analytic choices |
@@ -240,15 +240,15 @@ features gives p = 0.010 (it was p = 0.52 at n=117). This is settled.
 **The architecture does not exploit it.** A logistic regression on frozen
 features, scored through THEIA's own nested folds, is statistically
 indistinguishable from the full grounded multimodal model (0.617 ± 0.052 vs
-0.617 ± 0.024). Read that with the sample size, though: Riley's minimum n for a
-512-feature probe is 4,707 and we have 153, so "the probe matches the model" is
+0.618 ± 0.025). Read that with the sample size, though: Riley's minimum n for a
+512-feature probe is 42,363 and we have 153, so "the probe matches the model" is
 as much a statement about the cohort as about the architecture.
 
 **Neither beats the chart.** The question that decides the project is whether
 imaging adds anything a clinician does not already have. Repeated per seed with
 the baseline rebuilt on each seed's folds and a paired bootstrap:
 
-> **(clinical + THEIA) − clinical = −0.028 ± 0.016, and every seed's CI includes zero.**
+> **(clinical + THEIA) − clinical = −0.029 ± 0.015, and every seed's CI includes zero.**
 
 So on this cohort, whatever EGFR signal the model extracts from CT is already
 carried by smoking status. Never-smokers here are 60.6% EGFR-mutant against
@@ -272,7 +272,7 @@ mass and a weak one on pointing, which is why all three metrics are reported.
 
 ![external grounding](figures/fig6_external_grounding.png)
 
-**KRAS is at chance**: 0.487 ± 0.005 across the same three seeds, every interval
+**KRAS is at chance**: 0.489 ± 0.005 across the same three seeds, every interval
 spanning 0.5. Reported rather than dropped — a panel quietly narrowed to its
 best member is not a result.
 

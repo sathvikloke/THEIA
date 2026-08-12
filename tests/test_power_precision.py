@@ -100,8 +100,34 @@ def test_riley_needs_more_patients_for_more_predictors():
     assert riley_min_n(512, 0.261) > riley_min_n(5, 0.261)
 
 
-def test_riley_flags_the_frozen_probe_as_underpowered_at_this_cohort_size():
-    """153 patients against a 512-feature probe is not a modelling choice, it is a
-    sample-size violation -- which is the honest reason that arm is not trusted."""
-    assert riley_min_n(5, 0.261) < 153, "the 5-variable clinical model is fine"
-    assert riley_min_n(512, 0.261) > 1000, "the frozen probe is not"
+def test_riley_matches_the_published_criterion():
+    """Guards a formula that was wrong by exactly 9x.
+
+    Riley et al. BMJ 2020;368:m441 criterion 1 is
+        n = P / ( (S - 1) * ln(1 - R2_cs / S) )
+    An earlier implementation divided by (1 - 0.10/1) = 0.9 instead of |S-1| = 0.1,
+    understating every requirement ninefold, and the wrong number was published in
+    ANALYSIS_PLAN beside the BMJ DOI. Recomputed here from the formula directly.
+    """
+    p, P = 0.2614, 5
+    max_r2 = 1 - (p ** p * (1 - p) ** (1 - p)) ** 2
+    r2 = 0.15 * max_r2
+    expected = int(np.ceil(P / ((0.9 - 1) * np.log(1 - r2 / 0.9))))
+    assert riley_min_n(P, p) == expected
+    assert riley_min_n(P, p) == 414, "the clinical model needs 414, not 46"
+
+
+def test_riley_says_NEITHER_arm_is_identifiable_at_this_cohort_size():
+    """The corrected reading, which is stronger than the one it replaced.
+
+    153 patients is not enough for the 5-variable clinical model either. That is
+    why "the frozen probe matches the full model" cannot be read as evidence the
+    architecture is redundant.
+    """
+    assert riley_min_n(5, 0.261) > 153, "even the clinical model is underpowered"
+    assert riley_min_n(512, 0.261) > 10_000, "the frozen probe hopelessly so"
+
+
+def test_riley_rejects_an_r2_at_or_above_the_shrinkage_target():
+    with pytest.raises(ValueError):
+        riley_min_n(5, 0.261, r2_cs=0.95)
