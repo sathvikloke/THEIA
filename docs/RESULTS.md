@@ -69,6 +69,38 @@ patients being compared, so inheriting full-cohort ranks would import informatio
 about the patients just excluded.) The analysis plan now makes segmented
 adenocarcinoma the primary analysis set.
 
+### And the probabilities are worse than a constant
+
+AUC is invariant to any monotone transform of the scores, so it says nothing
+about whether the numbers the model emits are *probabilities*. CLAIM asks for
+calibration separately for that reason. Computed from the archived per-patient
+softmax outputs, with no retraining:
+
+| run | slope | intercept | Brier | reliability | resolution | O:E |
+|---|---|---|---|---|---|---|
+| base-s1337-rerun | 0.302 | −0.211 | 0.217 | 0.041 | 0.017 | 0.89 |
+| ms-s7 | 0.123 | 0.750 | 0.246 | 0.068 | 0.017 | 1.27 |
+| ms-s42 | 0.115 | −0.373 | 0.248 | 0.064 | 0.009 | 0.86 |
+| **mean** | **0.180** | 0.056 | **0.237** | | | |
+
+A calibration slope of 1.0 is perfect. **0.180 means the predictions are roughly
+five times too extreme.**
+
+Worse, the base rate is 26.1%, so a model that ignores the image and predicts
+0.261 for every patient scores a Brier of `0.261 × 0.739 = 0.193`. THEIA scores
+0.217–0.248. **All three runs, on both the full cohort and the primary analysis
+set, are worse than that constant.** Resolution — the component only a better
+model can improve — is 0.009–0.017.
+
+So the honest summary of the classification arm is: it ranks slightly better than
+chance (AUC 0.617) while emitting probabilities that are actively misleading. The
+two statements are compatible and both belong in the paper.
+
+Two consequences already written into [ANALYSIS_PLAN.md](ANALYSIS_PLAN.md):
+no operating point is pre-specified (a threshold on these probabilities would be
+indefensible), and the sealed external-validation artifact must carry Platt or
+isotonic recalibration fitted on the inner validation split.
+
 In this cohort never-smokers are 60.6% EGFR-mutant against 8.3% (current) and
 18.8% (former); OR 7.69, Fisher exact p = 1.7e-6. This is the textbook
 epidemiology, not an artefact.

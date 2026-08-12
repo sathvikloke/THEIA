@@ -1,0 +1,167 @@
+{
+  "runs": [
+    "results/base-s1337-rerun.json",
+    "results/ms-s7.json",
+    "results/ms-s42.json"
+  ],
+  "subsets": {
+    "full cohort": {
+      "per_run": [
+        {
+          "n": 153,
+          "n_pos": 40,
+          "calibration_slope": 0.30186927742924186,
+          "calibration_intercept": -0.2106980157639407,
+          "observed": 40.0,
+          "expected": 44.95213827909902,
+          "oe_ratio": 0.8898353122080164,
+          "mean_predicted": 0.2938048253535884,
+          "brier": 0.21696663999619453,
+          "reliability": 0.04131188151474672,
+          "resolution": 0.016896484351085893,
+          "uncertainty": 0.19308812849758641,
+          "base_rate": 0.26143790849673204,
+          "run": "base-s1337-rerun.json"
+        },
+        {
+          "n": 153,
+          "n_pos": 40,
+          "calibration_slope": 0.12297449251471763,
+          "calibration_intercept": 0.7504872662396913,
+          "observed": 40.0,
+          "expected": 31.460929174238117,
+          "oe_ratio": 1.2714182654450692,
+          "mean_predicted": 0.2056269880669158,
+          "brier": 0.24609549948958803,
+          "reliability": 0.06780624702758764,
+          "resolution": 0.017025178064888062,
+          "uncertainty": 0.19308812849758641,
+          "base_rate": 0.26143790849673204,
+          "run": "ms-s7.json"
+        },
+        {
+          "n": 153,
+          "n_pos": 40,
+          "calibration_slope": 0.11526939613709049,
+          "calibration_intercept": -0.37287312979413256,
+          "observed": 40.0,
+          "expected": 46.77169329114258,
+          "oe_ratio": 0.855218128431006,
+          "mean_predicted": 0.3056973417721737,
+          "brier": 0.24755268266194166,
+          "reliability": 0.06374662084403927,
+          "resolution": 0.009241954700432209,
+          "uncertainty": 0.19308812849758641,
+          "base_rate": 0.26143790849673204,
+          "run": "ms-s42.json"
+        }
+      ],
+      "curve_first_run": [
+        {
+          "n": 31,
+          "mean_predicted": 0.06839335362817492,
+          "observed_rate": 0.0967741935483871
+        },
+        {
+          "n": 31,
+          "mean_predicted": 0.16277946627909137,
+          "observed_rate": 0.25806451612903225
+        },
+        {
+          "n": 31,
+          "mean_predicted": 0.21489802435521158,
+          "observed_rate": 0.3225806451612903
+        },
+        {
+          "n": 30,
+          "mean_predicted": 0.36033355494340263,
+          "observed_rate": 0.3333333333333333
+        },
+        {
+          "n": 30,
+          "mean_predicted": 0.6771311819553375,
+          "observed_rate": 0.3
+        }
+      ]
+    },
+    "segmented adenocarcinoma": {
+      "per_run": [
+        {
+          "n": 97,
+          "n_pos": 23,
+          "calibration_slope": 0.46585129052711766,
+          "calibration_intercept": -0.17524853390953254,
+          "observed": 23.0,
+          "expected": 25.555526181589812,
+          "oe_ratio": 0.9000010344756348,
+          "mean_predicted": 0.26345903279989497,
+          "brier": 0.18513291186896594,
+          "reliability": 0.022336373663065238,
+          "resolution": 0.01811452779436478,
+          "uncertainty": 0.18089063662450844,
+          "base_rate": 0.23711340206185566,
+          "run": "base-s1337-rerun.json"
+        },
+        {
+          "n": 97,
+          "n_pos": 23,
+          "calibration_slope": 0.08833613641532312,
+          "calibration_intercept": 0.3770664278020387,
+          "observed": 23.0,
+          "expected": 20.293204051617067,
+          "oe_ratio": 1.13338435574284,
+          "mean_predicted": 0.20920828919192852,
+          "brier": 0.2442310697801575,
+          "reliability": 0.08181451474618932,
+          "resolution": 0.020605300587102103,
+          "uncertainty": 0.18089063662450844,
+          "base_rate": 0.23711340206185566,
+          "run": "ms-s7.json"
+        },
+        {
+          "n": 97,
+          "n_pos": 23,
+          "calibration_slope": 0.09179324751280288,
+          "calibration_intercept": -0.5617964432460267,
+          "observed": 23.0,
+          "expected": 29.46262973663397,
+          "oe_ratio": 0.7806499353790437,
+          "mean_predicted": 0.3037384508931337,
+          "brier": 0.23982481026276853,
+          "reliability": 0.06913190098687821,
+          "resolution": 0.010682408426589532,
+          "uncertainty": 0.18089063662450844,
+          "base_rate": 0.23711340206185566,
+          "run": "ms-s42.json"
+        }
+      ],
+      "curve_first_run": [
+        {
+          "n": 20,
+          "mean_predicted": 0.05824524273630231,
+          "observed_rate": 0.05
+        },
+        {
+          "n": 20,
+          "mean_predicted": 0.15975491963326932,
+          "observed_rate": 0.2
+        },
+        {
+          "n": 19,
+          "mean_predicted": 0.21338710110438497,
+          "observed_rate": 0.3157894736842105
+        },
+        {
+          "n": 19,
+          "mean_predicted": 0.28946595521349655,
+          "observed_rate": 0.2631578947368421
+        },
+        {
+          "n": 19,
+          "mean_predicted": 0.6127007823241385,
+          "observed_rate": 0.3684210526315789
+        }
+      ]
+    }
+  }
+}
