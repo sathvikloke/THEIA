@@ -3,12 +3,20 @@
 This is the experiment that decides whether widening THEIA's field of view is
 worth a pipeline rebuild.
 
-The motivation is a specific number. Gevaert et al. (Sci Rep 2017) report AUC
-0.89 for EGFR on this same collection -- far above THEIA's 0.627 and above every
-deep model in the modern literature -- from *semantic* features scored by a
-radiologist. Their top predictors were emphysema and airway abnormality.
+The motivation is a specific number. Gevaert et al. (Sci Rep 2017, doi
+10.1038/srep41674) report test-set AUC 0.89 for EGFR on this same collection --
+far above THEIA's 0.617 and above every deep model in the modern literature --
+from *semantic* features scored by a radiologist, using a decision tree over 186
+cases.
 
-Those are whole-lung parenchymal reads. THEIA's crop is `(bbox_mm + 24) * 2.5`
+Their final tree keeps four variables, and the split across anatomy is the whole
+reason this module exists: **emphysema** and **airway abnormality** are
+whole-lung reads, while **percentage ground-glass** and **tumour margin type**
+are lesion reads. Worth stating the direction, because it is easy to carry the
+wrong one around: the presence of emphysema or airway abnormality predicts
+WILD-TYPE, and any ground-glass component indicates MUTATION.
+
+The first two are whole-lung parenchymal reads. THEIA's crop is `(bbox_mm + 24) * 2.5`
 around the lesion, so diffuse emphysema and airway disease elsewhere in the lung
 are physically outside the pixels the model ever sees. If the 0.89 lives mostly
 in those features, the model is not underfitting -- it is looking in the wrong
