@@ -17,34 +17,57 @@ over 5 nested folds, with within-fold rank normalisation, and bootstrap CIs.
 | smoking status alone | **0.794** | [0.695, 0.882] |
 | clinical (age, sex, ethnicity, smoking, pack-years) | 0.764–0.774 | [0.665, 0.859] |
 | clinical + radiomics | 0.783 | [0.690, 0.869] |
-| **THEIA, 3 seeds** | **0.627 ± 0.041** | range [0.597, 0.674] |
+| **THEIA, 3 seeds** | **0.617 ± 0.024** | range [0.597, 0.643] |
+| THEIA + peritumoral branch, 3 seeds | 0.675 ± 0.017 | range [0.656, 0.689] |
 | radiomics | 0.526–0.662 | see §3 |
 
 **The multi-seed estimate is the one to quote, and it is lower than any single
-run suggested.** Per seed, with `gen = 0` (the measured-stable setting):
+run suggested.** Per seed, with `gen = 0` (the measured-stable setting), every
+seed now on the full cohort:
 
 | seed | EGFR AUC | 95% CI | n | stalled folds |
 |---|---|---|---|---|
-| 1337 | 0.674 | [0.558, 0.786] | 122 | 1 |
+| 1337 | 0.643 | [0.534, 0.746] | 153 | 0 |
 | 7 | 0.612 | [0.497, 0.716] | 153 | 0 |
 | 42 | 0.597 | [0.482, 0.709] | 153 | 0 |
 
-Two of the three individual CIs include chance. Pooling all 428 out-of-fold
-predictions gives 0.624 [0.560, 0.685], which excludes chance — but that CI
-covers patient sampling only and absorbs none of the ±0.041 seed spread, so it
-is a point estimate and not the headline.
+All three individual CIs include chance.
 
-Two things to be careful about:
+This table previously read 0.627 ± 0.041, with seed 1337 at 0.674 on 122
+patients because one of its folds stalled. That run was **retrained rather than
+analysed around** (`base-s1337-rerun`), and the complete version scores 0.643 on
+all 153. The headline therefore moves down slightly and the seed spread nearly
+halves. The old caveat — "the best-looking seed is the least complete one" — is
+now resolved rather than merely disclosed.
 
-- **The best-looking seed is the least complete one.** 0.674 comes from the run
-  whose fold 1 stalled, so it is scored on 122 of 153 patients. The two runs on
-  the *full* cohort are the lower two, and their mean is 0.604.
-- **An earlier single run gave 0.660 [0.556, 0.758] with the CI excluding
-  chance** (run 12, generation term active). That number is real but it is one
-  draw from a distribution with sd 0.041; quoting it alone overstates both the
-  effect and the precision.
+**An earlier single run gave 0.660 [0.556, 0.758] with the CI excluding chance**
+(run 12, generation term active). That number is real but it is one draw from a
+distribution with sd 0.024–0.041; quoting it alone overstates both the effect and
+the precision.
 
 THEIA is **beaten by a single chart variable** either way.
+
+### The headline is softer still on the subset that should carry it
+
+Every EGFR-mutant patient in this collection is an adenocarcinoma. The 35
+squamous and 4 NSCLC-NOS patients are wild-type **without exception**, so 20
+patients — 13% of the labelled cohort — are correctly classifiable from histology
+alone, with no imaging. `MODEL_CARD.md` already declares non-adenocarcinoma out
+of scope, so the analysis cohort and the stated scope disagreed; this is what
+reconciling them costs:
+
+| subset | n | pos | EGFR AUC |
+|---|---|---|---|
+| full cohort | 153 | 40 | 0.627 ± 0.041 |
+| adenocarcinoma only | 133 | 40 | 0.610 ± 0.044 |
+| segmented only | 117 | 23 | 0.591 ± 0.047 |
+| **segmented adenocarcinoma** | **97** | **23** | **0.572 ± 0.047** |
+
+(Computed from the archived per-patient probabilities of the original three runs,
+with ranks recomputed within each subset — a rank is a statement about the
+patients being compared, so inheriting full-cohort ranks would import information
+about the patients just excluded.) The analysis plan now makes segmented
+adenocarcinoma the primary analysis set.
 
 In this cohort never-smokers are 60.6% EGFR-mutant against 8.3% (current) and
 18.8% (former); OR 7.69, Fisher exact p = 1.7e-6. This is the textbook
@@ -221,6 +244,49 @@ off. And one fold (seed 42, fold 1) shows lift 0.000 at peak ratio 23.1 —
 sharply peaked attention pointed somewhere other than the tumour, which is a
 different failure from diffuse attention and worth understanding before the
 claim is generalised.
+
+## 4a. And it generalises — the primary endpoint, externally
+
+The result above is one cohort. This is the same grounding heads, unchanged,
+evaluated on **420 NSCLC-Radiomics patients** (Lung1, Maastro Clinic,
+Netherlands): a different country, different scanners, and a radiotherapy-planning
+population rather than a surgical one. 30 evaluations — 6 runs × 5 folds.
+
+| metric | trained (all 30) | trained (25 live) | centre prior | shuffled | random-init head |
+|---|---|---|---|---|---|
+| attention mass in ROI | 0.346 | **0.407** | 0.269 | 0.049 | 0.049 |
+| pointing game | 0.688 | **0.825** | 0.476 | 0.046 | 0.043 |
+| area-matched IoU | 0.448 | **0.537** | 0.287 | 0.026 | 0.033 |
+
+Mass lift **+0.297 ± 0.167**, beating the per-fold shuffle in **25 of 30**
+evaluations. Against +0.391 internally, so it does decay — but it clears the
+pre-specified +0.20 gate with room, on data the model has never seen.
+
+**The centre prior is the control that matters**, and it is why this table has
+five columns instead of three. These crops are lesion-centred: external ROI
+centroids sit at (0.50, 0.51) of the frame with sd ≈ 0.08, covering 5.8% of the
+area. A model that learned nothing except "look at the middle" scores **0.269**
+on mass — most of the way to the trained model's 0.346. On mass alone the claim
+would be thin. On pointing it is not: 0.688 against 0.476, and 0.825 among the
+folds that localise at all. Pointing and area-matched IoU are provably invariant
+to the prior's width (`tests/test_fov_and_subgroups.py`), so that margin cannot
+be manufactured by choosing a flattering sigma.
+
+The randomly-initialised head returns lift **+0.000** at peak ratio 1.01 — a
+uniform map. Whatever the trained heads are doing, it is learned, not
+architectural.
+
+Five of 30 evaluations are dead: `ms-s42/fold1`, `run16-nogen-s1337/fold1`,
+`peri-s42/fold2`, `peri-s7/fold4`, `peri-s1337/fold3`. All show pointing of
+**exactly 0.000** at peak ratios of 9–24 — sharply peaked attention aimed
+confidently somewhere other than the tumour. This is the same failure flagged in
+§4 for seed 42 fold 1, and it reproduces externally, so it is a property of those
+checkpoints rather than of the internal cohort. They are left in the pooled
+numbers; the "25 live" column exists so the reader can see both.
+
+Gate D, pre-specified in [ANALYSIS_PLAN.md](ANALYSIS_PLAN.md) §5, passes on all
+four criteria: lift ≥ 0.20, beats shuffle in ≥ 71% of folds, random head ≈ 0, and
+pointing above the centre prior.
 
 ## 4b. The rationale arm is not ready for a reader study
 
