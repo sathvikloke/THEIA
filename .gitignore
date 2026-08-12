@@ -25,3 +25,12 @@ results/_token_cache.npz
 # Outreach drafts stay local until sent — they name real people and
 # contain negotiating posture that should not be public before the email is.
 docs/OUTREACH.md
+
+# ALL derived imaging, not just the two directories that happened to be listed.
+# data/processed_pretrain/ was tracked for 421 files / 1.0 GB of derived
+# NSCLC-Radiomics (CC BY-NC 3.0) imaging, published under this repo's MIT
+# licence, while LICENSE stated "No imaging or clinical data is included in
+# this repository". Match the whole tree so a new derived-data directory is
+# ignored by default rather than by remembering to add it.
+data/
+!data/.gitkeep
