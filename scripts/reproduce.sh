@@ -50,18 +50,80 @@ print(f"  = {m.mean()/s.mean():.1f}x chance; beats its own baseline in {int((m>s
 PY
 
 echo
-echo "=== 5. sample size for the next cohort ==="
+echo "=== 5. THE PRIMARY ENDPOINT: grounding on an unseen cohort ==="
 python - <<'PY'
 import json
-t = json.load(open("results/power.json"))["table"]
-print("  n     img AUC 0.65   0.75   0.85   (power to show incremental AUC > 0)")
-for n, row in t.items():
-    print(f"  {n:>5s}" + "".join(f"        {v['power']:.2f}" for v in row.values()))
+d = json.load(open("results/external_grounding.json"))
+rows, cp, rnd = d["rows"], d["control_centre_prior"], d["control_random_init"]
+mean = lambda k, rs=rows: sum(r[k] for r in rs) / len(rs)
+live = [r for r in rows if r["grounding_pointing"] > 0.05]
+print(f"{d['n_external']} external patients, {len(rows)} evaluations "
+      f"({len(rows)-len(live)} dead)")
+print(f"{'':<10}{'trained':>9}{'live only':>11}{'centre':>9}{'shuffle':>9}{'random':>9}")
+for k in ("grounding_mass", "grounding_pointing", "grounding_iou"):
+    n = k.split("_")[1]
+    print(f"{n:<10}{mean(k):>9.3f}{mean(k, live):>11.3f}{cp[k]:>9.3f}"
+          f"{mean(k+'_shuffled'):>9.3f}{rnd[k]:>9.3f}")
+print(f"mass lift {d['mean_mass_lift']:+.3f}, beats shuffle "
+      f"{d['folds_beating_shuffle']}/{d['n_folds']}  ->  "
+      f"GATE D {'PASS' if d['gate_d_passed'] else 'FAIL'}")
 PY
 
 echo
-echo "=== 6. figures ==="
+echo "=== 6. calibration: the AUC is above chance, the probabilities are not useful ==="
+python - <<'PY'
+import json
+d = json.load(open("results/calibration.json"))
+for label, blk in d["subsets"].items():
+    per = blk["per_run"]
+    unc = per[0]["uncertainty"]
+    print(f"{label}: base-rate Brier floor {unc:.3f}")
+    for r in per:
+        worse = "WORSE than a constant" if r["brier"] > unc else "better"
+        print(f"   {r['run']:<26} slope {r['calibration_slope']:>6.3f}  "
+              f"Brier {r['brier']:.3f}  {worse}")
+PY
+
+echo
+echo "=== 7. no fusion topology beats the chart ==="
+python - <<'PY'
+import json
+d = json.load(open("results/fusion.json"))
+r = d["results"]
+for k in d["arms"]:
+    print(f"  {k:<34} {r[k]:.3f}")
+for k, v in sorted((k, v) for k, v in r.items() if isinstance(v, dict)):
+    print(f"  {k:<34} {v['auc']:.3f}   vs {d['best_single']} "
+          f"{v['vs_best_single']:+.3f}  p={v['p']:.3f}")
+PY
+
+echo
+echo "=== 8. sample size AND precision for the next cohort ==="
+python - <<'PY'
+import json
+d = json.load(open("results/power.json"))
+print("  n     img AUC 0.65   0.75   0.85   (power to show incremental AUC > 0)")
+for n, row in d["table"].items():
+    print(f"  {n:>5s}" + "".join(f"        {v['power']:.2f}" for v in row.values()))
+if "precision_n_for_ci" in d:
+    print("\n  precision: n needed for a 95% CI half-width, at AUC 0.63")
+    for h, n in d["precision_n_for_ci"]["0.63"].items():
+        print(f"    +/-{h:<6} {n}")
+    print(f"  observed cohort half-width: +/-{d['observed_ci_halfwidth_at_063']:.3f}")
+    print(f"  attainable external set:    "
+          f"+/-{d['attainable_external_ci_halfwidth_at_063']:.3f}  "
+          f"<- spans chance AND the published 0.80s")
+    print(f"  Riley minimum n: {d['riley_min_n']}")
+PY
+
+echo
+echo "=== 9. cohort flow and Table 1 ==="
+python -m theia.analysis.cohort
+
+echo
+echo "=== 10. figures ==="
 python -m theia.analysis.figures
 
 echo
 echo "Done. Provenance: docs/RESULTS.md   Scope: docs/MODEL_CARD.md"
+echo "Plan: docs/ANALYSIS_PLAN.md   Reporting: docs/CLAIM_CHECKLIST.md"
