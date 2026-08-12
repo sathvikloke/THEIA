@@ -70,7 +70,7 @@ forgotten, not claimed as done.
 |---|---|---|---|
 | 35 | Performance metrics for optimal model(s) on all data partitions | **Yes** | RESULTS §1, §4, §4a |
 | 36 | Estimates of diagnostic accuracy and their precision | **Yes** | Bootstrap CIs throughout; multi-seed mean ± sd is the headline, never the pooled CI alone |
-| 37 | Failure analysis of incorrectly classified cases | **Partial** | Five of 30 external grounding evaluations fail with pointing exactly 0.000 at peak ratios 9–24, named individually in RESULTS §4a. Per-case classification failure analysis is *(manuscript)* |
+| 37 | Failure analysis of incorrectly classified cases | **Partial** | Four of 15 external grounding evaluations fail with pointing exactly 0.000 at peak ratios 4–23, and three of the four belong to one training run (base-s1337-v2, which also fails 3/5 internally). Named in RESULTS §4a. Per-case classification failure analysis is *(manuscript)* |
 
 ## Discussion
 
