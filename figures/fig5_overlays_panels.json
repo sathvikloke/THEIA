@@ -1,0 +1,49 @@
+{
+  "checkpoint": "checkpoints/ms-s7/fold0/best.pt",
+  "fold": 0,
+  "panels": [
+    {
+      "panel": "A",
+      "patient_id": "R01-025",
+      "age": 68,
+      "sex": "male",
+      "histology": "Adenocarcinoma"
+    },
+    {
+      "panel": "B",
+      "patient_id": "R01-027",
+      "age": 76,
+      "sex": "male",
+      "histology": "NSCLC NOS (not otherwise specified)"
+    },
+    {
+      "panel": "C",
+      "patient_id": "R01-031",
+      "age": 64,
+      "sex": "male",
+      "histology": "NSCLC NOS (not otherwise specified)"
+    },
+    {
+      "panel": "D",
+      "patient_id": "R01-032",
+      "age": 63,
+      "sex": "male",
+      "histology": "Adenocarcinoma"
+    },
+    {
+      "panel": "E",
+      "patient_id": "R01-037",
+      "age": 84,
+      "sex": "male",
+      "histology": "Adenocarcinoma"
+    },
+    {
+      "panel": "F",
+      "patient_id": "R01-038",
+      "age": 59,
+      "sex": "male",
+      "histology": "Squamous cell carcinoma"
+    }
+  ],
+  "legend_fragment": "(A) 68-year-old man; (B) 76-year-old man; (C) 64-year-old man; (D) 63-year-old man; (E) 84-year-old man; (F) 59-year-old man."
+}

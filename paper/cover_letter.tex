@@ -1,0 +1,165 @@
+% =====================================================================
+% COVER LETTER — Radiology: Artificial Intelligence
+%
+% Uploaded as its own file. NOT anonymized: the cover letter goes to the
+% editorial office, not to peer reviewers, and it is the only place the real
+% repository URL and the author identities may appear.
+%
+% RSNA specifies six items for the cover letter, four of them flagged REQUIRED
+% (marked below). Two further requirements come from RSNA Editorial Policies:
+% the AI-use disclosure and the data-control statement.
+%
+% Deliberately NOT here, per the instructions:
+%   - suggested / opposed reviewers  -> entered in ScholarOne Step 5
+%   - a "why this journal" pitch     -> only a fast-track request takes one,
+%                                       and that must also be emailed to
+%                                       radiology-ai@rsna.org
+%
+% Everything in [SQUARE BRACKETS] is an author action.
+% =====================================================================
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[hidelinks]{hyperref}
+\usepackage{parskip}
+\usepackage{times}
+\pagestyle{empty}
+
+\begin{document}
+
+[Author name, degrees] \\
+{}[Department], [Institution] \\
+{}[Address] \\
+{}[e-mail] \quad [telephone]
+
+\vspace{1.2em}
+[Date]
+
+\vspace{1.2em}
+Charles E. Kahn, Jr., MD, MS \\
+Editor, \textit{Radiology: Artificial Intelligence} \\
+Radiological Society of North America
+
+\vspace{1.2em}
+Dear Dr Kahn,
+
+\textbf{Title.} ``Weakly Supervised Localization Generalizes Where Genotype
+Prediction Does Not: An Externally Validated Null for \textit{EGFR}
+Radiogenomics from Lung CT.''
+
+\textbf{Authors.} [Complete author list, in final order, with degrees.]
+
+\textbf{Article type.} Original Research.
+
+\medskip
+We submit this manuscript for your consideration. The CT radiogenomics
+literature reports \textit{EGFR} prediction at AUC 0.80--0.89, almost always from
+single-center cohorts without external validation. We took a grounded
+vision--language model whose attention is supervised against tumor segmentations
+and separated two claims that this literature routinely bundles: that such a
+model localizes the lesion, and that it genotypes it. Localization transferred to
+420 patients in another country, on another scanner fleet, in another treatment
+setting, beating a per-fold spatial shuffle, a center prior and an untrained head.
+Genotype prediction did not: pooled AUC was 0.618 against 0.794 for smoking status
+alone, adding the model to a five-variable clinical model changed AUC by
+$-0.029$, no fusion topology helped, and calibration was worse than predicting the
+base rate.
+
+We think the useful result is the dissociation rather than the null. A saliency
+map that tracks the tumor on an unseen institution's data, attached to a
+classifier performing at 0.618, is evidence that plausible localization is not
+evidence of predictive validity --- and that can only be observed when the
+prediction fails, so it cannot appear in studies that report both as successes.
+
+\textbf{Two objections we would rather raise than have noticed.} First, the
+internal cohort is 153 patients with a known \textit{EGFR} call and the
+pre-specified primary analysis set is 97, far below what the journal typically
+carries. Our argument is not that this is adequate but that the question is not
+resolvable by enlarging it: Riley's criterion requires 414 patients for the
+five-variable clinical model alone, the entire open world of
+\textit{EGFR}-labeled CT gives a 95\% confidence-interval half-width of 0.154, and
+the largest external study yet published (1646 patients, 11\,473 lesions,
+\textit{Eur Radiol} 2026) reproduces our interval at ten times the sample size
+with our internal cohort as its external one. Second, the primary endpoint clears
+its pre-specified threshold by a single fold (11 of 15). Table 3 therefore reports
+every evaluation individually; the distribution is bimodal rather than marginal,
+with the weakest success at 0.757 pointing accuracy and the strongest failure at
+exactly 0.000.
+
+\medskip
+\textbf{Subject overlap with prior work} \textit{(required)}. Both imaging
+collections are public and have been analyzed by other groups, including in each
+collection's source publication and in the multi-tumor external-validation study
+cited above, in which NSCLC-Radiogenomics serves as the external cohort. No
+patient in this analysis overlaps with any published, in-press, or under-review
+work by these authors. What is new here is the pre-specified separation of the
+localization and genotyping claims, the three-control external localization
+evaluation, and the measured precision bound. This overlap is also reported in
+Materials and Methods. [If any overlapping article exists, upload its PDF at
+submission and describe here what is new and different.]
+
+\textbf{Conflicts of interest and industry support} \textit{(required)}.
+[REQUIRED --- state all conflicts and any industry support, or state that there
+are none. ICMJE disclosure forms are submitted for every author.]
+
+\textbf{Sole submission} \textit{(required)}. This manuscript is original, has not
+been published in the same or similar form by the authors, and has not been and
+will not be submitted to another journal by the authors or by colleagues at their
+institutions while it is under consideration at \textit{Radiology: Artificial
+Intelligence}. [State here if any similar material has been provided to news or
+advertising media, and supply a copy.]
+
+\textbf{Use of artificial intelligence in the study and in manuscript
+preparation} \textit{(required by RSNA Editorial Policies)}. [REQUIRED ---
+complete and verify before submission.] Generative AI assistance was used in this
+work and is disclosed here and in the manuscript. Tool: [name, e.g.\ Claude Code
+with the Claude Opus model]; version: [exact model or release identifier];
+manufacturer: [e.g.\ Anthropic, San Francisco, Calif]; dates of access:
+[range]. It was used for [state precisely which of: writing and refactoring
+analysis code; drafting and editing manuscript text; literature search; figure
+generation]. All analytical decisions, the pre-specified analysis plan, the
+interpretation of results, and the final text were reviewed and approved by the
+authors, who take full responsibility for the integrity and accuracy of the work.
+No AI tool is listed as an author.
+
+\textbf{Control of the data and the analyses} \textit{(required by RSNA Editorial
+Policies)}. [REQUIRED --- name the author(s) who had full access to and control of
+the data and who performed the statistical analyses, e.g.\ ``[Initials] had full
+access to all study data and takes responsibility for the integrity of the data
+and the accuracy of the analysis.'']
+
+\textbf{Dual first authorship.} [Delete if not applicable. Otherwise state which
+two authors contributed equally and why equal contribution is warranted; this must
+also appear on the full title page.]
+
+\textbf{Prior presentation and preprint posting.} [REQUIRED disclosure at
+submission --- state any presentation at a scientific meeting and any preprint
+posting with server, DOI and date, or state that there has been none.]
+
+\medskip
+\textbf{Reproducibility, for the editorial office.} Every number in the
+manuscript is regenerated from archived out-of-fold predictions by a single
+script, requiring no imaging data and no GPU. The repository holds the
+pre-specified analysis plan with its deviation log --- including the deviations
+that went against us --- the completed CLAIM checklist, and all archived runs,
+negative results included. Because review is double-anonymized, the manuscript
+cites an anonymized mirror; the permanent URL is \texttt{[REAL REPOSITORY URL]}
+and the archival DOI is \texttt{[ZENODO DOI]}, given here for the editorial office
+only.
+
+\textbf{Image licensing.} NSCLC-Radiogenomics is licensed CC BY 3.0, and its
+images appear in Figure 6 with attribution. NSCLC-Radiomics is licensed CC BY-NC
+3.0, so no pixel data from it appears in any figure --- only derived statistics.
+
+\textbf{Ethics.} [REQUIRED --- insert the institutional review board's written
+determination. The analysis used only publicly available, fully de-identified data
+distributed by The Cancer Imaging Archive under open licenses, and no protected
+health information was accessed.]
+
+\vspace{1.2em}
+Yours sincerely,
+
+\vspace{2.5em}
+{}[Corresponding author name, degrees] \\
+on behalf of all authors
+
+\end{document}

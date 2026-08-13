@@ -242,6 +242,45 @@ def fig_external_grounding(blob: dict, out: str) -> None:
     print(f"[fig] wrote {out}")
 
 
+def _overlay_demographics(picks, ds, cfg, ckpt: str, fold: int, out: str) -> None:
+    """Write the age/sex of each overlay panel's patient next to the figure.
+
+    RSNA: a legend showing images of human subjects must state age, sex, and
+    clinical history. Emitting it as a sidecar keeps the legend tied to the exact
+    checkpoint and fold that produced the panels.
+    """
+    import pandas as pd
+
+    clin = pd.read_csv(os.path.join(cfg.paths.raw_dir, "clinical", "clinical.csv"))
+    clin = clin.set_index("Case ID", drop=False)
+    panels = []
+    for pos, (i, _) in enumerate(picks):
+        pid = ds.rows[i]["patient_id"]
+        row = clin.loc[pid] if pid in clin.index else None
+        age = pd.to_numeric(row["Age at Histological Diagnosis"], errors="coerce") \
+            if row is not None else None
+        panels.append({
+            "panel": chr(ord("A") + pos),
+            "patient_id": pid,
+            "age": None if age is None or pd.isna(age) else int(age),
+            "sex": (str(row["Gender"]).strip().lower() if row is not None else None),
+            "histology": (str(row["Histology "]).strip() if row is not None else None),
+        })
+
+    def _phrase(p):
+        if p["age"] is None or p["sex"] not in ("male", "female"):
+            return f"({p['panel']}) patient with age or sex not recorded"
+        noun = "man" if p["sex"] == "male" else "woman"
+        return f"({p['panel']}) {p['age']}-year-old {noun}"
+
+    blob = {"checkpoint": ckpt, "fold": fold, "panels": panels,
+            "legend_fragment": "; ".join(_phrase(p) for p in panels) + "."}
+    side = os.path.splitext(out)[0] + "_panels.json"
+    json.dump(blob, open(side, "w"), indent=2)
+    print(f"[fig] wrote {side}")
+    print(f"[fig] legend fragment: {blob['legend_fragment']}")
+
+
 def fig_overlays(ckpt: str, cfg, out: str, n: int = 6) -> None:
     """Attention over the CT for held-out patients, with the tumour outlined.
 
@@ -282,6 +321,12 @@ def fig_overlays(ckpt: str, cfg, out: str, n: int = 6) -> None:
         used += 1
         if used >= n:
             break
+
+    # RSNA requires a figure legend showing human images to state each patient's
+    # age and sex. Those are not in the tensors, so they are looked up here and
+    # written beside the PNG -- a legend typed from memory would drift the moment
+    # the checkpoint or fold changed.
+    _overlay_demographics(picks, ds, cfg, ckpt, fold, out)
 
     fig, axes = plt.subplots(2, (len(picks) + 1) // 2, figsize=(2.1 * len(picks), 4.6),
                              dpi=200)
