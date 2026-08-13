@@ -22,6 +22,19 @@ other outer folds and applied to the held-out one, reusing the same fold
 assignment the base models used. That keeps the comparison honest, and it is why
 the fitted stacker does not automatically beat the fixed average.
 
+WHICH RUN. This defaulted to `results/peri-s42.json` -- the *peritumoral variant*,
+seed 42 -- and so the fusion table published in the manuscript was computed on a
+model the paper is not about. The symptom was an internally inconsistent row: the
+table printed the headline AUC 0.618 beside a difference of -0.108, which is
+0.656 - 0.764, the peritumoral arm's number. The conclusion survived the
+correction and in fact strengthened, but that was luck.
+
+The default is now the canonical run set, `--theia` takes a comma-separated list,
+and every arm is reported as an across-seed mean +/- sd. `results/CANONICAL.json`
+is the single definition; `tests/test_fusion.py` asserts the output was built from
+it. This is the fifth time a stale default has put a superseded or off-target run
+into a reported number, which is why the assertion is a test rather than a habit.
+
 Run: python -m theia.analysis.fusion
 """
 from __future__ import annotations
@@ -122,36 +135,33 @@ def _boot(y, a, b, n=5000, seed=1337):
             float(2 * min((d <= 0).mean(), (d >= 0).mean())))
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--theia", default="results/peri-s42.json")
-    ap.add_argument("--baselines", default="results/baselines.json")
-    ap.add_argument("--gene", default="egfr")
-    ap.add_argument("--out", default="results/fusion.json")
-    a = ap.parse_args()
+def _canonical_runs() -> list[str]:
+    """The headline run set, read from its single definition."""
+    return list(json.load(open("results/CANONICAL.json"))["headline_runs"])
 
-    arms: dict[str, list[dict]] = {"THEIA": _oof(a.theia, a.gene)}
-    if os.path.exists(a.baselines):
-        blob = json.load(open(a.baselines)).get("oof") or {}
+
+def one_run(theia_path: str, baselines: str, gene: str, quiet: bool = False) -> dict:
+    """Every arm and topology for ONE THEIA run, on the patients all arms cover."""
+    arms: dict[str, list[dict]] = {"THEIA": _oof(theia_path, gene)}
+    if os.path.exists(baselines):
+        blob = json.load(open(baselines)).get("oof") or {}
         for name in ("clinical", "radiomics"):
             if blob.get(name):
                 arms[name] = [r for r in blob[name]
-                              if r.get(f"{a.gene}_true") in (0, 1)]
+                              if r.get(f"{gene}_true") in (0, 1)]
     if len(arms) < 2:
         raise SystemExit(f"need >=2 arms, found {list(arms)}; run theia.analysis.baselines")
 
-    ids, y, folds, R = align(arms, a.gene)
+    ids, y, folds, R = align(arms, gene)
     names = list(arms)
-    print(f"[fusion] {len(ids)} patients ({int(y.sum())} positive) scored by all of "
-          f"{names}\n")
+    if not quiet:
+        print(f"[fusion] {len(ids)} patients ({int(y.sum())} positive) scored by all of "
+              f"{names}\n")
 
     results = {}
-    print(f"{'arm / topology':<38} {'AUC':>7}")
     for j, n in enumerate(names):
         results[n] = _auc(y, R[:, j])
-        print(f"{n:<38} {results[n]:>7.3f}")
 
-    print()
     best_single = max(names, key=lambda n: results[n])
     ref = R[:, names.index(best_single)]
 
@@ -164,20 +174,68 @@ def main() -> None:
     for i, j in combinations(range(len(names)), 2):
         topologies[f"soft voting ({names[i]} + {names[j]})"] = soft_vote(R[:, [i, j]])
 
+    theia_idx = names.index("THEIA")
     for label, s in topologies.items():
         auc = _auc(y, s)
         lo, hi, p = _boot(y, s, ref)
+        # Also compare against THEIA alone. The manuscript previously said
+        # "adding radiomics harmed the combination (-0.130)" while -0.130 was
+        # measured against the CLINICAL model, not against THEIA -- so the
+        # sentence described a contrast the table did not contain.
+        lo_t, hi_t, p_t = _boot(y, s, R[:, theia_idx])
         results[label] = {"auc": auc, "vs_best_single": auc - results[best_single],
-                          "ci_lo": lo, "ci_hi": hi, "p": p}
-        print(f"{label:<38} {auc:>7.3f}   vs {best_single} "
-              f"{auc - results[best_single]:+.3f} [{lo:+.3f},{hi:+.3f}] p={p:.3f}")
+                          "ci_lo": lo, "ci_hi": hi, "p": p,
+                          "vs_theia": auc - results["THEIA"],
+                          "vs_theia_ci_lo": lo_t, "vs_theia_ci_hi": hi_t,
+                          "vs_theia_p": p_t}
+
+    return {"theia_run": os.path.basename(theia_path), "gene": gene,
+            "n": len(ids), "n_pos": int(y.sum()), "arms": names,
+            "best_single": best_single, "results": results,
+            "early_fusion": "not computed; requires archived feature matrices"}
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--theia", default=None,
+                    help="comma-separated run JSONs; default is CANONICAL.json")
+    ap.add_argument("--baselines", default="results/baselines.json")
+    ap.add_argument("--gene", default="egfr")
+    ap.add_argument("--out", default="results/fusion.json")
+    a = ap.parse_args()
+
+    runs = a.theia.split(",") if a.theia else _canonical_runs()
+    print(f"[fusion] runs: {[os.path.basename(r) for r in runs]}")
+    per_run = [one_run(r, a.baselines, a.gene, quiet=i > 0)
+               for i, r in enumerate(runs)]
+
+    labels = list(per_run[0]["results"])
+    agg: dict[str, dict] = {}
+    print(f"\n{'arm / topology':<38} {'mean':>7} {'sd':>7}   per-run")
+    for lab in labels:
+        vals = [(r["results"][lab] if not isinstance(r["results"][lab], dict)
+                 else r["results"][lab]["auc"]) for r in per_run]
+        entry = {"auc_mean": float(np.mean(vals)),
+                 "auc_sd": float(np.std(vals, ddof=1)) if len(vals) > 1 else 0.0,
+                 "per_run": {r["theia_run"]: v for r, v in zip(per_run, vals)}}
+        if isinstance(per_run[0]["results"][lab], dict):
+            for key in ("vs_best_single", "p", "vs_theia", "vs_theia_p"):
+                kv = [r["results"][lab][key] for r in per_run]
+                entry[key + "_mean"] = float(np.mean(kv))
+                entry[key + "_per_run"] = kv
+        agg[lab] = entry
+        print(f"{lab:<38} {entry['auc_mean']:>7.3f} {entry['auc_sd']:>7.3f}   "
+              + " ".join(f"{v:.3f}" for v in vals))
 
     print(f"\n[fusion] early (feature-level) fusion: NOT COMPUTED. It needs each arm's "
           f"feature\n         matrix, and THEIA's region embeddings are not archived; "
           f"producing a row\n         from ranks would mislabel a decision-level result "
           f"as feature-level.")
-    json.dump({"gene": a.gene, "n": len(ids), "n_pos": int(y.sum()),
-               "arms": names, "best_single": best_single, "results": results,
+    json.dump({"gene": a.gene, "runs": [os.path.basename(r) for r in runs],
+               "from_canonical": a.theia is None,
+               "n": per_run[0]["n"], "n_pos": per_run[0]["n_pos"],
+               "arms": per_run[0]["arms"], "best_single": per_run[0]["best_single"],
+               "aggregate": agg, "per_run": per_run,
                "early_fusion": "not computed; requires archived feature matrices"},
               open(a.out, "w"), indent=2)
     print(f"[fusion] wrote {a.out}")

@@ -139,3 +139,36 @@ def test_holm_penalises_a_wide_sweep_more_than_a_narrow_one():
     wide = holm_paired(wide_arms, truth, "base", n_boot=800)
 
     assert wide["edge"]["p_holm"] >= narrow["edge"]["p_holm"]
+
+
+# --- provenance ------------------------------------------------------------
+
+def test_fusion_was_built_from_the_canonical_run_set():
+    """The published fusion table was once computed on `peri-s42.json`.
+
+    That is the PERITUMORAL VARIANT, not the headline model, because
+    fusion.py's --theia default pointed at it. The symptom in the manuscript was
+    a row printing the headline AUC 0.618 beside a difference of -0.108, which is
+    0.656 - 0.764 -- the variant's number. The conclusion survived, but only by
+    luck. This asserts the artifact on disk came from CANONICAL.json.
+    """
+    import json
+    import os
+    import pytest
+
+    if not os.path.exists("results/fusion.json"):
+        pytest.skip("fusion.json not generated")
+    d = json.load(open("results/fusion.json"))
+    canonical = {os.path.basename(p)
+                 for p in json.load(open("results/CANONICAL.json"))["headline_runs"]}
+    assert set(d.get("runs", [])) == canonical, (
+        f"fusion.json was built from {d.get('runs')}, "
+        f"canonical is {sorted(canonical)}")
+    assert d.get("from_canonical") is True
+
+    # The THEIA arm must equal the published headline, or the table is again
+    # pairing an AUC from one estimand with a difference from another.
+    head = json.load(open("results/CANONICAL.json"))["headline"]
+    got = d["aggregate"]["THEIA"]["auc_mean"]
+    assert abs(got - head["mean"]) < 0.001, (
+        f"fusion THEIA arm {got:.3f} != headline {head['mean']:.3f}")

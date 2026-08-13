@@ -101,8 +101,17 @@ def centre_prior(attn_shape, roi_frac: float) -> torch.Tensor:
     return m.expand(b, q, h, w).clone()
 
 
-def summarise(maps, rois, seed: int, transform=None) -> dict:
-    """Pooled grounding metrics over every external patient."""
+def summarise(maps, rois, seed: int, transform=None,
+              per_patient: dict | None = None) -> dict:
+    """Pooled grounding metrics over every external patient.
+
+    Pass `per_patient` (a dict) to also receive the unaggregated per-patient
+    vectors. Counting how many of 15 fold-checkpoints beat their shuffle treats
+    three seeds x five folds as 15 independent studies, which they are not: they
+    share the same 420 external patients and their training sets overlap. Keeping
+    the per-patient values lets the endpoint be resampled over PATIENTS, which is
+    the unit that actually varies.
+    """
     from theia.engine.evaluate import grounding_metrics
 
     acc: dict[str, list[float]] = {}
@@ -112,6 +121,8 @@ def summarise(maps, rois, seed: int, transform=None) -> dict:
         out = grounding_metrics(a, r, seed=seed)
         for k, v in out.items():
             acc.setdefault(k, []).extend(v)
+    if per_patient is not None:
+        per_patient.update({k: list(v) for k, v in acc.items()})
     res = {k: float(np.mean(v)) for k, v in acc.items() if v}
     for base in ("grounding_mass", "grounding_pointing", "grounding_iou"):
         if base in res and f"{base}_shuffled" in res:
@@ -144,6 +155,7 @@ def main() -> None:
 
     rows = []
     per_fold_lift = []
+    per_patient_trained: list[dict] = []
     for run in a.runs.split(","):
         for ck in sorted(glob.glob(f"checkpoints/{run}/fold*/best.pt")):
             fold = os.path.basename(os.path.dirname(ck))
@@ -166,7 +178,12 @@ def main() -> None:
                       f"{len(still_missing)} vision/grounding keys missing")
                 continue
             maps, rois = attention_over(model, loader, device)
-            r = summarise(maps, rois, seed=cfg.seed)
+            pp: dict = {}
+            r = summarise(maps, rois, seed=cfg.seed, per_patient=pp)
+            per_patient_trained.append(
+                {k: pp[k] for k in ("grounding_mass", "grounding_pointing",
+                                    "grounding_iou", "grounding_mass_shuffled")
+                 if k in pp})
             r.update(run=run, fold=fold)
             rows.append(r)
             per_fold_lift.append(r.get("grounding_mass_lift", float("nan")))
@@ -184,11 +201,33 @@ def main() -> None:
     roi_frac = float(np.mean([r["grounding_roi_frac"] for r in rows]))
     shape = maps[0].shape
     cp = centre_prior(shape, roi_frac)
-    ctrl_centre = summarise([cp[: m.shape[0]] for m in maps], rois, seed=cfg.seed)
+    pp_centre: dict = {}
+    ctrl_centre = summarise([cp[: m.shape[0]] for m in maps], rois, seed=cfg.seed,
+                            per_patient=pp_centre)
 
     model = Theia(cfg).to(device)
     rmaps, rrois = attention_over(model, loader, device, randomize=True)
-    ctrl_random = summarise(rmaps, rrois, seed=cfg.seed)
+    pp_random: dict = {}
+    ctrl_random = summarise(rmaps, rrois, seed=cfg.seed, per_patient=pp_random)
+
+    # Per-patient vectors for the patient-level endpoint. Trained values are
+    # averaged over the run x fold checkpoints so each patient contributes once.
+    npz = os.path.splitext(a.out)[0] + "_per_patient.npz"
+    save = {}
+    for k in ("grounding_mass", "grounding_pointing", "grounding_iou",
+              "grounding_mass_shuffled"):
+        stack = [d[k] for d in per_patient_trained if k in d]
+        if stack:
+            save["trained_" + k] = np.mean(np.array(stack, dtype=float), axis=0)
+            save["trained_" + k + "_all"] = np.array(stack, dtype=float)
+        if k in pp_centre:
+            save["centre_" + k] = np.array(pp_centre[k], dtype=float)
+        if k in pp_random:
+            save["random_" + k] = np.array(pp_random[k], dtype=float)
+    np.savez_compressed(npz, **save)
+    print(f"[ext] wrote {npz} "
+          f"({save['trained_grounding_pointing'].size} patients x "
+          f"{len(per_patient_trained)} checkpoints)")
 
     lifts = [x for x in per_fold_lift if not np.isnan(x)]
     beat = sum(1 for r in rows if r["grounding_mass"] > r["grounding_mass_shuffled"])

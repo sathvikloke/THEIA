@@ -138,8 +138,12 @@ def main() -> None:
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/default.yaml")
-    ap.add_argument("--runs", default="results/base-s1337-rerun.json,"
-                                      "results/ms-s7.json,results/ms-s42.json")
+    # Read the canonical set rather than naming runs here. This default used to
+    # be base-s1337-rerun.json, which is SUPERSEDED; results/calibration.json
+    # happens to have been produced with -v2, so the reported numbers are right,
+    # but only because someone passed --runs by hand that day.
+    ap.add_argument("--runs", default=",".join(
+        json.load(open("results/CANONICAL.json"))["headline_runs"]))
     ap.add_argument("--gene", default="egfr")
     ap.add_argument("--out", default="results/calibration.json")
     a = ap.parse_args()
