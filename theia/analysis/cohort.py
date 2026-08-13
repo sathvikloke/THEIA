@@ -130,6 +130,41 @@ def table_one(cfg) -> pd.DataFrame:
     return pd.DataFrame(out)
 
 
+def demographics(cfg) -> dict:
+    """The abstract's Materials and Methods sentence, in RSNA house style.
+
+    Radiology journals require the abstract to name the cohort as "mean age,
+    X years +/- SD; N male, M female", separately by sex where relevant. Table 1
+    reports median [IQR] because age here is mildly skewed and the median is the
+    honest summary; both are produced from the same column so the manuscript
+    cannot quote a mean that does not match the table's median.
+    """
+    raw = cfg.paths.raw_dir
+    clin = pd.read_csv(os.path.join(raw, "clinical", "clinical.csv")).set_index(
+        "Case ID", drop=False)
+    rows = [json.loads(l) for l in
+            open(os.path.join(cfg.paths.processed_dir, "rows.jsonl"))]
+    ids = [r["patient_id"] for r in rows
+           if int(r.get("labels", {}).get("EGFR", -1)) in (0, 1)]
+    sub = clin.loc[[i for i in ids if i in clin.index]].copy()
+    age = pd.to_numeric(sub["Age at Histological Diagnosis"], errors="coerce")
+    sex = sub["Gender"].map(_clean)
+
+    def block(mask) -> dict:
+        a = age[mask].dropna()
+        return {"n": int(mask.sum()), "n_age_known": int(a.size),
+                "mean": float(a.mean()), "sd": float(a.std(ddof=1)),
+                "min": float(a.min()), "max": float(a.max())}
+
+    out = {"all": block(pd.Series(True, index=sub.index)),
+           "male": block(sex == "Male"), "female": block(sex == "Female")}
+    out["sentence"] = (
+        f"{out['all']['n']} patients (mean age, {out['all']['mean']:.0f} years "
+        f"+/- {out['all']['sd']:.0f} [SD]; {out['male']['n']} male, "
+        f"{out['female']['n']} female)")
+    return out
+
+
 def acquisition(cfg) -> dict:
     """What is recoverable about how the scans were made, and what is not."""
     raw = cfg.paths.raw_dir
@@ -207,8 +242,12 @@ def main() -> None:
     print(f"  n={iv['n']}, median {iv['median']:.0f} days "
           f"[IQR {iv['q1']:.1f}-{iv['q3']:.1f}], range {iv['min']:.0f}-{iv['max']:.0f}")
 
+    dem = demographics(cfg)
+    print(f"\n=== ABSTRACT DEMOGRAPHICS (RSNA house style) ===")
+    print(f"  {dem['sentence']}")
+
     json.dump({"flow": f, "acquisition": acq, "interval_days": iv,
-               "table_one": t1.to_dict(orient="records")},
+               "demographics": dem, "table_one": t1.to_dict(orient="records")},
               open(a.out, "w"), indent=2)
     with open(a.table1, "w") as fh:
         fh.write("# Table 1 — cohort characteristics by EGFR status\n\n")

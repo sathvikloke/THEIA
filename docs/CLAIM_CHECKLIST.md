@@ -9,9 +9,11 @@ than a decision. Page:line references are filled in against the manuscript at
 submission; until then each item points at the repository artifact that satisfies
 it, so nothing has to be reconstructed from memory later.
 
-**Status:** pre-submission. Items marked *(manuscript)* have no artifact yet
-because the manuscript does not exist; they are listed so they cannot be
-forgotten, not claimed as done.
+**Status:** pre-submission. The manuscript now exists (`paper/main.tex`,
+anonymized, plus `paper/title_page.tex`), so items that previously read
+*(manuscript)* are resolved below. Items still marked *(title page)* are author
+actions that cannot be completed from the repository — IRB determination,
+funding, conflicts, registration IDs.
 
 ---
 
@@ -19,14 +21,14 @@ forgotten, not claimed as done.
 
 | # | Item | Y/N/NA | Where |
 |---|---|---|---|
-| 1 | Identification as a study of AI methodology, specifying the category of technology used | — | *(manuscript)* |
-| 2 | Structured summary of study design, methods, results, and conclusions | — | *(manuscript)* |
+| 1 | Identification as a study of AI methodology, specifying the category of technology used | **Yes** | Title and abstract name the technology (vision--language model with a supervised grounding head) and the study as an evaluation. `paper/main.tex` |
+| 2 | Structured summary of study design, methods, results, and conclusions | **Yes** | Structured abstract, Purpose / Materials and Methods / Results / Conclusion, 246 words. `paper/main.tex` |
 
 ## Introduction
 
 | # | Item | Y/N/NA | Where |
 |---|---|---|---|
-| 3 | Scientific and clinical background, including the intended use and role of the AI approach | — | *(manuscript)*; scope and intended use in [MODEL_CARD.md](MODEL_CARD.md) |
+| 3 | Scientific and clinical background, including the intended use and role of the AI approach | **Yes** | Introduction; Discussion states the model is not proposed for clinical use. Scope in [MODEL_CARD.md](MODEL_CARD.md) |
 | 4 | Study objectives and hypotheses | **Yes** | [ANALYSIS_PLAN.md](ANALYSIS_PLAN.md) §1 — H₁ grounding generalisation (primary), H₂ incremental value (co-primary, pre-declared null) |
 
 ## Methods
@@ -34,7 +36,7 @@ forgotten, not claimed as done.
 | # | Item | Y/N/NA | Where |
 |---|---|---|---|
 | 5 | Prospective or retrospective study | **Yes** | Retrospective secondary analysis of a public archive. ANALYSIS_PLAN §0 |
-| 6 | Study goal, such as model creation, exploratory study, feasibility study, non-inferiority trial | **Yes** | Exploratory feasibility. Article type Technical Developments. ANALYSIS_PLAN header |
+| 6 | Study goal, such as model creation, exploratory study, feasibility study, non-inferiority trial | **Yes** | Evaluation of two pre-specified, separable claims — not model creation. Article type **Original Research**; see [JOURNAL_FIT.md](JOURNAL_FIT.md) §1 for why Technical Developments was wrong. ANALYSIS_PLAN header |
 | 7 | Data sources | **Yes** | NSCLC-Radiogenomics (TCIA) internal; NSCLC-Radiomics/Lung1 (Maastro) external for grounding. RESULTS §4a |
 | 8 | Eligibility criteria: how, where, and when potentially eligible participants or studies were identified | **Yes** | [table1.md](table1.md) participant flow; `theia.analysis.cohort` |
 | 9 | Data pre-processing steps | **Yes** | `theia/data/preprocess.py`; crop `(bbox_mm + 24) × 2.5`, `crop_jitter_frac 0.30`, HU window centre −600 width 1500, 16 slices |
@@ -45,7 +47,7 @@ forgotten, not claimed as done.
 | 14 | Flow of participants or cases, using a diagram to indicate inclusion and exclusion | **Yes** | [table1.md](table1.md) — 211 → 188 → 158 → 153 → 133 → 97 with reasons |
 | 15 | Demographic and clinical characteristics of cases in each partition | **Yes** | [table1.md](table1.md), split by EGFR status |
 | 16 | Definition of ground truth reference standard, in sufficient detail to allow replication | **Yes** | Mutation status by sequencing (Gevaert et al.; Bakr et al. *Sci Data* 2018;5:180202). Grounding reference: expert tumour segmentations distributed with the collection |
-| 17 | Rationale for choosing the reference standard | **Yes** | *(manuscript)* — sequencing is the clinical standard for genotype; masks are the only pixel-level reference available |
+| 17 | Rationale for choosing the reference standard | **Yes** | Methods, *Reference standard*: sequencing is the clinical standard for genotype; the distributed contours are the only pixel-level reference available |
 | 18 | Source of ground-truth annotations; qualifications and preparation of annotators | **Partial** | Segmentations are the collection's, drawn by a thoracic radiologist (Bakr et al.). **Inter-rater ICC is not measured** — see limitations below |
 | 19 | Annotation tools | **Yes** | Collection-provided DICOM SEG and AIM v4; parsers at `theia/data/preprocess.py`, `theia/data/aim.py` |
 | 20 | Measurement of inter- and intrarater variability; how discrepancies were resolved | **No** | *Justification:* the segmentations are redistributed from a public collection with one contour per lesion; no second reader exists to compute ICC against, and re-segmentation by an independent radiologist is scheduled but not complete. A mask perturbation (dilate/erode/translate) sensitivity sweep is reported instead and is labelled robustness, **not** measured rater variability |
@@ -85,7 +87,7 @@ forgotten, not claimed as done.
 |---|---|---|---|
 | 40 | Registration number and name of registry | **NA** | *Justification:* a retrospective secondary analysis of a public de-identified imaging archive is not a clinical trial, so the ICMJE registration statement does not apply. An OSF Open-Ended Registration of the analysis plan is provided instead — ANALYSIS_PLAN §0 |
 | 41 | Where the full study protocol can be accessed | **Partial** | [ANALYSIS_PLAN.md](ANALYSIS_PLAN.md) is public in-repo. OSF registration and the Zenodo DOI are **pending** — §0 of that file still reads "(to be pasted)". An unearned Yes on a reporting checklist reads as intent |
-| 42 | Sources of funding and other support; role of funders | — | *(manuscript)* |
+| 42 | Sources of funding and other support; role of funders | **No** | *(title page)* — `paper/title_page.tex` carries the required field, marked as an author action. Cannot be completed from the repository |
 
 ---
 

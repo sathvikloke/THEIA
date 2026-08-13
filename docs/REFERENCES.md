@@ -154,12 +154,21 @@ against.
 Recorded separately so it is clear which claims rest on a source this repository
 has checked and which do not.
 
-* **Jang et al., *Radiol Artif Intell* 2025;7(3):e240507** — cited in
-  [ANALYSIS_PLAN.md](ANALYSIS_PLAN.md) §4.1 as precedent that this journal has
-  accepted a single-institution, n=274 mutation-status study with no external
-  test set. Surfaced during a literature audit; the DOI has **not** been
-  independently confirmed against PubMed in this repository. Confirm before
-  citing it in a manuscript.
+* ~~**Jang et al., *Radiol Artif Intell* 2025;7(3):e240507** — precedent that
+  this journal has accepted a single-institution, n=274 mutation-status study
+  with no external test set.~~ **CORRECTED 2026-08-13.** Now verified against
+  PubMed (PMID 40172325, doi:10.1148/ryai.240507). The paper is *Unsupervised
+  Deep Learning for Blood-Brain Barrier Leakage Detection in Diffuse Glioma Using
+  Dynamic Contrast-enhanced MRI* — an image-reconstruction study in which *IDH*
+  classification is a downstream check, not a mutation-status study. Its headline
+  result is strongly **positive** (RLS vs Ktrans, AUC 0.87 vs 0.81, P = .02).
+
+  What survives: n = 274, single institution, no external test set, published.
+  So the journal will accept a study of this size and design. What does **not**
+  survive: it is no precedent for a *null* at this size, and it is not a
+  radiogenomics paper. The description above was wrong on both counts and was
+  repeated verbally before it was checked — the failure mode this whole section
+  exists to prevent. See [JOURNAL_FIT.md](JOURNAL_FIT.md) §3.
 * **Gevaert 2017's 0.89 as directly comparable to THEIA's numbers.** It is not,
   without qualification: that figure comes from 186 patients scored over 100
   random 70/30 splits, against this project's nested 5-fold CV on 153. Protocol

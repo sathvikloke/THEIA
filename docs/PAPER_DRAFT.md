@@ -1,4 +1,15 @@
-# Manuscript draft — current state
+# Manuscript draft — SUPERSEDED
+
+> **Superseded 2026-08-13 by [`paper/main.tex`](../paper/main.tex)**, the actual
+> LaTeX manuscript, plus [`paper/title_page.tex`](../paper/title_page.tex) for the
+> separate full title page that double-anonymized review requires. This file is
+> kept as the record of how the argument was assembled; where it disagrees with
+> `main.tex`, `main.tex` is right.
+>
+> Two things changed after this draft: the article type moved from Technical
+> Developments to **Original Research** (see [JOURNAL_FIT.md](JOURNAL_FIT.md) §1),
+> and the peritumoral variant earned its Results subsection rather than being
+> dropped — resolving the open question at the bottom of this file.
 
 Written to *Radiology: Artificial Intelligence* **Technical Developments** spec:
 2000 words of body text, 25 references, 6 figures, 2 tables.

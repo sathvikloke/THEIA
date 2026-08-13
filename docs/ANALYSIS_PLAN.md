@@ -8,12 +8,22 @@ the radiomics arm moves **0.136 AUC** across six defensible analytic choices, an
 the same features and estimator move **0.066** between a flat and a nested
 cross-validation protocol. Both are larger than the effect being looked for.
 
-**Target venue:** *Radiology: Artificial Intelligence*, article type **Technical
-Developments** (2000 words, 25 references, 6 figures, 2 tables). That journal
+**Target venue:** *Radiology: Artificial Intelligence*, article type **Original
+Research** (3000 words, 35 references, 6 figures, 4 tables). That journal
 publishes no minimum-n or minimum-centre requirement; it asks for a sample-size
-justification or power calculation, which §4 supplies. Precedent for a
-single-institution mutation-status study without an external test set:
-Jang et al., *Radiol Artif Intell* 2025;7(3):e240507 (n=274).
+justification or power calculation, which §4 supplies.
+
+Changed from Technical Developments on 2026-08-13: that category is defined as
+*"a brief description and results of new algorithms, equipment, or datasets"*,
+and this study explicitly proposes no new algorithm. Full audit of the venue,
+including the eight cautionary/null papers it has published and the cohort sizes
+it typically carries, is in [JOURNAL_FIT.md](JOURNAL_FIT.md).
+
+Precedent that the journal accepts a single-institution study of this size with
+no external test set: Jang et al., *Radiol Artif Intell* 2025;7(3):e240507,
+doi:10.1148/ryai.240507 (n=274). Note the limits of that precedent — it is a
+blood-brain-barrier reconstruction study with a strongly positive headline, not a
+radiogenomics null. See [REFERENCES.md](REFERENCES.md) for the correction.
 
 ## 0. Registration
 

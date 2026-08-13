@@ -16,7 +16,7 @@ it isolates *where* the mass went from *how peaked* the map is.
 
 CENTRE PRIOR (the control that actually bites here). These crops are lesion-
 centred: measured over the external set, ROI centroids sit at (0.50, 0.51) of the
-frame with sd ~0.08, covering 5.8% of the area. A model that learned nothing but
+frame with sd ~0.08, covering 4.9% of the area. A model that learned nothing but
 "look at the middle" scores well on mass. Note that pointing and area-matched IoU
 are *identical* for any monotonically-decreasing function of distance-to-centre,
 so those two columns are sigma-free; only mass depends on the width, and sigma is

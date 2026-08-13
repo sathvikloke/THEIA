@@ -364,8 +364,10 @@ reported result.
 
 **The centre prior is the control that matters**, and it is why this table has
 five columns instead of three. These crops are lesion-centred: external ROI
-centroids sit at (0.50, 0.51) of the frame with sd ≈ 0.08, covering 5.8% of the
-area. A model that learned nothing except "look at the middle" scores **0.269**
+centroids sit at (0.50, 0.51) of the frame with sd ≈ 0.08, covering 4.9% of the
+area (`grounding_roi_frac` in `results/external_grounding_canonical.json`; the
+5.8% quoted before the canonical-run swap came from the superseded 30-checkpoint
+sweep, whose peritumoral arm crops differently). A model that learned nothing except "look at the middle" scores **0.269**
 on mass — 92% of the trained model's 0.292. On mass alone the claim would be
 nearly empty. On pointing it is not: 0.609 against 0.476, and 0.831 among the
 folds that localise at all. Pointing and area-matched IoU are provably invariant
