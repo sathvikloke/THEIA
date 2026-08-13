@@ -1,0 +1,541 @@
+% =====================================================================
+% THEIA — manuscript
+% Target: Radiology: Artificial Intelligence, Technical Developments
+% Build:  tectonic main.tex     (or: pdflatex main.tex twice)
+%
+% Every number in this manuscript is produced by ../scripts/reproduce.sh
+% from ../results/. Nothing is transcribed by hand.
+% =====================================================================
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage[hidelinks]{hyperref}
+\usepackage{authblk}
+\usepackage{caption}
+\usepackage{float}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{setspace}
+
+\captionsetup{font=small,labelfont=bf}
+\graphicspath{{../figures/}}
+\sisetup{detect-weight=true}
+\renewcommand{\arraystretch}{1.12}
+
+\title{\bfseries Weakly-supervised localisation generalises where genotype
+prediction does not: an externally validated null for EGFR radiogenomics from
+lung CT}
+
+\author[1]{\textsc{[Author Name]}}
+\affil[1]{\small [Affiliation] \\ \texttt{[email]}}
+\date{}
+
+\begin{document}
+\maketitle
+
+% ---------------------------------------------------------------------
+\begin{abstract}
+\noindent\textbf{Background.} CT-based prediction of \textit{EGFR} mutation
+status is widely reported at AUC 0.80--0.89, almost always from single-centre
+cohorts of 200--800 patients without external validation.
+
+\noindent\textbf{Purpose.} To evaluate whether a grounded vision--language model
+predicts \textit{EGFR} status from lung CT beyond routinely available clinical
+variables, and whether its supervised attention localises tumours on an unseen
+cohort.
+
+\noindent\textbf{Materials and Methods.} Retrospective secondary analysis of the
+public NSCLC-Radiogenomics collection (211 subjects; 153 with a known
+\textit{EGFR} call, 40 mutant, 26.1\%). A BiomedCLIP ViT-B/16 encoder with a
+region-query grounding head supervised against tumour segmentations was trained
+under nested five-fold cross-validation with three seeds. The primary endpoint
+was external generalisation of localisation, evaluated on 420 held-out
+NSCLC-Radiomics patients against three controls: a per-fold spatial shuffle, a
+centre prior, and a randomly initialised head. A co-primary endpoint --- the
+incremental AUC over a five-variable clinical model --- was pre-declared as an
+expected null. The analysis plan was fixed before external evaluation.
+
+\noindent\textbf{Results.} Pooled out-of-fold \textit{EGFR} AUC was
+$0.618 \pm 0.025$, against $0.794$ for smoking status alone. Adding the model to
+clinical variables changed AUC by $-0.029 \pm 0.015$, every seed's confidence
+interval including zero; no fusion topology exceeded the clinical model.
+Calibration slope was 0.19 and the Brier score (0.236) exceeded the base-rate
+floor (0.193). Localisation transferred: attention-mass lift $+0.244$ over the
+shuffle in 11 of 15 external evaluations, pointing 0.609 versus 0.476 for a
+centre prior and 0.005 for a randomly initialised head.
+
+\noindent\textbf{Conclusion.} Supervised localisation generalises across
+institutions while lesion-anchored \textit{EGFR} prediction does not exceed a
+five-variable chart model.
+\end{abstract}
+
+\medskip
+\noindent\textbf{Abbreviations:} AUC = area under the receiver operating
+characteristic curve; CV = cross-validation; IQR = interquartile range;
+NSCLC = non-small cell lung cancer; TKI = tyrosine kinase inhibitor.
+
+\vspace{1em}
+\hrule
+\vspace{1em}
+
+% ---------------------------------------------------------------------
+\section{Introduction}
+
+\textit{EGFR} genotype directs tyrosine kinase inhibitor therapy in non-small
+cell lung cancer. Tissue is often limited and molecular testing is not
+universally available, so a non-invasive imaging surrogate would have real
+clinical value. This has motivated a large radiogenomics literature.
+
+That literature reports \textit{EGFR} prediction from CT at AUC 0.80--0.89
+\citep{huang2025,shang2023,lai2026,wu2024,le2026}. The cohorts are typically
+200--826 patients, usually single-centre, and external validation is uncommon.
+Against this, the one large study with external validation --- 1{,}646 patients
+and 11{,}473 segmented lesions with next-generation-sequencing labels --- reports
+internal AUC 0.62--0.68 and external 0.55--0.63 \citep{rodriguez2026}. Notably,
+its external cohort is NSCLC-Radiogenomics, the collection used here.
+
+That discrepancy is this study's motivation. We do not propose a better
+classifier. We separate two claims that are routinely bundled --- that such a
+model \textit{localises} the lesion, and that it \textit{genotypes} it --- and
+test each with the controls it requires, on a cohort where the second can be
+measured against the clinical variables it would have to beat.
+
+% ---------------------------------------------------------------------
+\section{Materials and Methods}
+
+\subsection{Study design and cohorts}
+
+This retrospective secondary analysis used publicly available, de-identified
+imaging and did not constitute human-subjects research. The analysis plan,
+including the primary endpoint and all controls, was fixed and version-controlled
+before external evaluation; deviations are logged in the public repository.
+
+The internal cohort is NSCLC-Radiogenomics \citep{bakr2018}, a Stanford
+University / VA Palo Alto series distributed by The Cancer Imaging Archive.
+Participant flow is given in Figure~\ref{fig:flow}: 211 subjects in the clinical
+sheet, 188 with an imaging series, 158 successfully preprocessed, 153 with a known
+\textit{EGFR} call, 133 adenocarcinoma, and 97 with both adenocarcinoma histology
+and a pixel-level segmentation. That last set is the pre-specified primary
+analysis set. Cohort characteristics appear in Table~\ref{tab:one}.
+
+No accrual window is reported. The collection's \texttt{CT Date} values span
+1989--1996 and are de-identification offsets rather than dates; publishing a range
+derived from them would misdescribe the cohort. The index-test-to-reference-
+standard interval, which survives the offset because it is a difference, has a
+median of 38 days (IQR 19.5--65.5).
+
+The external cohort is NSCLC-Radiomics \citep{aerts2014}, 420 preprocessed
+patients from Maastro Clinic (Netherlands) --- a different country, scanner fleet,
+and clinical population (radiotherapy planning rather than surgical). The two
+cohorts share no patients, and no evaluated checkpoint was warm-started from the
+external collection; both facts are asserted in the repository's test suite rather
+than claimed in prose.
+
+\subsection{Model}
+
+A BiomedCLIP ViT-B/16 encoder (last two blocks unfrozen) produces patch tokens
+per slice, aggregated across 16 slices by a masked mean. A grounding head applies
+eight learned region queries by cross-attention, and the resulting attention maps
+are supervised against the tumour region of interest projected onto the patch
+grid. The classifier pools from the grounded region embeddings, so prediction and
+localisation share a representation.
+
+Inputs are axial crops of $(\text{bbox}_{\text{mm}} + 24)\times 2.5$ around the
+lesion with 30\% positional jitter, windowed at centre $-600$~HU / width
+1500~HU and resized to $224\times224$.
+
+\subsection{Endpoints, controls, and statistics}
+
+\textbf{H\textsubscript{1} (primary).} External attention-mass lift over a
+per-fold spatial shuffle is greater than zero. Three controls are mandatory in
+every reported table:
+
+\begin{itemize}\itemsep2pt
+  \item \textbf{Spatial shuffle} --- the same attention values permuted across
+    cells, isolating \textit{where} mass fell from \textit{how peaked} the map is.
+  \item \textbf{Centre prior} --- external ROI centroids sit at $(0.50, 0.51)$ of
+    the frame ($\text{sd}\approx0.08$) covering 5.8\% of area, so ``look at the
+    middle'' is a strong baseline. Pointing and area-matched IoU are invariant to
+    the prior's width, so that margin cannot be tuned.
+  \item \textbf{Weight randomisation} --- an untrained head of identical
+    architecture, ruling out architectural inductive bias.
+\end{itemize}
+
+\textbf{H\textsubscript{2} (co-primary, pre-declared null).}
+$\Delta\text{AUC} = \text{AUC}(\text{clinical}+\text{model}) -
+\text{AUC}(\text{clinical})$.
+
+Evaluation used nested five-fold cross-validation stratified on \textit{EGFR},
+three seeds, with within-fold rank normalisation before pooling. The headline is
+the across-seed mean $\pm$ standard deviation; a pooled confidence interval
+absorbs no rerun variance and is never quoted alone. \textbf{No operating point is
+defined}: the index test is continuous and the calibration reported in
+Section~\ref{sec:calib} does not support a threshold.
+
+Comparisons used a paired bootstrap over patients (2000 resamples), with
+Holm correction across the ten arms of the pooling sweep. Precision was computed
+by the Hanley--McNeil closed form \citep{hanley1982}, validated against a
+bootstrap; minimum sample size follows Riley \textit{et al.}\ \citep{riley2020},
+applied only where its inputs are defined.
+
+% ---------------------------------------------------------------------
+\section{Results}
+
+\subsection{The model does not exceed the chart}
+
+Table~\ref{tab:arms} gives every arm on identical patients and folds.
+Pooled out-of-fold \textit{EGFR} AUC was $0.618 \pm 0.025$ across three seeds.
+Smoking status alone reached $0.794$; the five-variable clinical model $0.764$.
+
+The co-primary endpoint was $\Delta\text{AUC} = -0.029 \pm 0.015$, with every
+seed's confidence interval including zero. No fusion topology exceeded the
+clinical model: soft voting reached 0.748, cross-fitted stacking 0.735, hard
+voting 0.690. Adding radiomics significantly \textit{harmed} the combination
+($-0.130$, $P = .02$). A logistic regression on frozen encoder features scored
+$0.617 \pm 0.052$ --- indistinguishable from the full network to three decimals.
+
+\textit{EGFR} results are shown per arm in Figure~\ref{fig:roc} and with paired
+deltas in Figure~\ref{fig:forest}. \textit{KRAS} was at chance
+($0.489 \pm 0.005$); Gevaert \textit{et al.}\ likewise report no significant
+\textit{KRAS} model on this cohort \citep{gevaert2017}.
+
+\subsection{The predictions are also uncalibrated}\label{sec:calib}
+
+Calibration slope averaged 0.19 against a perfect 1.0, indicating predictions
+roughly five times too extreme. At a base rate of 26.1\%, a model predicting the
+prevalence for every patient achieves a Brier score of 0.193; the model scored
+0.236. \textbf{The probabilities are therefore worse than a constant}, with
+resolution --- the component only a better model can improve --- between 0.009 and
+0.017. This is why no operating point is pre-specified, and why any future
+externally validated artifact must carry explicit recalibration.
+
+\subsection{On the subset that should carry it, performance is weaker}
+
+Every \textit{EGFR}-mutant patient in this collection is an adenocarcinoma; the 17
+squamous and 3 NSCLC-NOS patients are wild-type without exception. Including them
+makes 13\% of the cohort classifiable from histology alone with no imaging. On the
+pre-specified primary analysis set --- segmented adenocarcinoma, $n = 97$, 23
+positives --- AUC falls to $0.563$. The same pattern appears in the literature:
+Yamazaki \textit{et al.}\ report 0.774 across histologies but 0.687 restricted to
+adenocarcinoma \citep{yamazaki2022}.
+
+\subsection{Localisation generalises to an unseen cohort}
+
+On 420 held-out NSCLC-Radiomics patients (Figure~\ref{fig:external}), attention
+mass inside the tumour was 0.292 against 0.048 for the spatial shuffle --- a lift
+of $+0.244$, beating the shuffle in 11 of 15 evaluations. Pointing reached 0.609
+against 0.476 for the centre prior and 0.005 for a randomly initialised head,
+which returned a lift of exactly $+0.000$ at a peak-to-mean ratio of 1.01.
+
+Two qualifications belong in the same breath. First, \textbf{the margin over the
+pre-specified fold-rate threshold is one fold}: 11/15 (73.3\%) against a required
+71.4\%. Second, the failures are concentrated rather than scattered --- one
+training run localised in 2 of 5 folds while the others reached 5/5 and 4/5, and
+that same run localises in 2/5 internally while carrying the \textit{highest}
+classification AUC of the three. Localisation is therefore a property of most
+training runs rather than of the method.
+
+Representative attention maps appear in Figure~\ref{fig:overlays}. These are the
+first six segmented patients of a held-out fold in index order, not selected on
+score.
+
+\subsection{The peritumoral region carries the signal, but not significantly}
+
+Because the classifier pools from the grounded region --- the lesion itself --- we
+asked whether the \textit{EGFR} signal is located where the grounding loss
+supervises attention. Over ten seeds on frozen encoder features, through identical
+nested folds, mean-pooling the peritumoral ring scored 0.695 against 0.632 for the
+whole crop and 0.629 for the tumour interior. A size- and shape-matched ring at a
+\textit{random} location scored 0.575, so the gain is location-specific rather
+than an artefact of pooling a thin annulus. Adding a peritumoral branch to the
+classifier moved the trained model from 0.618 to $0.675 \pm 0.017$, improving in
+3 of 3 seeds.
+
+\textbf{This does not survive correction, and we report it as suggestive rather
+than established.} The sweep scores ten arms on the same folds; under a paired
+bootstrap over patients with Holm correction, the best arm has $P_{\text{raw}} =
+.03$ and $P_{\text{Holm}} = .28$. End-to-end the branch is worth $+0.058$ (95\%
+CI $-0.008$ to $+0.128$, $P = .09$). The direction is consistent across frozen and
+trained settings and the location controls behave; the significance is absent.
+
+It is also a replication rather than a discovery: peritumoral radiomics for
+\textit{EGFR} has been reported at least six times since 2022, with optimal ring
+widths of 1, 2, 3, 4, 6 and 15~mm
+\citep{yamazaki2022,shang2023,wu2024,le2026,lai2026,huang2025}. What is new here
+is the tension it exposes --- the grounding objective supervises attention
+\textit{onto} the lesion, and the classification signal appears to sit just
+outside it.
+
+\subsection{Analytic choice is worth more than the effect}
+
+On identical features and estimator, the radiomics arm moved \textbf{0.136 AUC}
+across six defensible preprocessing choices, and \textbf{0.066} between a flat and
+a nested cross-validation protocol. Both exceed the effect sizes this literature
+reports as findings.
+
+\subsection{More patients would not settle it}
+
+Riley's criterion requires 414 patients for the five-variable clinical model alone
+and 42{,}362 for the 512-feature frozen probe; this cohort has 153. Neither arm is
+identifiable at this sample size, which is why ``the probe matches the model''
+cannot be read as evidence that the architecture is redundant.
+
+Precision, not power, binds any external test. At the observed prevalence a 95\%
+confidence-interval half-width of $\pm0.05$ requires $n = 661$. The entire open
+world of \textit{EGFR}-labelled CT holds approximately 327 cases with 64
+positives, giving $\pm0.154$ --- an interval spanning chance and the published
+0.80s simultaneously.
+
+% ---------------------------------------------------------------------
+\section{Discussion}
+
+Two claims usually bundled together separate cleanly here, and separate
+differently. Supervised localisation transfers to a cohort from another country
+and scanner fleet. Genotype prediction does not clear a five-variable chart model
+on the cohort it was trained on.
+
+The convergence with Rodríguez Sánchez \textit{et al.}\ is the strongest argument
+that this is a property of the problem rather than of our sample. Their 1{,}646
+patients and 11{,}473 lesions, with NGS labels and biopsy-anchored training,
+reproduce the interval we obtain from 153 patients. Ten times the patients did not
+move the ceiling.
+
+\textbf{Limitations.} The internal cohort is single-institution and historical.
+The classification arm has no external validation; that is justified by the
+measured precision bound above rather than by circumstance, and is reported as a
+finding rather than deferred. Inter-rater variability of the segmentations is not
+measured, because the source collection distributes one contour per lesion; a mask
+perturbation sweep is reported instead and is explicitly not a substitute. One of
+three training runs largely fails to localise. Finally,
+H\textsubscript{1} is confirmatory of a prior observation on an independent patient
+set rather than a blind prospective test: the external cohort was on disk, and the
+metric's behaviour on it partly known, when the threshold was set. The registered
+plan states this precisely, and we state it here rather than let a reader infer a
+stronger design than was run.
+
+\textbf{Conclusion.} On this cohort, weakly-supervised localisation generalises
+across institutions while \textit{EGFR} prediction from lesion-anchored CT does
+not exceed routinely available clinical variables. Reports of AUC 0.80--0.89
+should be read against the analytic-choice sensitivity and precision bounds
+measured here.
+
+% ---------------------------------------------------------------------
+\section*{Data and code availability}
+
+All code, the pre-specified analysis plan with its deviation log, the completed
+CLAIM checklist, and every archived run result --- including negative results ---
+are available at \url{https://github.com/sathvikloke/THEIA}. Every number in this
+manuscript is regenerated by \texttt{scripts/reproduce.sh} from archived
+out-of-fold predictions, requiring no imaging data and no GPU.
+
+Imaging is redistributed by The Cancer Imaging Archive under its own terms and is
+not included in the repository. NSCLC-Radiogenomics is CC BY 3.0; NSCLC-Radiomics
+is CC BY-NC 3.0. Figure~\ref{fig:overlays} shows NSCLC-Radiogenomics images only,
+consistent with that licence.
+
+% ---------------------------------------------------------------------
+\clearpage
+\section*{Figures}
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.72\textwidth]{fig1_flow.png}
+  \caption{\textbf{Participant flow.} Counts and exclusion reasons are generated
+  from the pipeline rather than transcribed, and reconcile exactly
+  ($211 - 114 = 97$). The pre-specified primary analysis set is segmented
+  adenocarcinoma.}
+  \label{fig:flow}
+\end{figure}
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.62\textwidth]{fig1_roc.png}
+  \caption{\textbf{Pooled out-of-fold ROC by arm}, on identical patients and
+  folds. The chance line is drawn and labelled; each arm's $n$ is printed, because
+  arms do not all cover the same patients.}
+  \label{fig:roc}
+\end{figure}
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.86\textwidth]{fig2_forest.png}
+  \caption{\textbf{Every arm with its confidence interval.} Overlapping intervals
+  can still differ significantly when paired, which is why the paired deltas are
+  reported alongside.}
+  \label{fig:forest}
+\end{figure}
+
+\begin{figure}[H]\centering
+  \includegraphics[width=0.62\textwidth]{fig3_seeds.png}
+  \caption{\textbf{Per-seed AUC against the clinical baseline.} The rerun spread
+  is shown next to the effect being claimed; the gap to a five-variable chart
+  model exceeds it.}
+  \label{fig:seeds}
+\end{figure}
+
+\begin{figure}[H]\centering
+  \includegraphics[width=\textwidth]{fig6_external_grounding.png}
+  \caption{\textbf{Primary endpoint: localisation on 420 held-out
+  NSCLC-Radiomics patients}, with all three controls in every panel. The centre
+  prior is strong on attention mass by construction and weak on pointing and
+  area-matched IoU, which are invariant to its width --- so the trained model's
+  margin is read from the right-hand panels, not the left.}
+  \label{fig:external}
+\end{figure}
+
+\begin{figure}[H]\centering
+  \includegraphics[width=\textwidth]{fig5_overlays.png}
+  \caption{\textbf{Attention maps with the tumour contour drawn from the
+  reference segmentation.} The first six segmented patients of a held-out fold in
+  index order, \textit{not} selected on score. Images from NSCLC-Radiogenomics
+  (CC BY 3.0) \citep{bakr2018}.}
+  \label{fig:overlays}
+\end{figure}
+
+% ---------------------------------------------------------------------
+\clearpage
+\section*{Tables}
+
+\begin{table}[H]\centering\small
+\caption{\textbf{Cohort characteristics by \textit{EGFR} status}, restricted to
+the 153 patients with a known call. Never-smokers are 50\% of mutants against 12\%
+of wild-type; this is the textbook epidemiology and is most of what the clinical
+model knows.}
+\label{tab:one}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Characteristic} & \textbf{\textit{EGFR} mutant} & \textbf{Wild-type} & \textbf{All} \\
+\midrule
+$n$                          & 40         & 113        & 153 \\
+Age, median [IQR]            & 68 [63--76] & 69 [64--75] & 69 [64--76] \\
+Pack-years, median [IQR]     & 15 [9--34]  & 42 [26--56] & 40 [20--50] \\
+\midrule
+Female                       & 22 (55\%)  & 33 (29\%)  & 55 (36\%) \\
+Male                         & 18 (45\%)  & 80 (71\%)  & 98 (64\%) \\
+\midrule
+Never-smoker                 & 20 (50\%)  & 13 (12\%)  & 33 (22\%) \\
+Former smoker                & 18 (45\%)  & 78 (69\%)  & 96 (63\%) \\
+Current smoker               & 2 (5\%)    & 22 (19\%)  & 24 (16\%) \\
+\midrule
+Asian                        & 9 (22\%)   & 6 (5\%)    & 15 (10\%) \\
+Caucasian                    & 13 (32\%)  & 77 (68\%)  & 90 (59\%) \\
+Other / not recorded         & 18 (45\%)  & 30 (27\%)  & 48 (31\%) \\
+\midrule
+Adenocarcinoma               & 40 (100\%) & 93 (82\%)  & 133 (87\%) \\
+Squamous cell carcinoma      & 0 (0\%)    & 17 (15\%)  & 17 (11\%) \\
+NSCLC not otherwise specified & 0 (0\%)   & 3 (3\%)    & 3 (2\%) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]\centering\small
+\caption{\textbf{All arms and fusion topologies}, on identical patients and folds.
+No combination of the imaging model with clinical variables exceeds the clinical
+model alone, and adding radiomics significantly harms it. $\Delta$ is against the
+clinical model; $P$ from a paired bootstrap over patients.}
+\label{tab:arms}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Arm} & \textbf{\textit{EGFR} AUC} & \textbf{$\Delta$ vs clinical} & \textbf{$P$} \\
+\midrule
+\multicolumn{4}{l}{\textit{Single arms}}\\
+Smoking status alone            & \textbf{0.794} & $+0.030$ & --- \\
+Clinical (5 variables)          & 0.764 & --- & --- \\
+THEIA, 3 seeds                  & $0.618 \pm 0.025$ & $-0.108$ & --- \\
+\quad + peritumoral branch      & $0.675 \pm 0.017$ & $-0.089$ & --- \\
+Frozen-feature logistic probe   & $0.617 \pm 0.052$ & $-0.147$ & --- \\
+Radiomics                       & 0.578 & $-0.186$ & --- \\
+\midrule
+\multicolumn{4}{l}{\textit{Fusion topologies}}\\
+Soft voting (THEIA + clinical)  & 0.748 & $-0.016$ & .59 \\
+Stacking (cross-fitted)         & 0.735 & $-0.029$ & .11 \\
+Soft voting (equal weights)     & 0.712 & $-0.052$ & .15 \\
+Soft voting (clinical + radiomics) & 0.703 & $-0.061$ & \textbf{.02} \\
+Hard voting                     & 0.690 & $-0.074$ & .07 \\
+Soft voting (THEIA + radiomics) & 0.634 & $-0.130$ & \textbf{.02} \\
+\midrule
+\multicolumn{4}{l}{\textit{Co-primary endpoint}}\\
+$\Delta$AUC (clinical + THEIA) $-$ clinical & \multicolumn{3}{c}{$\mathbf{-0.029 \pm 0.015}$, every seed's CI includes zero} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ---------------------------------------------------------------------
+\clearpage
+\bibliographystyle{unsrtnat}
+\begin{thebibliography}{20}
+
+\bibitem[Bakr et al.(2018)]{bakr2018}
+Bakr S, Gevaert O, Echegaray S, et al.
+A radiogenomic dataset of non-small cell lung cancer.
+\textit{Sci Data} 2018;5:180202. doi:10.1038/sdata.2018.202
+
+\bibitem[Gevaert et al.(2017)]{gevaert2017}
+Gevaert O, Echegaray S, Khuong A, et al.
+Predictive radiogenomics modeling of EGFR mutation status in lung cancer.
+\textit{Sci Rep} 2017;7:41674. doi:10.1038/srep41674
+
+\bibitem[Aerts et al.(2014)]{aerts2014}
+Aerts HJWL, Wee L, Rios Velazquez E, et al.
+Data From NSCLC-Radiomics (version 4). The Cancer Imaging Archive, 2014.
+doi:10.7937/K9/TCIA.2015.PF0M9REI
+
+\bibitem[Rodríguez Sánchez et al.(2026)]{rodriguez2026}
+Rodríguez Sánchez DI, Middelkoop J, Vanneste T, et al.
+Quality over quantity: biopsy-anchored CT radiogenomics models outperform
+all-lesion training in a multi-tumour cohort despite a smaller sample size.
+\textit{Eur Radiol} 2026. doi:10.1007/s00330-026-12601-9
+
+\bibitem[Huang et al.(2025)]{huang2025}
+Huang L, Xu L, Wang X, et al.
+Prediction of EGFR mutations in lung adenocarcinoma via CT images.
+\textit{Acad Radiol} 2025;32(8):4880--4892. doi:10.1016/j.acra.2025.04.029
+
+\bibitem[Shang et al.(2023)]{shang2023}
+Shang Y, Chen W, Li G, et al.
+Computed tomography-derived intratumoral and peritumoral radiomics in predicting
+EGFR mutation in lung adenocarcinoma.
+\textit{Radiol Med} 2023;128(12):1483--1496. doi:10.1007/s11547-023-01722-6
+
+\bibitem[Yamazaki et al.(2022)]{yamazaki2022}
+Yamazaki M, Yagi T, Tominaga M, et al.
+Role of intratumoral and peritumoral CT radiomics for the prediction of EGFR gene
+mutation in primary lung cancer.
+\textit{Br J Radiol} 2022;95(1140):20220374. doi:10.1259/bjr.20220374
+
+\bibitem[Wu et al.(2024)]{wu2024}
+Wu J, Meng H, Zhou L, et al.
+Habitat radiomics and deep learning fusion nomogram to predict EGFR mutation
+status in stage I non-small cell lung cancer.
+\textit{Sci Rep} 2024;14:15877. doi:10.1038/s41598-024-66751-1
+
+\bibitem[Le et al.(2026)]{le2026}
+Le MN, Nguyen TM, Ngo LL, et al.
+Explainable 1-mm peritumoral CT radiomics for EGFR mutation prediction in
+non-small cell lung cancer.
+\textit{Cancer Control} 2026;33:10732748261455532. doi:10.1177/10732748261455532
+
+\bibitem[Lai et al.(2026)]{lai2026}
+Lai R, Sheng D, Geng Y, et al.
+The predictive value of \textsuperscript{18}F-FDG PET/CT habitat radiomics
+combined model in evaluating EGFR gene mutations in lung adenocarcinoma.
+\textit{Front Med} 2026;13:1868229. doi:10.3389/fmed.2026.1868229
+
+\bibitem[Hanley and McNeil(1982)]{hanley1982}
+Hanley JA, McNeil BJ.
+The meaning and use of the area under a receiver operating characteristic (ROC)
+curve. \textit{Radiology} 1982;143(1):29--36.
+
+\bibitem[Riley et al.(2020)]{riley2020}
+Riley RD, Ensor J, Snell KIE, et al.
+Calculating the sample size required for developing a clinical prediction model.
+\textit{BMJ} 2020;368:m441.
+
+\bibitem[Mongan et al.(2020)]{claim2020}
+Mongan J, Moy L, Kahn CE Jr.
+Checklist for Artificial Intelligence in Medical Imaging (CLAIM): a guide for
+authors and reviewers. \textit{Radiol Artif Intell} 2020;2(2):e200029.
+
+\end{thebibliography}
+
+\end{document}
