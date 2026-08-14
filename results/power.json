@@ -94,7 +94,7 @@
   "observed_ci_halfwidth_at_063": 0.10421547709377783,
   "attainable_external_ci_halfwidth_at_063": 0.1537836074525196,
   "riley_min_n": {
-    "clinical (5 predictors)": 414,
+    "clinical (14 fitted parameters, 5 named variables)": 1159,
     "frozen probe (512 features)": 42362
   }
 }

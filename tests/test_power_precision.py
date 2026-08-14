@@ -131,3 +131,45 @@ def test_riley_says_NEITHER_arm_is_identifiable_at_this_cohort_size():
 def test_riley_rejects_an_r2_at_or_above_the_shrinkage_target():
     with pytest.raises(ValueError):
         riley_min_n(5, 0.261, r2_cs=0.95)
+
+
+def test_riley_counts_fitted_parameters_not_named_variables():
+    """The manuscript said 414, from p=5. The design matrix has 14 columns.
+
+    Riley's minimum-n is a function of the number of FITTED PARAMETERS. The
+    clinical model is described as five variables -- age, sex, ethnicity, smoking
+    status, pack-years -- but one-hot encoding plus the pack-years missingness
+    indicator expand it to 14 columns, and 414 understates the requirement by a
+    factor of ~2.8. This asserts the artifact was built from the matrix.
+    """
+    import json
+    import os
+
+    import pytest
+
+    if not os.path.exists("results/power.json"):
+        pytest.skip("power.json not generated")
+    riley = json.load(open("results/power.json"))["riley_min_n"]
+    key = [k for k in riley if k.startswith("clinical")]
+    assert key, f"no clinical entry in {list(riley)}"
+    assert "fitted parameters" in key[0], (
+        f"clinical Riley key must name fitted parameters, got {key[0]!r}")
+    assert riley[key[0]] > 1000, (
+        f"clinical minimum n is {riley[key[0]]}; p=5 gives 414 and p=14 gives "
+        f"1159, so a value near 414 means the named-variable count was used")
+
+
+def test_manuscript_quotes_the_regenerated_riley_value():
+    import json
+    import os
+    import re
+
+    import pytest
+
+    if not (os.path.exists("results/power.json") and os.path.exists("paper/main.tex")):
+        pytest.skip("artifacts not present")
+    riley = json.load(open("results/power.json"))["riley_min_n"]
+    n = riley[[k for k in riley if k.startswith("clinical")][0]]
+    src = " ".join(open("paper/main.tex").read().split())
+    assert f"minimum of {n} patients" in src, (
+        f"manuscript must quote {n}, the regenerated clinical minimum")

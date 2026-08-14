@@ -200,8 +200,8 @@ reported instead and is not a substitute.
 
 \subsection*{Model}
 
-The image encoder is the vision tower of BiomedCLIP (ViT-B/16, last two blocks
-unfrozen), producing patch tokens per section, aggregated across 16 sections by a
+The image encoder is the vision tower of BiomedCLIP \citep{biomedclip}
+(ViT-B/16, last two blocks unfrozen), producing patch tokens per section, aggregated across 16 sections by a
 masked mean. A region head applies eight learned queries by cross-attention, and
 the resulting maps are supervised against the tumor region of interest (ROI) on
 the patch grid. The classifier pools from those region embeddings, so prediction
@@ -212,13 +212,12 @@ reach the classifier; this is an image-only model.
 \textbf{The attention task is ROI-conditioned, not whole-thorax detection.}
 Inputs are axial crops of $(\text{bbox}_{\text{mm}} + 24)\times 2.5$ around the
 lesion with 30\% positional jitter, windowed at center $-600$~HU and width
-1500~HU, and resized to $224\times224$ pixels. The lesion sits near the center of
-the field of view by construction, and the model is never asked to find a tumor in
-a whole chest CT. A center prior is therefore a mandatory control, and the metrics
-invariant to its width carry the argument. Because the attention maps are
-supervised directly against the reference segmentation, we call this
-mask-supervised attention rather than weakly supervised localization, which
-denotes attention emerging from image-level labels alone.
+1500~HU, resized to $224\times224$ pixels. The lesion sits near the center by
+construction and the model is never asked to find a tumor in a whole chest CT, so
+a center prior is a mandatory control and the metrics invariant to its width carry
+the argument. Because the maps are supervised directly against the reference
+segmentation, we call this mask-supervised attention rather than weakly supervised
+localization, which denotes attention emerging from image-level labels alone.
 
 \subsection*{Endpoints and controls}
 
@@ -233,14 +232,19 @@ shuffle is greater than zero. Three controls appear in every reported table:
     baseline. Pointing accuracy and area-matched intersection over union are
     invariant to the prior's width, so that margin cannot be tuned.
   \item \textit{Weight randomization} --- an untrained head of identical
-    architecture, ruling out inductive bias.
+    architecture on the same pretrained encoder. This excludes the head's
+    architecture as the source of the pattern; it does not exclude priors carried
+    by the pretrained backbone.
 \end{itemize}
 
 H\textsubscript{2} (co-primary, pre-declared null): $\Delta$AUC $=$
-AUC(clinical $+$ model) $-$ AUC(clinical), where the combination is an unweighted
-average of within-fold ranks, that is, soft voting. This topology was
-pre-specified; the alternatives in Table 2 are a reported ablation and not the
-endpoint.
+AUC(clinical $+$ model) $-$ AUC(clinical), the combination being an unweighted
+average of within-fold ranks. We call this rank-score averaging rather than soft
+voting, which conventionally combines probabilities; it is an evaluation construct,
+not a deployable rule, since ranking a new patient needs a reference batch.
+Cross-fitted stacking, which is deployable, appears alongside it in Table 2 and
+agrees. No noninferiority margin was specified, so the claim is that we found no
+evidence of improvement, not that none exists.
 
 The five-variable clinical model is a logistic regression on age, sex,
 self-reported ethnicity, smoking status and pack-years. Numeric variables are
@@ -248,11 +252,11 @@ median-filled with a missingness indicator and categorical variables get an
 explicit unrecorded level, so no patient is dropped and every arm is scored on the
 same patients. Imputation, encoding and tuning occur inside the training folds.
 
-\textbf{Endpoints and their populations.} H\textsubscript{1} uses the 420 external
-patients; H\textsubscript{2} and every arm in Table 2 use the 153 internal patients
-with a known \textit{EGFR} call. The 97-patient segmented-adenocarcinoma set is the
-pre-specified analysis set for the histology-restricted sensitivity analysis below,
-not for the headline figure.
+\textbf{Endpoints and populations.} H\textsubscript{1} uses the 420 external
+patients; H\textsubscript{2} and Table 2 use the 153 internal patients with a known
+\textit{EGFR} call. The 97-patient segmented-adenocarcinoma set is the
+pre-specified set for the histology-restricted analysis below, not the headline
+figure.
 
 \subsection*{Statistical analysis}
 
@@ -267,8 +271,8 @@ Comparisons used a paired bootstrap over patients (2000 resamples), with Holm
 correction across the ten arms of the pooling sweep. Precision used the
 Hanley--McNeil closed form \citep{hanley1982}, validated against a bootstrap;
 minimum sample size follows Riley et al \citep{riley2020}, applied only where its
-inputs are defined. Reporting follows CLAIM \citep{claim2020}, whose completed
-checklist accompanies this manuscript.
+inputs are defined. Reporting follows the 2024 update of CLAIM \citep{claim2024} and TRIPOD+AI
+\citep{tripodai}, whose completed checklists accompany this manuscript.
 
 \textit{P} values less than .05 indicated statistical significance, and all tests
 were two-sided. Analyses were performed in Python 3.13.9 (Python Software
@@ -322,8 +326,8 @@ regression on frozen encoder features scored $0.617 \pm 0.052$, indistinguishabl
 from the full network to three decimals.
 
 Results are shown per arm in Figure 2 and with paired differences in Figure 3.
-\textit{KRAS} was at chance ($0.489 \pm 0.005$); Gevaert et al likewise report no
-significant \textit{KRAS} model on this cohort \citep{gevaert2017}.
+\textit{KRAS} was at chance ($0.489 \pm 0.005$), as in Gevaert et al
+\citep{gevaert2017}.
 
 \subsection*{The predictions are also uncalibrated}
 
@@ -363,19 +367,18 @@ center prior on the metrics it cannot exploit: pointing accuracy 0.609 versus
 0.476 and area-matched intersection over union 0.394 versus 0.287, both invariant
 to the prior's width. An untrained head of identical architecture returned a mass
 lift of exactly $+0.000$ at a peak-to-mean ratio of 1.01 and pointing accuracy
-0.005, ruling out architectural inductive bias.
+0.005. The encoder stays pretrained in that control, so it excludes the head's
+architecture as the source of the pattern but not priors carried by the backbone.
 
 \textbf{The fold count is a weak estimator, reported because it was
 pre-specified.} The margin is one fold, 11 of 15 (73.3\%) against 71.4\%, and the
 15 evaluations are not 15 studies: three seeds by five folds on the same 420
 patients with overlapping training sets, so the count treats dependent replicates
-as independent. A patient-level analysis is reported below as post hoc; we did not
+as independent. The patient-level analysis below is post hoc; we did not
 substitute it for H\textsubscript{1}, because choosing a better endpoint after
-seeing the data is the failure pre-specification prevents.
-
-Table 3 reports every evaluation individually, and the distribution is bimodal
-rather than marginal: the weakest success has pointing accuracy 0.757, the
-strongest failure exactly 0.000, nothing between.
+seeing the data is the failure pre-specification prevents. Table 3 gives every
+evaluation, and the distribution is bimodal rather than marginal: the weakest
+success has pointing accuracy 0.757, the strongest failure exactly 0.000.
 
 The failures are concentrated rather than scattered: one run aligned in two of five
 folds while the others reached five of five and four of five, and that same run
@@ -388,18 +391,17 @@ training run as fixed.} Resampling the 420 patients, pointing accuracy exceeded
 the center prior by $+0.133$ (95\% CI: 0.082, 0.183; \textit{P} $<$ .001) and
 overlap by $+0.107$ (95\% CI: 0.082, 0.133; \textit{P} $<$ .001). Resampling the
 three training runs as well, both intervals include zero (\textit{P} $=$ .30 and
-\textit{P} $=$ .19); only the contrast against an untrained head survives.
-Between-run variance therefore dominates. A hierarchical interval on three runs is
-wide by construction and underpowered at the run level, but that is the finding
-rather than an excuse for it.
+.19); only the contrast against an untrained head survives. Between-run variance
+dominates, and a hierarchical interval on three runs is underpowered at the run
+level --- which is the finding rather than an excuse for it.
 
 \textbf{Displacing the lesion separates the model from the prior directly.} We
 translated each external crop, and its reference contour, so the tumor was no
 longer centered, changing nothing else. Training used 30\% crop jitter, so 20\% is
 inside that regime and 35\% is at the edge of where the lesion stays in frame.
-Across the 11 aligning folds, pointing accuracy fell from 0.831 to 0.776 to 0.711;
+Across the 11 aligning folds pointing accuracy fell from 0.831 to 0.776 to 0.711;
 the center prior fell from 0.476 to 0.140 to 0.002 (Table 3). A model attending to
-the middle would track the prior; this one tracks the tumor.
+the middle would track the prior.
 
 Representative attention maps appear in Figure 6.
 
@@ -415,11 +417,11 @@ $0.675 \pm 0.017$.
 
 This does not survive correction and we report it as suggestive: across the ten
 arms of the sweep the best has \textit{P}\textsubscript{Holm} $=$ .28, and end to
-end the branch is worth $+0.058$ (95\% CI: $-0.008$, 0.128; \textit{P} $=$ .09).
-It replicates six prior reports at ring widths from 1 to 15~mm
-\citep{yamazaki2022,shang2023,wu2024,le2026,lai2026,huang2025}. What is new is the
-tension: the attention loss supervises \textit{onto} the lesion, and the
-classification signal appears to sit just outside it.
+end the branch is worth $+0.058$ (95\% CI: $-0.008$, 0.128; \textit{P} $=$ .09). It
+replicates six prior reports at ring widths from 1 to 15~mm
+\citep{yamazaki2022,shang2023,wu2024,le2026,lai2026,huang2025}. The tension is that
+the attention loss supervises \textit{onto} the lesion while the classification
+signal appears to sit just outside it.
 
 \subsection*{Analytic choice is worth more than the effect}
 
@@ -430,14 +432,20 @@ internal evaluation \citep{maleki2022}.
 
 \subsection*{More patients would not settle it}
 
-Riley's criterion requires 414 patients for the five-variable clinical model alone
-and 42\,362 for the 512-feature frozen probe; this cohort has 153. Neither arm is
-identifiable at this size, which is why the frozen probe matching the model cannot
-be read as evidence that the architecture is redundant. Precision, not power,
-binds any external test: a 95\% CI half-width of 0.05 needs $n = 661$, while the
-entire open world of \textit{EGFR}-labeled CT holds roughly 327 cases with 64
-positives, giving 0.154 --- an interval spanning chance and the published 0.80s at
-once.
+Riley's criterion \citep{riley2020} counts fitted parameters, not named variables:
+the five clinical variables expand to 14 design-matrix columns once categorical
+levels and a missingness indicator are encoded, giving a minimum of 1159 patients
+rather than the 414 that counting variables implies. This cohort has 153. The same
+criterion returns 42\,362 for the 512-feature frozen probe, reported as an
+order-of-magnitude statement rather than a requirement, since it was developed for
+regression models and a penalized representation is not straightforwardly
+$p = 512$. Neither arm is identifiable at this size.
+
+Precision, not power, binds any external test: a 95\% CI half-width of 0.05 needs
+$n = 661$, while the publicly accessible \textit{EGFR}-labeled collections we
+identified hold roughly 327 cases with 64 positives, giving 0.154 --- an interval
+spanning chance and the published 0.80s at once. We did not run a systematic
+dataset search, so that bounds what we found rather than what exists.
 
 \section*{Discussion}
 
@@ -451,45 +459,32 @@ base-rate floor of 0.193).
 
 Two limits bound what ``transferred'' means, and they resolve differently. The
 task is ROI-conditioned, so this is alignment rather than detection --- but the
-attention is not merely exploiting that conditioning: displacing the lesion to
-35\% of the frame costs the aligning folds 0.12 of pointing accuracy while the
-center prior loses essentially all of its (0.476 to 0.002). The binding limit is
-the second. Transfer is training-unstable, and once the run is treated as a random
-effect the margin over the center prior is no longer distinguishable from zero.
-The dissociation below is a statement about the models we trained, not a guarantee
-about the next one.
+attention is not merely exploiting that: displacing the lesion to 35\% of the
+frame costs the aligning folds 0.12 of pointing accuracy while the center prior
+loses essentially all of its. The binding limit is the second. Transfer is
+training-unstable, and once the run is a random effect the margin over the center
+prior is no longer distinguishable from zero. The dissociation below is a
+statement about the models we trained, not a guarantee about the next one.
 
-\textit{What the localization endpoint does and does not establish.} Attention
-mass, pointing accuracy and area-matched intersection over union are not measures
-of diagnostic accuracy, and no clinical claim follows from them directly. They
-answer a narrower question that has been assumed rather than tested: whether the
-explanation a model offers for its prediction is anchored to the lesion at all, on
-data from an institution it has never seen. That question matters precisely
-because the accompanying prediction fails. A saliency map that tracks the tumor on
-an unseen cohort, while the classifier built on it performs at 0.618, is direct
-evidence that plausible localization is not evidence of predictive validity --- a
-dissociation that cannot be observed in a study where both are reported as
-successes. We therefore present H\textsubscript{1} as a methodologic result about
-interpretability claims, not as a clinical endpoint, and we do not propose the
-localizer for clinical use.
+\textit{What the attention endpoint does and does not establish.} Attention mass,
+pointing accuracy and area-matched overlap are not measures of diagnostic
+accuracy, and no clinical claim follows from them. They answer a narrower question
+that has been assumed rather than tested: whether a model's stated explanation is
+anchored to the lesion at all on data from an unseen institution. That matters
+precisely because the accompanying prediction fails. A saliency map that tracks
+the tumor while the classifier built on it performs at 0.618 is direct evidence
+that plausible localization is not evidence of predictive validity --- a
+dissociation unobservable in a study where both succeed. We present
+H\textsubscript{1} as a methodologic result about interpretability claims, not a
+clinical endpoint, and do not propose the model for clinical use.
 
 \textit{Convergence with the largest external study.} Rodríguez Sánchez et al
 \citep{rodriguez2026} provide the strongest argument that this is a property of
-the problem rather than of our sample. Their 1646 patients and 11\,473 lesions,
-with next-generation-sequencing labels and biopsy-anchored training, reproduce the
-interval we obtain from 153 patients, and their external cohort is the collection
-we use internally. Ten times the patients did not move the ceiling. With the
-precision bound above --- a half-width of 0.154 on the largest test set the open
-literature can assemble --- the field cannot resolve this question with public
-data alone.
-
-We are more cautious about what explains the reported 0.80s. Preprocessing choices
-moved discrimination by 0.136 on identical features here, so analytic flexibility
-is sufficient to produce such a gap --- but it does not follow that it is the
-explanation in any particular study, and cohort composition, histologic mix, label
-provenance, scanner differences and undetected leakage could each contribute. The
-defensible claim is narrower: a reported AUC in this literature is not
-interpretable without the preprocessing and validation protocol that produced it.
+the problem rather than of our sample: their 1646 patients and 11\,473 lesions,
+with next-generation-sequencing labels, reproduce the interval we obtain from 153,
+and their external cohort is the collection we use internally. Ten times the
+patients did not move the ceiling. With the precision bound above, the field
+cannot resolve this question with public data alone.
 
 \textit{Comparison with prior reports.} Our peritumoral finding replicates six
 prior reports in direction while failing significance after correction for the ten
@@ -497,8 +492,8 @@ arms examined --- a likelier description of that literature than the alternative
 given the same six reports place the optimal ring width anywhere from 1 to 15~mm.
 Our histology result reproduces Yamazaki et al \citep{yamazaki2022}: performance
 falls when the squamous patients, wild-type without exception, are removed. Any
-study reporting \textit{EGFR} AUC across mixed histologies is partly reporting a
-histology classifier.
+performance reported in mixed-histology cohorts may partly reflect histologic
+discrimination rather than genotype.
 
 \textit{Limitations.} The internal cohort is single-institution and historical,
 with no recoverable accrual window. The classification arm has no external
@@ -605,10 +600,20 @@ doi: 10.1148/radiology.143.1.7063747
 Riley RD, Ensor J, Snell KIE, et al. Calculating the sample size required for
 developing a clinical prediction model. BMJ 2020;368:m441. doi: 10.1136/bmj.m441
 
-\bibitem{claim2020}
-Mongan J, Moy L, Kahn CE Jr. Checklist for Artificial Intelligence in Medical
-Imaging (CLAIM): a guide for authors and reviewers. Radiol Artif Intell
-2020;2(2):e200029. doi: 10.1148/ryai.2020200029
+\bibitem{claim2024}
+Tejani AS, Klontzas ME, Gatti AA, et al. Checklist for Artificial Intelligence in
+Medical Imaging (CLAIM): 2024 update. Radiol Artif Intell 2024;6(4):e240300.
+doi: 10.1148/ryai.240300
+
+\bibitem{tripodai}
+Collins GS, Moons KGM, Dhiman P, et al. TRIPOD+AI statement: updated guidance for
+reporting clinical prediction models that use regression or machine learning
+methods. BMJ 2024;385:e078378. doi: 10.1136/bmj-2023-078378
+
+\bibitem{biomedclip}
+Zhang S, Xu Y, Usuyama N, et al. BiomedCLIP: a multimodal biomedical foundation
+model pretrained from fifteen million scientific image-text pairs. arXiv 2023.
+Preprint posted online March 1, 2023; doi: 10.48550/arXiv.2303.00915
 
 \bibitem{gevaert2017}
 Gevaert O, Echegaray S, Khuong A, et al. Predictive radiogenomics modeling of
@@ -739,7 +744,7 @@ Arm & AUC & Difference vs clinical & \textit{P} value \\
 \multicolumn{4}{l}{\textit{Single arms}}\\
 Smoking status alone            & 0.794 & $+0.030$ & ... \\
 Clinical, five variables        & 0.764 & ...      & ... \\
-Model, three seeds              & 0.618 $\pm$ 0.025 & $-0.108$ & ... \\
+Model, three seeds              & 0.618 $\pm$ 0.025 & $-0.146$ & ... \\
 \quad Plus peritumoral branch   & 0.675 $\pm$ 0.017 & $-0.089$ & ... \\
 Frozen-feature logistic probe   & 0.617 $\pm$ 0.052 & $-0.147$ & ... \\
 Radiomics                       & 0.578 & $-0.186$ & ... \\

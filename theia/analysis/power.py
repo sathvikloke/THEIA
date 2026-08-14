@@ -177,6 +177,22 @@ def riley_min_n(n_predictors: int, prevalence: float, r2_cs: float | None = None
     return int(np.ceil(n_predictors / ((shrinkage - 1) * np.log(1 - r2_cs / shrinkage))))
 
 
+
+def _clinical_n_params(cfg) -> int:
+    """Columns in the clinical design matrix, not the count of named variables."""
+    import json as _json
+    import os as _os
+
+    from theia.analysis.baselines import clinical_features
+
+    rows = [_json.loads(l) for l in
+            open(_os.path.join(cfg.paths.processed_dir, "rows.jsonl"))]
+    rows = [r for r in rows if int(r.get("labels", {}).get("EGFR", -1)) in (0, 1)]
+    _, names = clinical_features(
+        rows, _os.path.join(cfg.paths.raw_dir, "clinical", "clinical.csv"))
+    return len(names)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--baselines", default="results/baselines.json")
@@ -185,8 +201,12 @@ def main() -> None:
     ap.add_argument("--n_sim", type=int, default=200)
     ap.add_argument("--n_boot", type=int, default=300)
     ap.add_argument("--alpha", type=float, default=0.05)
+    ap.add_argument("--config", default="configs/default.yaml")
     ap.add_argument("--out", default="results/power.json")
     a = ap.parse_args()
+
+    from theia.config import load_config
+    cfg = load_config(a.config)
 
     blob = json.load(open(a.baselines))
     rows = (blob.get("oof") or {}).get("clinical")
@@ -238,7 +258,15 @@ def main() -> None:
     print(f"  attainable external set n~{ext_n} ({ext_pos} positive): "
           f"+/-{1.96*se_ext:.3f}  <- spans chance AND the published 0.80s")
 
-    riley = {"clinical (5 predictors)": riley_min_n(5, prev),
+    # Riley counts FITTED PARAMETERS, not named variables. The clinical model is
+    # described as "five variables" -- age, sex, ethnicity, smoking status,
+    # pack-years -- but one-hot encoding and the pack-years missingness indicator
+    # expand it to 14 design-matrix columns. Passing 5 here understated the
+    # minimum by a factor of ~2.8 (414 against 1159) and that number reached the
+    # manuscript. Derive it from the matrix rather than restating the prose.
+    n_clin = _clinical_n_params(cfg)
+    riley = {f"clinical ({n_clin} fitted parameters, 5 named variables)":
+             riley_min_n(n_clin, prev),
              "frozen probe (512 features)": riley_min_n(512, prev)}
     print("\n[power] Riley minimum n (shrinkage <= 10%), applicable arms only:")
     for k, v in riley.items():
