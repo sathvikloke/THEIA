@@ -140,14 +140,14 @@ Against this, the one large study with external validation --- 1646 patients and
 internal AUC 0.62--0.68 and external 0.55--0.63 \citep{rodriguez2026}. Its
 external cohort is NSCLC-Radiogenomics, the collection used here.
 
-That discrepancy is this study's motivation. Reported performance in this field
-is sensitive to methodologic choices that are invisible at internal evaluation
+That discrepancy is this study's motivation. Reported performance here is
+sensitive to methodologic choices invisible at internal evaluation
 \citep{maleki2022,horvat2024}, which makes separating the claims more informative
-than another point estimate. We therefore do not propose a better classifier. We
-separate two claims that are routinely bundled --- that such a model
-\textit{localizes} the lesion, and that it \textit{genotypes} it --- and test each
-with the controls it requires, on a cohort where the second can be measured
-against the clinical variables it would have to beat.
+than another point estimate. We do not propose a better classifier. We separate
+two claims that are routinely bundled --- that such a model \textit{localizes} the
+lesion, and that it \textit{genotypes} it --- and test each with the controls it
+requires, on a cohort where the second can be measured against the clinical
+variables it would have to beat.
 
 \section*{Materials and Methods}
 
@@ -173,10 +173,10 @@ version-controlled before external evaluation; deviations from it are logged in
 the public repository accompanying this work.
 
 The internal cohort is NSCLC-Radiogenomics \citep{bakr2018}, a surgical series
-distributed by The Cancer Imaging Archive. Participant flow is given in Figure 1:
-211 patients in the clinical sheet, 188 with an imaging series, 158 successfully
-preprocessed, 153 with a known \textit{EGFR} call, 133 with adenocarcinoma, and 97
-with both adenocarcinoma histology and a pixel-level segmentation.
+distributed by The Cancer Imaging Archive. Participant flow is in Figure 1: 211
+patients, 188 with an imaging series, 158 preprocessed, 153 with a known
+\textit{EGFR} call, 133 with adenocarcinoma, 97 with both adenocarcinoma and a
+pixel-level segmentation.
 
 No accrual window is reported: the collection's CT dates span 1989--1996 and are
 de-identification offsets, so publishing a range derived from them would
@@ -185,10 +185,10 @@ survives the offset because it is a difference, has a median of 38 days
 (IQR, 19.5--65.5).
 
 The external cohort is NSCLC-Radiomics \citep{aerts2014}, 420 preprocessed
-patients from a Dutch center --- another country, scanner fleet, and clinical
-population. The two cohorts share no patients, and no evaluated checkpoint was
-warm-started from the external collection; both are asserted in the accompanying
-test suite rather than claimed in prose.
+patients from a Dutch center --- another country, scanner fleet and clinical
+population. The cohorts share no patients and no evaluated checkpoint was
+warm-started from the external collection; both are asserted in the test suite
+rather than claimed in prose.
 
 \subsection*{Reference standard}
 
@@ -203,11 +203,11 @@ reported instead and is not a substitute.
 The image encoder is the vision tower of BiomedCLIP (ViT-B/16, last two blocks
 unfrozen), producing patch tokens per section, aggregated across 16 sections by a
 masked mean. A region head applies eight learned queries by cross-attention, and
-the resulting maps are supervised against the tumor region of interest (ROI)
-projected onto the patch grid. The classifier pools from those region embeddings,
-so prediction and attention share a representation. A language decoder exists in
-the codebase but its loss weight is zero in every run reported here and its output
-does not reach the classifier; this is an image-only model.
+the resulting maps are supervised against the tumor region of interest (ROI) on
+the patch grid. The classifier pools from those region embeddings, so prediction
+and attention share a representation. A language decoder exists in the codebase
+but its loss weight is zero in every run reported here and its output does not
+reach the classifier; this is an image-only model.
 
 \textbf{The attention task is ROI-conditioned, not whole-thorax detection.}
 Inputs are axial crops of $(\text{bbox}_{\text{mm}} + 24)\times 2.5$ around the
@@ -226,14 +226,14 @@ H\textsubscript{1} (primary): external attention-mass lift over a per-fold spati
 shuffle is greater than zero. Three controls appear in every reported table:
 
 \begin{itemize}\itemsep0pt
-  \item \textit{Spatial shuffle} --- the same attention values permuted across
-    cells, isolating \textit{where} mass fell from \textit{how peaked} the map is.
+  \item \textit{Spatial shuffle} --- the same values permuted across cells,
+    isolating \textit{where} mass fell from \textit{how peaked} the map is.
   \item \textit{Center prior} --- external ROI centroids sit at $(0.50, 0.51)$ of
-    the frame covering 4.9\% of the area, so ``look at the middle'' is a strong
+    the frame covering 4.9\% of its area, so ``look at the middle'' is a strong
     baseline. Pointing accuracy and area-matched intersection over union are
     invariant to the prior's width, so that margin cannot be tuned.
   \item \textit{Weight randomization} --- an untrained head of identical
-    architecture, ruling out architectural inductive bias.
+    architecture, ruling out inductive bias.
 \end{itemize}
 
 H\textsubscript{2} (co-primary, pre-declared null): $\Delta$AUC $=$
@@ -264,12 +264,11 @@ defined, because the calibration reported below does not support a threshold, so
 sensitivity and specificity are not reported.
 
 Comparisons used a paired bootstrap over patients (2000 resamples), with Holm
-correction across the ten arms of the pooling sweep. Precision was computed by the
+correction across the ten arms of the pooling sweep. Precision used the
 Hanley--McNeil closed form \citep{hanley1982}, validated against a bootstrap;
 minimum sample size follows Riley et al \citep{riley2020}, applied only where its
-inputs are defined. Reporting follows the Checklist for Artificial Intelligence in
-Medical Imaging \citep{claim2020}; the completed checklist accompanies this
-manuscript.
+inputs are defined. Reporting follows CLAIM \citep{claim2020}, whose completed
+checklist accompanies this manuscript.
 
 \textit{P} values less than .05 indicated statistical significance, and all tests
 were two-sided. Analyses were performed in Python 3.13.9 (Python Software
@@ -279,16 +278,21 @@ statsmodels 0.14.4 (open-source, respective maintainers), and PyTorch 2.10.0
 
 \subsection*{Use of artificial intelligence tools}
 
-\fbox{\parbox{0.95\linewidth}{\small\textbf{[AUTHOR ACTION REQUIRED BEFORE
-SUBMISSION]} Generative AI assistance was used in this work and must be disclosed
-here as well as in the cover letter, naming the tool, version, manufacturer and
-dates of access, and stating precisely what it was used for --- writing and
-refactoring analysis code, drafting and editing text, literature search, or figure
-generation. State that all analytical decisions, the pre-specified analysis plan,
-the interpretation of results and the final text were reviewed and approved by the
-authors, who take responsibility for the integrity and accuracy of the work, and
-that no AI tool is listed as an author. Verify the exact model version and access
-dates against the repository history before submitting.}}
+Generative artificial intelligence was used substantially in this work, and the
+extent is stated rather than minimized. Claude Opus 5 (Anthropic), accessed
+through the Claude Code command-line interface between July 20 and August 13,
+2026, was used to write and refactor the analysis code, to execute and summarize
+the reported analyses, to search the literature, and to draft and revise this
+manuscript; 65 of the 68 commits in the accompanying repository record that
+assistance in their metadata. The assistance also introduced errors that reached
+reported numbers before review caught them, each recorded with its correction and
+its regression test in the public version history.
+
+The authors defined the research question, approved the pre-specified analysis
+plan before external evaluation, verified every reported number against the
+archived artifact from which it is regenerated, and take full responsibility for
+the integrity and accuracy of the work. No artificial intelligence tool meets
+authorship criteria and none is listed as an author.
 
 \section*{Results}
 
@@ -323,17 +327,16 @@ significant \textit{KRAS} model on this cohort \citep{gevaert2017}.
 
 \subsection*{The predictions are also uncalibrated}
 
-Calibration was assessed on the raw per-patient out-of-fold probabilities. The
-within-fold rank normalization used for pooling discrimination is applied
-afterwards and never enters these figures, because rank-normalized values are not
-probabilities.
+Calibration was assessed on the raw per-patient out-of-fold probabilities; the
+within-fold rank normalization used for pooling is applied afterwards and never
+enters these figures, because rank-normalized values are not probabilities.
 
-Calibration slope averaged 0.19 against a perfect 1.0, indicating predictions
-roughly five times too extreme. At a base rate of 26.1\%, a model predicting the
-prevalence for every patient achieves a Brier score of 0.193; the model scored
-0.236. The probabilities are therefore worse than a constant, with resolution ---
-the component only a better model can improve --- between 0.009 and 0.017. This is
-why no operating point is pre-specified, and why any future externally validated
+Calibration slope averaged 0.19 against a perfect 1.0, so predictions are roughly
+five times too extreme. At a base rate of 26.1\%, predicting the prevalence for
+every patient gives a Brier score of 0.193; the model scored 0.236. The
+probabilities are therefore worse than a constant, with resolution --- the
+component only a better model can improve --- between 0.009 and 0.017. This is why
+no operating point is pre-specified, and why any future externally validated
 artifact must carry explicit recalibration.
 
 \subsection*{On the subset that should carry it, performance is weaker}
@@ -371,9 +374,8 @@ substitute it for H\textsubscript{1}, because choosing a better endpoint after
 seeing the data is the failure pre-specification prevents.
 
 Table 3 reports every evaluation individually, and the distribution is bimodal
-rather than marginal: the weakest success has pointing accuracy 0.757 and the
-strongest failure exactly 0.000, with nothing between. Folds either align
-decisively or not at all.
+rather than marginal: the weakest success has pointing accuracy 0.757, the
+strongest failure exactly 0.000, nothing between.
 
 The failures are concentrated rather than scattered: one run aligned in two of five
 folds while the others reached five of five and four of five, and that same run
@@ -386,19 +388,18 @@ training run as fixed.} Resampling the 420 patients, pointing accuracy exceeded
 the center prior by $+0.133$ (95\% CI: 0.082, 0.183; \textit{P} $<$ .001) and
 overlap by $+0.107$ (95\% CI: 0.082, 0.133; \textit{P} $<$ .001). Resampling the
 three training runs as well, both intervals include zero (\textit{P} $=$ .30 and
-\textit{P} $=$ .19); only the contrast against an untrained head survives
-(\textit{P} $<$ .001). Between-run variance therefore dominates. A hierarchical
-interval on three runs is wide by construction and underpowered at the run level,
-but that is the finding rather than an excuse for it.
+\textit{P} $=$ .19); only the contrast against an untrained head survives.
+Between-run variance therefore dominates. A hierarchical interval on three runs is
+wide by construction and underpowered at the run level, but that is the finding
+rather than an excuse for it.
 
 \textbf{Displacing the lesion separates the model from the prior directly.} We
 translated each external crop, and its reference contour, so the tumor was no
 longer centered, changing nothing else. Training used 30\% crop jitter, so 20\% is
 inside that regime and 35\% is at the edge of where the lesion stays in frame.
-Across the 11 aligning folds, pointing accuracy fell from 0.831 centered to 0.776
-at 20\% and 0.711 at 35\%, while the center prior fell from 0.476 to 0.140 to
-0.002 (Table 3). A model attending to the middle would track the prior; this one
-tracks the tumor.
+Across the 11 aligning folds, pointing accuracy fell from 0.831 to 0.776 to 0.711;
+the center prior fell from 0.476 to 0.140 to 0.002 (Table 3). A model attending to
+the middle would track the prior; this one tracks the tumor.
 
 Representative attention maps appear in Figure 6.
 
@@ -423,21 +424,20 @@ classification signal appears to sit just outside it.
 \subsection*{Analytic choice is worth more than the effect}
 
 On identical features and estimator, the radiomics arm moved 0.136 in AUC across
-six defensible preprocessing choices, and 0.066 between a flat and a nested CV
-protocol --- both larger than the effects this literature reports as findings, and
-both invisible to internal evaluation \citep{maleki2022}.
+six defensible preprocessing choices, and 0.066 between flat and nested CV --- both
+larger than the effects this literature reports as findings, and both invisible to
+internal evaluation \citep{maleki2022}.
 
 \subsection*{More patients would not settle it}
 
 Riley's criterion requires 414 patients for the five-variable clinical model alone
 and 42\,362 for the 512-feature frozen probe; this cohort has 153. Neither arm is
-identifiable at this sample size, which is why the frozen probe matching the model
-cannot be read as evidence that the architecture is redundant.
-
-Precision, not power, binds any external test. A 95\% CI half-width of 0.05
-requires $n = 661$ at the observed prevalence, while the entire open world of
-\textit{EGFR}-labeled CT holds roughly 327 cases with 64 positives, giving 0.154
---- an interval spanning chance and the published 0.80s at once.
+identifiable at this size, which is why the frozen probe matching the model cannot
+be read as evidence that the architecture is redundant. Precision, not power,
+binds any external test: a 95\% CI half-width of 0.05 needs $n = 661$, while the
+entire open world of \textit{EGFR}-labeled CT holds roughly 327 cases with 64
+positives, giving 0.154 --- an interval spanning chance and the published 0.80s at
+once.
 
 \section*{Discussion}
 
@@ -478,10 +478,10 @@ localizer for clinical use.
 the problem rather than of our sample. Their 1646 patients and 11\,473 lesions,
 with next-generation-sequencing labels and biopsy-anchored training, reproduce the
 interval we obtain from 153 patients, and their external cohort is the collection
-we use internally. Ten times the patients did not move the ceiling. Read together
-with the measured precision bound above --- a half-width of 0.154 on the largest
-test set the open literature can currently assemble --- the implication is that
-the field cannot resolve this question with public data alone.
+we use internally. Ten times the patients did not move the ceiling. With the
+precision bound above --- a half-width of 0.154 on the largest test set the open
+literature can assemble --- the field cannot resolve this question with public
+data alone.
 
 We are more cautious about what explains the reported 0.80s. Preprocessing choices
 moved discrimination by 0.136 on identical features here, so analytic flexibility
@@ -502,16 +502,14 @@ histology classifier.
 
 \textit{Limitations.} The internal cohort is single-institution and historical,
 with no recoverable accrual window. The classification arm has no external
-validation; that is justified by the measured precision bound rather than by
-circumstance. Interreader variability was not measured, because the source
-collections distribute one contour per lesion; a mask perturbation sweep is
-reported instead and is not a substitute for a second reader. Acquisition
-parameters are incompletely recoverable. One of three training runs largely fails
-to align, and we report the endpoint across all three. Finally,
-H\textsubscript{1} is confirmatory rather than a blind prospective test: the
-external cohort was on disk, and the metric's behavior on it partly known, when
-the threshold was set. We state this rather than let a reader infer a stronger
-design than was run.
+validation, justified by the measured precision bound rather than by circumstance.
+Interreader variability was not measured, because the source collections
+distribute one contour per lesion; a mask perturbation sweep is reported instead
+and is not a substitute. Acquisition parameters are incompletely recoverable. One
+of three runs largely fails to align, and we report the endpoint across all three.
+Finally, H\textsubscript{1} is confirmatory rather than a blind prospective test:
+the external cohort was on disk, and the metric's behavior on it partly known,
+when the threshold was set.
 
 In conclusion, on this cohort mask-supervised tumor attention transferred across
 institutions while \textit{EGFR} prediction from lesion-anchored CT did not exceed

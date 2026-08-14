@@ -42,9 +42,8 @@ Radiological Society of North America
 \vspace{1.2em}
 Dear Dr Kahn,
 
-\textbf{Title.} ``Weakly Supervised Localization Generalizes Where Genotype
-Prediction Does Not: An Externally Validated Null for \textit{EGFR}
-Radiogenomics from Lung CT.''
+\textbf{Title.} ``Supervised Tumor Attention Transfers Across CT Cohorts, but
+\textit{EGFR} Prediction Does Not Exceed Clinical Variables.''
 
 \textbf{Authors.} [Complete author list, in final order, with degrees.]
 
@@ -53,13 +52,11 @@ Radiogenomics from Lung CT.''
 \medskip
 We submit this manuscript for your consideration. The CT radiogenomics
 literature reports \textit{EGFR} prediction at AUC 0.80--0.89, almost always from
-single-center cohorts without external validation. We took a grounded
-vision--language model whose attention is supervised against tumor segmentations
-and separated two claims that this literature routinely bundles: that such a
-model localizes the lesion, and that it genotypes it. Localization transferred to
-420 patients in another country, on another scanner fleet, in another treatment
-setting, beating a per-fold spatial shuffle, a center prior and an untrained head.
-Genotype prediction did not: pooled AUC was 0.618 against 0.794 for smoking status
+single-center cohorts without external validation. We took an image encoder whose
+attention is supervised against tumor segmentations and separated two claims this
+literature routinely bundles: that such a model attends to the lesion, and that it
+genotypes it. The attention transferred to 420 patients in another country, on
+another scanner fleet, in another treatment setting. Genotype prediction did not: pooled AUC was 0.618 against 0.794 for smoking status
 alone, adding the model to a five-variable clinical model changed AUC by
 $-0.029$, no fusion topology helped, and calibration was worse than predicting the
 base rate.
@@ -85,6 +82,17 @@ every evaluation individually; the distribution is bimodal rather than marginal,
 with the weakest success at 0.757 pointing accuracy and the strongest failure at
 exactly 0.000.
 
+\textbf{Two things a reviewer would ask for, done in advance.} The crops are
+lesion-centered, so a center prior is a serious control rather than a courtesy. We
+therefore translated each external crop and its reference contour so the tumor was
+no longer centered: across the aligning folds pointing accuracy fell from 0.831 to
+0.711 at a 35\% displacement, while the center prior fell from 0.476 to 0.002.
+Separately, because 15 fold-checkpoints on one external cohort are not 15
+independent studies, we reran the endpoint as a patient-level bootstrap. It
+favours the model when the training runs are held fixed and does \textit{not}
+survive treating the run as a random effect. We report that against our own
+interest, and it is the paper's main limitation.
+
 \medskip
 \textbf{Subject overlap with prior work} \textit{(required)}. Both imaging
 collections are public and have been analyzed by other groups, including in each
@@ -109,17 +117,35 @@ Intelligence}. [State here if any similar material has been provided to news or
 advertising media, and supply a copy.]
 
 \textbf{Use of artificial intelligence in the study and in manuscript
-preparation} \textit{(required by RSNA Editorial Policies)}. [REQUIRED ---
-complete and verify before submission.] Generative AI assistance was used in this
-work and is disclosed here and in the manuscript. Tool: [name, e.g.\ Claude Code
-with the Claude Opus model]; version: [exact model or release identifier];
-manufacturer: [e.g.\ Anthropic, San Francisco, Calif]; dates of access:
-[range]. It was used for [state precisely which of: writing and refactoring
-analysis code; drafting and editing manuscript text; literature search; figure
-generation]. All analytical decisions, the pre-specified analysis plan, the
-interpretation of results, and the final text were reviewed and approved by the
-authors, who take full responsibility for the integrity and accuracy of the work.
-No AI tool is listed as an author.
+preparation} \textit{(required by RSNA Editorial Policies)}. Generative AI was
+used substantially in this work, and we would rather state the extent than have it
+inferred.
+
+\textit{Tool.} Claude Opus 5, accessed through the Claude Code command-line
+interface (Anthropic, San Francisco, Calif). \textit{Dates of access.} July 20 to
+August 13, 2026. \textit{Use.} Writing and refactoring the analysis code;
+executing and summarising the reported analyses; literature search; drafting and
+revising the manuscript, the figures' generating code, and the reporting
+checklist. Sixty-five of the 68 commits in the repository record that assistance
+in their commit metadata, so the claim is auditable rather than asserted.
+
+\textit{What the authors did.} The authors defined the research question,
+approved the pre-specified analysis plan before external evaluation, verified
+every reported number against the archived artifact from which it is regenerated,
+and take full responsibility for the integrity and accuracy of the work. No AI
+tool meets ICMJE authorship criteria and none is listed as an author.
+
+\textit{Errors the assistance introduced.} We think a disclosure that reports no
+errors is describing its review process rather than its work, so: the assistance
+applied a published sample-size formula incorrectly and the wrong minimum-$n$
+reached a draft; it mis-attributed a cited paper, describing a
+blood-brain-barrier reconstruction study as a mutation-prediction study; and a
+stale command-line default caused the fusion comparison to be computed on a
+variant model rather than the reported one, producing an internally inconsistent
+table. Each was caught before submission, each is recorded with its correction in
+the public version history, and each has a regression test written in response.
+The last of these was found by an adversarial review of the manuscript, which is
+also disclosed here because it materially improved the paper.
 
 \textbf{Control of the data and the analyses} \textit{(required by RSNA Editorial
 Policies)}. [REQUIRED --- name the author(s) who had full access to and control of

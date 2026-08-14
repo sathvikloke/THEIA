@@ -73,8 +73,9 @@ def test_abstract_within_limit(src):
 #: Author-action \fbox placeholders are deleted at submission and replaced by the
 #: real ethics and AI-disclosure statements. Counting the instructions overstates
 #: the body; ignoring them understates it, because the replacements do count. So
-#: the boxes are excluded and this fixed allowance is charged instead.
-PLACEHOLDER_ALLOWANCE = 150
+#: the box is excluded and this fixed allowance is charged instead. Only the
+#: ethics determination remains a placeholder; the AI disclosure is now real text.
+PLACEHOLDER_ALLOWANCE = 75
 
 
 def test_body_within_limit(src):
@@ -338,3 +339,64 @@ def test_bimodality_claim_holds():
     pointing = sorted(r["grounding_pointing"] for r in rows)
     middling = [p for p in pointing if 0.0 < p < 0.757]
     assert not middling, f"evaluations in the claimed empty band: {middling}"
+
+
+# --- AI-use disclosure -----------------------------------------------------
+
+def test_ai_disclosure_matches_the_repository_record(src):
+    """The disclosure cites a commit count. It must be the real one.
+
+    RSNA requires tool, version, manufacturer, dates and purpose. This one goes
+    further and cites the version history as evidence, which is only worth doing
+    if the number stays true -- a stale count in an honesty statement is worse
+    than no count.
+    """
+    import subprocess
+
+    m = re.search(r"(\d+) of the (\d+) commits", src)
+    assert m, "disclosure must cite the commit counts"
+    claimed_ai, claimed_total = int(m.group(1)), int(m.group(2))
+
+    try:
+        total = int(subprocess.run(["git", "rev-list", "--count", "HEAD"],
+                                   capture_output=True, text=True,
+                                   check=True).stdout.strip())
+        # Count COMMITS carrying the trailer, not trailer lines: a body can
+        # repeat it, and the disclosure's number is a count of commits.
+        log = subprocess.run(
+            ["git", "log", "--format=%H", "--grep=Co-Authored-By: Claude"],
+            capture_output=True, text=True, check=True).stdout
+    except Exception:
+        pytest.skip("not a git checkout")
+
+    ai = len([l for l in log.splitlines() if l.strip()])
+    # The manuscript is written before the commit that records it, so the true
+    # counts are at least what is claimed and drift upward by a few commits.
+    assert claimed_total <= total <= claimed_total + 15, (
+        f"disclosure says {claimed_total} commits, repository has {total}")
+    assert claimed_ai <= ai <= claimed_ai + 15, (
+        f"disclosure says {claimed_ai} AI-assisted commits, repository has {ai}")
+
+
+@pytest.mark.parametrize("element", [
+    r"Claude Opus 5",                      # model, specifically
+    r"Anthropic",                          # manufacturer
+    r"July 20 and August 13,\s*\n?2026",   # dates of access
+    r"analysis code",                      # what it was used for
+    r"take full\s*\n?responsibility",      # author responsibility
+    r"none is listed as an author",        # no AI authorship
+])
+def test_ai_disclosure_carries_every_required_element(src, element):
+    assert re.search(element, src), f"AI disclosure missing: {element}"
+
+
+def test_cover_letter_ai_disclosure_names_the_errors():
+    """RSNA wants the disclosure in both places; ours also names what went wrong.
+
+    If the error paragraph is ever quietly dropped, the two disclosures stop
+    agreeing and the cover letter becomes the weaker of the two.
+    """
+    cl = open(COVER_LETTER).read()
+    assert "Errors the assistance introduced" in cl
+    for e in ("sample-size formula", "mis-attributed", "stale command-line"):
+        assert e in cl, f"cover letter no longer names: {e}"
