@@ -102,12 +102,19 @@ echo "=== 7. no fusion topology beats the chart ==="
 python - <<'PY'
 import json
 d = json.load(open("results/fusion.json"))
-r = d["results"]
+a = d["aggregate"]
+print(f"  runs: {', '.join(d['runs'])}"
+      f"{'' if d.get('from_canonical') else '   <-- NOT the canonical set'}")
 for k in d["arms"]:
-    print(f"  {k:<34} {r[k]:.3f}")
-for k, v in sorted((k, v) for k, v in r.items() if isinstance(v, dict)):
-    print(f"  {k:<34} {v['auc']:.3f}   vs {d['best_single']} "
-          f"{v['vs_best_single']:+.3f}  p={v['p']:.3f}")
+    e = a[k]
+    print(f"  {k:<34} {e['auc_mean']:.3f} +/- {e['auc_sd']:.3f}")
+for k, e in sorted(a.items()):
+    if "vs_best_single_mean" not in e:
+        continue
+    ps = e["p_per_run"]
+    print(f"  {k:<34} {e['auc_mean']:.3f} +/- {e['auc_sd']:.3f}   "
+          f"vs {d['best_single']} {e['vs_best_single_mean']:+.3f}  "
+          f"p={min(ps):.3f}-{max(ps):.3f}")
 PY
 
 echo

@@ -75,6 +75,33 @@
     "min": 1.0,
     "max": 735.0
   },
+  "demographics": {
+    "all": {
+      "n": 153,
+      "n_age_known": 153,
+      "mean": 68.75816993464052,
+      "sd": 8.810151250113679,
+      "min": 42.0,
+      "max": 87.0
+    },
+    "male": {
+      "n": 98,
+      "n_age_known": 98,
+      "mean": 70.0,
+      "sd": 7.599511650072499,
+      "min": 43.0,
+      "max": 87.0
+    },
+    "female": {
+      "n": 55,
+      "n_age_known": 55,
+      "mean": 66.54545454545455,
+      "sd": 10.341964463109944,
+      "min": 42.0,
+      "max": 85.0
+    },
+    "sentence": "153 patients (mean age, 69 years +/- 9 [SD]; 98 male, 55 female)"
+  },
   "table_one": [
     {
       "characteristic": "n",
