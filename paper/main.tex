@@ -153,9 +153,9 @@ against the clinical variables it would have to beat.
 
 \subsection*{Ethics}
 
-This retrospective secondary analysis used publicly available, fully
-de-identified imaging and clinical data distributed by The Cancer Imaging Archive
-under open licenses. No protected health information was accessed.
+This retrospective secondary analysis used publicly available, de-identified
+imaging and clinical data distributed by The Cancer Imaging Archive under open
+licenses. No protected health information was accessed.
 
 \fbox{\parbox{0.95\linewidth}{\small\textbf{[AUTHOR ACTION REQUIRED BEFORE
 SUBMISSION]} Insert the institutional review board's written determination here
@@ -176,42 +176,38 @@ The internal cohort is NSCLC-Radiogenomics \citep{bakr2018}, a surgical series
 distributed by The Cancer Imaging Archive. Participant flow is given in Figure 1:
 211 patients in the clinical sheet, 188 with an imaging series, 158 successfully
 preprocessed, 153 with a known \textit{EGFR} call, 133 with adenocarcinoma, and 97
-with both adenocarcinoma histology and a pixel-level segmentation. That last set
-is the pre-specified primary analysis set.
+with both adenocarcinoma histology and a pixel-level segmentation.
 
-No accrual window is reported. The collection's CT dates span 1989--1996 and are
-de-identification offsets rather than dates; publishing a range derived from them
-would misdescribe the cohort. The interval from index test to reference standard,
-which survives the offset because it is a difference, has a median of 38 days
+No accrual window is reported: the collection's CT dates span 1989--1996 and are
+de-identification offsets, so publishing a range derived from them would
+misdescribe the cohort. The interval from index test to reference standard, which
+survives the offset because it is a difference, has a median of 38 days
 (IQR, 19.5--65.5).
 
 The external cohort is NSCLC-Radiomics \citep{aerts2014}, 420 preprocessed
 patients from a Dutch center --- another country, scanner fleet, and clinical
-population (radiotherapy planning rather than surgical). The two cohorts share no
-patients, and no evaluated checkpoint was warm-started from the external
-collection; both facts are asserted in the accompanying automated test suite
-rather than claimed in prose.
+population. The two cohorts share no patients, and no evaluated checkpoint was
+warm-started from the external collection; both are asserted in the accompanying
+test suite rather than claimed in prose.
 
 \subsection*{Reference standard}
 
 \textit{EGFR} status was determined by sequencing and is distributed with the
-collection \citep{bakr2018}. The reference standard for localization is the
-expert tumor segmentation distributed with each collection. Only one contour per
-lesion exists, so interreader agreement cannot be computed; a mask perturbation
-sweep is reported instead and is explicitly not a substitute.
+collection \citep{bakr2018}. The reference standard for attention is the expert
+tumor segmentation distributed with each collection. Only one contour per lesion
+exists, so interreader agreement cannot be computed; a mask perturbation sweep is
+reported instead and is not a substitute.
 
 \subsection*{Model}
 
 The image encoder is the vision tower of BiomedCLIP (ViT-B/16, last two blocks
-unfrozen), which produces patch tokens per section, aggregated across 16 sections
-by a masked mean. A region head applies eight learned queries by cross-attention,
-and the resulting attention maps are supervised against the tumor region of
-interest (ROI) projected onto the patch grid. The classifier pools from those
-region embeddings, so prediction and attention share a representation. The
-codebase also contains a language decoder for rationale generation; its loss
-weight is zero in every run reported here and its output does not reach the
-classifier, so this is an image-only model and we do not describe it as
-vision--language.
+unfrozen), producing patch tokens per section, aggregated across 16 sections by a
+masked mean. A region head applies eight learned queries by cross-attention, and
+the resulting maps are supervised against the tumor region of interest (ROI)
+projected onto the patch grid. The classifier pools from those region embeddings,
+so prediction and attention share a representation. A language decoder exists in
+the codebase but its loss weight is zero in every run reported here and its output
+does not reach the classifier; this is an image-only model.
 
 \textbf{The attention task is ROI-conditioned, not whole-thorax detection.}
 Inputs are axial crops of $(\text{bbox}_{\text{mm}} + 24)\times 2.5$ around the
@@ -233,10 +229,9 @@ shuffle is greater than zero. Three controls appear in every reported table:
   \item \textit{Spatial shuffle} --- the same attention values permuted across
     cells, isolating \textit{where} mass fell from \textit{how peaked} the map is.
   \item \textit{Center prior} --- external ROI centroids sit at $(0.50, 0.51)$ of
-    the frame (SD $\approx$ 0.08) covering 4.9\% of the area, so ``look at the
-    middle'' is a strong baseline. Pointing accuracy and area-matched
-    intersection over union are invariant to the prior's width, so that margin
-    cannot be tuned.
+    the frame covering 4.9\% of the area, so ``look at the middle'' is a strong
+    baseline. Pointing accuracy and area-matched intersection over union are
+    invariant to the prior's width, so that margin cannot be tuned.
   \item \textit{Weight randomization} --- an untrained head of identical
     architecture, ruling out architectural inductive bias.
 \end{itemize}
@@ -249,16 +244,15 @@ endpoint.
 
 The five-variable clinical model is a logistic regression on age, sex,
 self-reported ethnicity, smoking status and pack-years. Numeric variables are
-median-filled with a missingness indicator and categorical variables receive an
-explicit level for unrecorded values, so no patient is dropped and every arm is
-scored on the same patients. Imputation, encoding and any tuning occur inside the
-training folds.
+median-filled with a missingness indicator and categorical variables get an
+explicit unrecorded level, so no patient is dropped and every arm is scored on the
+same patients. Imputation, encoding and tuning occur inside the training folds.
 
-\textbf{Endpoints and their populations.} H\textsubscript{1} uses the 420-patient
-external cohort. H\textsubscript{2} and every arm in Table 2 use the 153 internal
-patients with a known \textit{EGFR} call. The 97-patient segmented-adenocarcinoma
-set is the pre-specified primary analysis set for the histology-restricted
-sensitivity analysis below, not for the headline discrimination figure.
+\textbf{Endpoints and their populations.} H\textsubscript{1} uses the 420 external
+patients; H\textsubscript{2} and every arm in Table 2 use the 153 internal patients
+with a known \textit{EGFR} call. The 97-patient segmented-adenocarcinoma set is the
+pre-specified analysis set for the histology-restricted sensitivity analysis below,
+not for the headline figure.
 
 \subsection*{Statistical analysis}
 
@@ -266,8 +260,8 @@ Evaluation used nested five-fold cross-validation (CV) stratified on
 \textit{EGFR}, three seeds, with within-fold rank normalization before pooling.
 The headline is the across-seed mean $\pm$ SD; a pooled confidence interval (CI)
 absorbs no rerun variance and is never quoted alone. No operating point is
-defined: the index test is continuous and the calibration reported below does not
-support a threshold, so sensitivity and specificity are not reported.
+defined, because the calibration reported below does not support a threshold, so
+sensitivity and specificity are not reported.
 
 Comparisons used a paired bootstrap over patients (2000 resamples), with Holm
 correction across the ten arms of the pooling sweep. Precision was computed by the
@@ -344,14 +338,12 @@ artifact must carry explicit recalibration.
 
 \subsection*{On the subset that should carry it, performance is weaker}
 
-Every \textit{EGFR}-mutant patient in this collection had adenocarcinoma; the 17
-patients with squamous cell carcinoma and three with NSCLC not otherwise
-specified were wild-type without exception. Including them makes 20 of 153 (13\%)
-of the cohort classifiable from histology alone with no imaging. On the
-pre-specified primary analysis set --- patients with segmented adenocarcinoma,
-$n = 97$, of whom 23 were mutant --- AUC falls to 0.563. The same pattern appears
-in the literature: Yamazaki et al report 0.774 across histologies but 0.687
-restricted to adenocarcinoma \citep{yamazaki2022}.
+Every \textit{EGFR}-mutant patient had adenocarcinoma; the 17 with squamous cell
+carcinoma and three with NSCLC not otherwise specified were wild-type without
+exception, making 20 of 153 (13\%) of the cohort classifiable from histology alone.
+On the segmented-adenocarcinoma set ($n = 97$, 23 mutant) AUC falls to 0.563. The
+same pattern appears in the literature: Yamazaki et al report 0.774 across
+histologies but 0.687 restricted to adenocarcinoma \citep{yamazaki2022}.
 
 \subsection*{Localization generalizes to an unseen cohort}
 
@@ -385,14 +377,27 @@ strongest failure exactly 0.000, with nothing between. Folds either align
 decisively or not at all, so the verdict is insensitive to where the threshold
 sits within a wide interval while remaining sensitive to the fold count.
 
-The failures are concentrated rather than scattered: one training run aligned in
-two of five folds while the others reached five of five and four of five, and that
-same run aligns in two of five folds internally while carrying the highest
-classification AUC of the three. \textbf{Attention alignment is therefore
-training-unstable}: it transfers reliably from some training runs and not at all
-from others, and nothing in the internal metrics predicts which. Training this model once
-carries a one-in-three chance of an artifact whose attention is uninformative on
-new data.
+The failures are concentrated rather than scattered: one run aligned in two of five
+folds while the others reached five of five and four of five, and that same run
+aligns in two of five folds internally while carrying the highest classification
+AUC of the three. \textbf{Attention alignment is therefore training-unstable}, and
+nothing in the internal metrics predicts which run will transfer.
+
+\textbf{Post hoc: the margin over the center prior depends on treating the
+training run as fixed.} Resampling the 420 external patients, mean pointing
+accuracy exceeded the center prior by $+0.133$ (95\% CI: 0.082, 0.183;
+\textit{P} $<$ .001) and area-matched overlap by $+0.107$ (95\% CI: 0.082, 0.133;
+\textit{P} $<$ .001). Resampling the three training runs as well, both intervals
+include zero ($+0.133$; 95\% CI: $-0.128$, 0.350; \textit{P} $=$ .30, and
+$+0.107$; 95\% CI: $-0.064$, 0.248; \textit{P} $=$ .19). Only the contrast against
+an untrained head survives that reading (mass $+0.243$; 95\% CI: 0.130, 0.351;
+\textit{P} $<$ .001).
+
+Between-run variance therefore dominates --- the instability reported above seen
+from a second direction. A hierarchical interval on three runs is wide by
+construction and underpowered at the run level, but that is the finding rather
+than an excuse for it: we can claim these models attend to the lesion on an unseen
+cohort, not that the next one would.
 
 Representative attention maps appear in Figure 6.
 
@@ -400,22 +405,18 @@ Representative attention maps appear in Figure 6.
 
 Because the classifier pools from the attended region --- the lesion itself --- we
 asked whether the \textit{EGFR} signal sits where the attention loss supervises.
-Over ten seeds on frozen encoder features, through identical nested folds,
-mean-pooling the peritumoral ring scored 0.695 against 0.632 for the whole crop
-and 0.629 for the tumor interior. A size- and shape-matched ring at a
-\textit{random} location scored 0.575, so the gain is location-specific rather than
-an artifact of pooling a thin annulus. Adding a peritumoral branch moved the
-trained model from 0.618 to $0.675 \pm 0.017$.
+Over ten seeds on frozen encoder features, mean-pooling the peritumoral ring
+scored 0.695 against 0.632 for the whole crop and 0.629 for the tumor interior; a
+size- and shape-matched ring at a \textit{random} location scored 0.575, so the
+gain is location-specific. Adding a peritumoral branch moved the trained model to
+$0.675 \pm 0.017$.
 
-This does not survive correction, and we report it as suggestive. The sweep scores
-ten arms on the same folds; under a paired bootstrap with Holm correction the best
-arm has \textit{P}\textsubscript{raw} $=$ .03 and \textit{P}\textsubscript{Holm}
-$=$ .28, and end to end the branch is worth $+0.058$ (95\% CI: $-0.008$, 0.128;
-\textit{P} $=$ .09). It is also a replication rather than a discovery:
-peritumoral radiomics for \textit{EGFR} has been reported at least six times since
-2022, at ring widths from 1 to 15~mm
+This does not survive correction and we report it as suggestive: across the ten
+arms of the sweep the best has \textit{P}\textsubscript{Holm} $=$ .28, and end to
+end the branch is worth $+0.058$ (95\% CI: $-0.008$, 0.128; \textit{P} $=$ .09).
+It replicates six prior reports at ring widths from 1 to 15~mm
 \citep{yamazaki2022,shang2023,wu2024,le2026,lai2026,huang2025}. What is new is the
-tension it exposes: the attention loss supervises \textit{onto} the lesion, and the
+tension: the attention loss supervises \textit{onto} the lesion, and the
 classification signal appears to sit just outside it.
 
 \subsection*{Analytic choice is worth more than the effect}
@@ -450,7 +451,10 @@ base-rate floor of 0.193).
 Two limits bound what ``transferred'' means. The attention task is
 ROI-conditioned --- the lesion is near the center of the input by construction, so
 this is alignment, not detection in a whole chest CT --- and the transfer is
-training-unstable, succeeding from two of three runs.
+training-unstable. The post-hoc analysis makes the second limit precise: the
+margin over a center prior is unambiguous across patients and disappears once the
+training run is treated as a random effect. The dissociation below is a statement
+about the models we trained, not a guarantee about the next one.
 
 \textit{What the localization endpoint does and does not establish.} Attention
 mass, pointing accuracy and area-matched intersection over union are not measures

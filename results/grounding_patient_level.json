@@ -1,0 +1,99 @@
+{
+  "n_patients": 420,
+  "n_checkpoints": 15,
+  "n_boot": 10000,
+  "comparisons": {
+    "grounding_pointing vs centre": {
+      "patient_level": {
+        "difference": 0.1328571428571429,
+        "ci_lo": 0.08206349206349206,
+        "ci_hi": 0.18349206349206343,
+        "p": 0.0
+      },
+      "hierarchical": {
+        "difference": 0.132857142857143,
+        "ci_lo": -0.1276190476190477,
+        "ci_hi": 0.3500039682539682,
+        "p": 0.3032
+      }
+    },
+    "grounding_pointing vs random": {
+      "patient_level": {
+        "difference": 0.06619047619047624,
+        "ci_lo": 0.023015873015873045,
+        "ci_hi": 0.11032142857142856,
+        "p": 0.0022
+      },
+      "hierarchical": {
+        "difference": 0.06619047619047636,
+        "ci_lo": -0.19334523809523804,
+        "ci_hi": 0.2823809523809524,
+        "p": 0.59
+      }
+    },
+    "grounding_iou vs centre": {
+      "patient_level": {
+        "difference": 0.10733036348126695,
+        "ci_lo": 0.08170271763015391,
+        "ci_hi": 0.13287769425875248,
+        "p": 0.0
+      },
+      "hierarchical": {
+        "difference": 0.10733036348126695,
+        "ci_lo": -0.06369089755329937,
+        "ci_hi": 0.24808525333856063,
+        "p": 0.186
+      }
+    },
+    "grounding_iou vs random": {
+      "patient_level": {
+        "difference": 0.13692520735378388,
+        "ci_lo": 0.11911691426181008,
+        "ci_hi": 0.1551122698486294,
+        "p": 0.0
+      },
+      "hierarchical": {
+        "difference": 0.13692520735378388,
+        "ci_lo": -0.03412343042241649,
+        "ci_hi": 0.27774234718524643,
+        "p": 0.0862
+      }
+    },
+    "grounding_mass vs centre": {
+      "patient_level": {
+        "difference": 0.022454788995221187,
+        "ci_lo": 0.011770831934669759,
+        "ci_hi": 0.03306854972908169,
+        "p": 0.0
+      },
+      "hierarchical": {
+        "difference": 0.022454788995221187,
+        "ci_lo": -0.09091713044758042,
+        "ci_hi": 0.12957204077806717,
+        "p": 0.7386
+      }
+    },
+    "grounding_mass vs random": {
+      "patient_level": {
+        "difference": 0.24320886822987448,
+        "ci_lo": 0.23388287397882615,
+        "ci_hi": 0.25242204804167484,
+        "p": 0.0
+      },
+      "hierarchical": {
+        "difference": 0.24320886822987448,
+        "ci_lo": 0.12962101924987066,
+        "ci_hi": 0.35075617467551606,
+        "p": 0.0
+      }
+    },
+    "grounding_mass vs shuffle": {
+      "patient_level": {
+        "difference": 0.24372037377086184,
+        "ci_lo": 0.23406906830233667,
+        "ci_hi": 0.25333090791330365,
+        "p": 0.0
+      }
+    }
+  }
+}
