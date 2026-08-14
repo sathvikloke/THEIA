@@ -68,7 +68,7 @@ five-variable model of routine clinical data.}
     fixed center prior already reaches 0.270 of 0.292 on attention mass; the
     informative margins are pointing accuracy 0.609 versus 0.476 and area-matched
     overlap 0.394 versus 0.287, both invariant to the prior's width.
-  \item Across six defensible preprocessing choices the radiomics comparator
+  \item Across six defensible analytic choices the radiomics comparator
     moved 0.136 in discrimination, more than the effect sizes this literature
     reports as findings.
 \end{itemize}
@@ -153,9 +153,9 @@ variables it would have to beat.
 
 \subsection*{Ethics}
 
-This retrospective secondary analysis used publicly available, de-identified
-imaging and clinical data distributed by The Cancer Imaging Archive under open
-licenses. No protected health information was accessed.
+This retrospective secondary analysis used publicly available, de-identified data
+distributed by The Cancer Imaging Archive under open licenses. No protected health
+information was accessed.
 
 \fbox{\parbox{0.95\linewidth}{\small\textbf{[AUTHOR ACTION REQUIRED BEFORE
 SUBMISSION]} Insert the institutional review board's written determination here
@@ -174,29 +174,27 @@ the public repository accompanying this work.
 
 The internal cohort is NSCLC-Radiogenomics \citep{bakr2018}, a surgical series
 distributed by The Cancer Imaging Archive. Participant flow is in Figure 1: 211
-patients, 188 with an imaging series, 158 preprocessed, 153 with a known
-\textit{EGFR} call, 133 with adenocarcinoma, 97 with both adenocarcinoma and a
-pixel-level segmentation.
+patients, 188 with imaging, 158 preprocessed, 153 with a known \textit{EGFR} call,
+133 adenocarcinoma, 97 with both adenocarcinoma and a segmentation. The Supplement
+compares analyzed with excluded patients.
 
 No accrual window is reported: the collection's CT dates span 1989--1996 and are
-de-identification offsets, so publishing a range derived from them would
-misdescribe the cohort. The interval from index test to reference standard, which
-survives the offset because it is a difference, has a median of 38 days
+de-identification offsets. The interval from index test to reference standard,
+which survives the offset because it is a difference, has a median of 38 days
 (IQR, 19.5--65.5).
 
 The external cohort is NSCLC-Radiomics \citep{aerts2014}, 420 preprocessed
-patients from a Dutch center --- another country, scanner fleet and clinical
-population. The cohorts share no patients and no evaluated checkpoint was
-warm-started from the external collection; both are asserted in the test suite
-rather than claimed in prose.
+patients from a Dutch center. The cohorts share no patients and no evaluated
+checkpoint was warm-started from the external collection; both are asserted in the
+test suite rather than claimed in prose.
 
 \subsection*{Reference standard}
 
 \textit{EGFR} status was determined by sequencing and is distributed with the
-collection \citep{bakr2018}. The reference standard for attention is the expert
-tumor segmentation distributed with each collection. Only one contour per lesion
-exists, so interreader agreement cannot be computed; a mask perturbation sweep is
-reported instead and is not a substitute.
+collection \citep{bakr2018}; the assay, panel and specimen type are not published
+per patient (Supplement). The reference standard for attention is the expert
+segmentation distributed with each collection, one contour per lesion, so
+interreader agreement cannot be computed.
 
 \subsection*{Model}
 
@@ -249,8 +247,8 @@ evidence of improvement, not that none exists.
 The five-variable clinical model is a logistic regression on age, sex,
 self-reported ethnicity, smoking status and pack-years. Numeric variables are
 median-filled with a missingness indicator and categorical variables get an
-explicit unrecorded level, so no patient is dropped and every arm is scored on the
-same patients. Imputation, encoding and tuning occur inside the training folds.
+unrecorded level, so no patient is dropped. Imputation, encoding and tuning occur
+inside the training folds.
 
 \textbf{Endpoints and populations.} H\textsubscript{1} uses the 420 external
 patients; H\textsubscript{2} and Table 2 use the 153 internal patients with a known
@@ -269,10 +267,12 @@ sensitivity and specificity are not reported.
 
 Comparisons used a paired bootstrap over patients (2000 resamples), with Holm
 correction across the ten arms of the pooling sweep. Precision used the
-Hanley--McNeil closed form \citep{hanley1982}, validated against a bootstrap;
-minimum sample size follows Riley et al \citep{riley2020}, applied only where its
-inputs are defined. Reporting follows the 2024 update of CLAIM \citep{claim2024} and TRIPOD+AI
-\citep{tripodai}, whose completed checklists accompany this manuscript.
+Hanley--McNeil closed form \citep{hanley1982}; minimum sample size follows Riley
+et al \citep{riley2020}, applied only where its inputs are defined. Reporting follows the 2024 update of CLAIM \citep{claim2024} and TRIPOD+AI
+\citep{tripodai}, whose checklists accompany this manuscript. The Supplement gives
+the training configuration, the exclusions and a comparison of analyzed with
+excluded patients, the six analytic choices, the limits of the reference standard,
+and the origin of the fold-rate threshold.
 
 \textit{P} values less than .05 indicated statistical significance, and all tests
 were two-sided. Analyses were performed in Python 3.13.9 (Python Software
@@ -426,7 +426,9 @@ signal appears to sit just outside it.
 \subsection*{Analytic choice is worth more than the effect}
 
 On identical features and estimator, the radiomics arm moved 0.136 in AUC across
-six defensible preprocessing choices, and 0.066 between flat and nested CV --- both
+six defensible analytic choices --- two feature definitions crossed with three
+regularization penalties, itemised in the Supplement --- and 0.066 between flat
+and nested CV --- both
 larger than the effects this literature reports as findings, and both invisible to
 internal evaluation \citep{maleki2022}.
 
@@ -438,8 +440,7 @@ levels and a missingness indicator are encoded, giving a minimum of 1159 patient
 rather than the 414 that counting variables implies. This cohort has 153. The same
 criterion returns 42\,362 for the 512-feature frozen probe, reported as an
 order-of-magnitude statement rather than a requirement, since it was developed for
-regression models and a penalized representation is not straightforwardly
-$p = 512$. Neither arm is identifiable at this size.
+regression models. Neither arm is identifiable at this size.
 
 Precision, not power, binds any external test: a 95\% CI half-width of 0.05 needs
 $n = 661$, while the publicly accessible \textit{EGFR}-labeled collections we
