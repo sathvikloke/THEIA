@@ -3,6 +3,24 @@
 Checklist for Artificial Intelligence in Medical Imaging, as required by
 *Radiology: Artificial Intelligence* at submission.
 
+> **Version note.** The item numbering below follows **CLAIM 2020** (Mongan,
+> Moy, Kahn. *Radiol Artif Intell* 2020;2(2):e200029). The manuscript cites the
+> **2024 update** (Tejani AS, Klontzas ME, Gatti AA, et al. *Radiol Artif Intell*
+> 2024;6(4):e240300, doi:10.1148/ryai.240300), which reorganises and expands the
+> list. **The official 2024 form must be completed and uploaded at submission** —
+> this file is the working record of the evidence behind each answer, not a
+> substitute for the journal's form.
+>
+> The 2024 update's additions that this study must answer, and where they are
+> answered: model failure analysis (RESULTS §4a and Table 3), demographic
+> reporting of the training cohort (Table 1), a statement on data leakage
+> (asserted in the test suite: cohorts share no patients and no evaluated
+> checkpoint was warm-started from the external collection), and disclosure of
+> generative-AI assistance (Methods, *Use of artificial intelligence tools*).
+>
+> A prediction-model reporting checklist is also required and is separate:
+> [TRIPOD_AI_CHECKLIST.md](TRIPOD_AI_CHECKLIST.md).
+
 Each item is **Yes**, **No** or **NA**. Every **No** carries a written
 justification — an unexplained No is what a reviewer treats as an omission rather
 than a decision. Page:line references are filled in against the manuscript at
@@ -21,7 +39,7 @@ funding, conflicts, registration IDs.
 
 | # | Item | Y/N/NA | Where |
 |---|---|---|---|
-| 1 | Identification as a study of AI methodology, specifying the category of technology used | **Yes** | Title and abstract name the technology (vision--language model with a supervised grounding head) and the study as an evaluation. `paper/main.tex` |
+| 1 | Identification as a study of AI methodology, specifying the category of technology used | **Yes** | Title and abstract name the technology (a vision encoder with mask-supervised region attention) and the study as an evaluation. The model is image-only: `loss_weights.gen` is 0.0 in every canonical run and the language decoder's output never reaches the classifier. `paper/main.tex` |
 | 2 | Structured summary of study design, methods, results, and conclusions | **Yes** | Structured abstract, Purpose / Materials and Methods / Results / Conclusion, 246 words. `paper/main.tex` |
 
 ## Introduction
@@ -51,12 +69,12 @@ funding, conflicts, registration IDs.
 | 18 | Source of ground-truth annotations; qualifications and preparation of annotators | **Partial** | Segmentations are the collection's, drawn by a thoracic radiologist (Bakr et al.). **Inter-rater ICC is not measured** — see limitations below |
 | 19 | Annotation tools | **Yes** | Collection-provided DICOM SEG and AIM v4; parsers at `theia/data/preprocess.py`, `theia/data/aim.py` |
 | 20 | Measurement of inter- and intrarater variability; how discrepancies were resolved | **No** | *Justification:* the segmentations are redistributed from a public collection with one contour per lesion; no second reader exists to compute ICC against, and re-segmentation by an independent radiologist is scheduled but not complete. A mask perturbation (dilate/erode/translate) sensitivity sweep is reported instead and is labelled robustness, **not** measured rater variability |
-| 21 | Sample size justification / power calculation | **Yes** | ANALYSIS_PLAN §4; `theia.analysis.power` — Hanley–McNeil `n_for_auc_ci` and Riley minimum-n, with the deliberate omission of Riley for the deep arm justified in place |
+| 21 | Sample size justification / power calculation | **Yes** | ANALYSIS_PLAN §4; `theia.analysis.power`. Riley is computed on **fitted parameters, not named variables**: the five clinical variables are 14 design-matrix columns, giving 1159 rather than the 414 that counting variables implies |
 | 22 | Data partitions and how they were determined | **Yes** | Nested 5-fold stratified CV, `theia/data/dataset.py:nested_kfold_indices`. Flat CV is worth +0.066 on identical features and is not used |
 | 23 | Level at which partitions were disjoint | **Yes** | Patient level |
 | 24 | Model description, including inputs, outputs, and all intermediate layers | **Yes** | [MODEL_CARD.md](MODEL_CARD.md); `theia/models/theia_model.py` |
 | 25 | Software libraries, frameworks, and packages | **Yes** | [requirements-lock.txt](../requirements-lock.txt) |
-| 26 | Initialization of model parameters | **Yes** | BiomedCLIP ViT-B/16 pretrained, last 2 blocks unfrozen; BioGPT + LoRA. MODEL_CARD |
+| 26 | Initialization of model parameters | **Yes** | BiomedCLIP ViT-B/16 pretrained, last 2 blocks unfrozen. A BioGPT + LoRA decoder is constructed but its loss weight is 0.0, so it is untrained and unused. MODEL_CARD; Supplement S1 |
 | 27 | Details of training approach | **Yes** | `configs/default.yaml`; OneCycleLR, gradient clipping at 1.0 with non-finite-step skipping, early stopping with `early_stop_min_epochs` |
 | 28 | Method of selecting the final model | **Yes** | Composite monitor on inner validation: `[[egfr_auc, 1.0], [grounding_mass_lift, 0.5]]` — gen_loss is omitted because `loss_weights.gen` is 0.0 and monitoring an untrained term selects on noise |
 | 29 | Ensembling techniques, if applicable | **NA** | No ensembling in the reported models. Seed-averaged ranks appear only in a clearly-labelled secondary analysis |

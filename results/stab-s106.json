@@ -1,0 +1,1588 @@
+{
+  "run_id": "stab-s106",
+  "config": {
+    "seed": 106,
+    "paths": {
+      "raw_dir": "./data/raw/nsclc_radiogenomics",
+      "processed_dir": "./data/processed",
+      "radgenome_dir": "./data/raw/radgenome_chest_ct",
+      "pathology_dir": "./data/raw/tcga_wsi",
+      "runs_dir": "./runs",
+      "ckpt_dir": "checkpoints/stab-s106",
+      "results_dir": "./results",
+      "ckpt_root": "./checkpoints"
+    },
+    "data": {
+      "modalities": [
+        "CT"
+      ],
+      "modality_dropout": 0.0,
+      "headline_genes": [
+        "EGFR"
+      ],
+      "exploratory_genes": [
+        "KRAS"
+      ],
+      "target_genes": [
+        "EGFR",
+        "KRAS"
+      ],
+      "roi_margin_mm": 12,
+      "context_factor": 2.5,
+      "crop_jitter_frac": 0.3,
+      "aim_crop_mm": 50.0,
+      "aim_min_hu": -700.0,
+      "slice_strategy": "tumor_bbox",
+      "n_slices": 16,
+      "image_size": 224,
+      "hu_window": [
+        -600,
+        1500
+      ],
+      "min_tumor_voxels": 50
+    },
+    "cohorts": {
+      "internal": [
+        "nsclc_radiogenomics",
+        "tcga_luad",
+        "tcga_lusc",
+        "nsclc_radiomics"
+      ],
+      "external": [
+        "collaborator_private"
+      ]
+    },
+    "pathology": {
+      "enabled": false,
+      "backbone": "uni",
+      "tile_size": 256,
+      "tiles_per_slide": 256,
+      "mil": "attention"
+    },
+    "split": {
+      "scheme": "stratified_kfold",
+      "n_folds": 5,
+      "stratify_on": "EGFR",
+      "nested": true,
+      "inner_val_frac": 0.2
+    },
+    "model": {
+      "vision_encoder": "biomedclip",
+      "vision_dim": 512,
+      "freeze_vision": true,
+      "unfreeze_last_n": 2,
+      "lm_name": "microsoft/BioGPT",
+      "lm_max_new_tokens": 96,
+      "grounding_tokens": 8,
+      "classifier_hidden": 256,
+      "dropout": 0.1,
+      "region_pooling": "mean",
+      "peritumoral_features": false,
+      "grounding_pretrain_ckpt": null,
+      "warm_start_vision": false
+    },
+    "lora": {
+      "enabled": true,
+      "r": 16,
+      "alpha": 32,
+      "dropout": 0.05,
+      "target_modules": [
+        "q_proj",
+        "v_proj"
+      ]
+    },
+    "train": {
+      "device": "auto",
+      "num_workers": 2,
+      "epochs": 40,
+      "batch_size": 8,
+      "grad_accum": 2,
+      "lr": 0.0002,
+      "backbone_lr_mult": 1.0,
+      "weight_decay": 0.01,
+      "save_last": false,
+      "grad_clip": 1.0,
+      "warmup_ratio": 0.05,
+      "amp": true,
+      "loss_weights": {
+        "cls": 1.0,
+        "gen": 0.0,
+        "ground": 0.5
+      },
+      "early_stop_patience": 8,
+      "early_stop_min_epochs": 10,
+      "monitor": [
+        [
+          "egfr_auc",
+          1.0
+        ],
+        [
+          "grounding_mass_lift",
+          0.5
+        ]
+      ]
+    },
+    "grounding_pretrain": {
+      "enabled": false,
+      "epochs": 20,
+      "lr": 0.0002
+    },
+    "eval": {
+      "bootstrap_n": 2000
+    },
+    "reader_study": {
+      "n_cases": 32,
+      "readers": 3,
+      "blind": true,
+      "arms": [
+        "theia_full",
+        "label_only",
+        "ground_truth"
+      ]
+    }
+  },
+  "pooled": {
+    "n_patients": 158.0,
+    "egfr_n": 153.0,
+    "egfr_n_pos": 40.0,
+    "egfr_auc": 0.5957964601769912,
+    "egfr_auc_lo": 0.49176109694124953,
+    "egfr_auc_hi": 0.6890139431981886,
+    "kras_n": 152.0,
+    "kras_n_pos": 32.0,
+    "kras_auc": 0.5067708333333333,
+    "kras_auc_lo": 0.38294157672180174,
+    "kras_auc_hi": 0.6200404331951265
+  },
+  "folds": [
+    {
+      "fold": 0,
+      "best_inner": 0.8800690397528894,
+      "best_epoch": 15,
+      "test": {
+        "egfr_auc": 0.5217391304347826,
+        "egfr_n_pos": 8.0,
+        "egfr_n": 31.0,
+        "egfr_auc_lo": 0.2761904761904762,
+        "egfr_auc_hi": 0.7619227994227994,
+        "kras_auc": 0.4538461538461539,
+        "kras_n_pos": 5.0,
+        "kras_n": 31.0,
+        "kras_auc_lo": 0.10666666666666665,
+        "kras_auc_hi": 0.8275862068965516,
+        "grounding_mass": 0.4323067730665207,
+        "grounding_pointing": 0.96,
+        "grounding_iou": 0.7575310245310246,
+        "grounding_mass_shuffled": 0.036500531639903785,
+        "grounding_pointing_shuffled": 0.04,
+        "grounding_iou_shuffled": 0.018247007894066716,
+        "grounding_roi_frac": 0.03734693910926581,
+        "grounding_peak_ratio": 30.948063735961913,
+        "gen_loss": 4.838787198066711,
+        "grounding_mass_lift": 0.3958062414266169,
+        "grounding_pointing_lift": 0.9199999999999999,
+        "grounding_iou_lift": 0.7392840166369579,
+        "epoch": 15,
+        "split": "outer_test"
+      },
+      "oof": [
+        {
+          "patient_id": "AMC-008",
+          "fold": 0,
+          "egfr_prob": 0.9366173148155212,
+          "egfr_true": -1,
+          "kras_prob": 0.0014860760420560837,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "AMC-014",
+          "fold": 0,
+          "egfr_prob": 0.021448558196425438,
+          "egfr_true": 0,
+          "kras_prob": 0.004381970968097448,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-015",
+          "fold": 0,
+          "egfr_prob": 0.009812843054533005,
+          "egfr_true": 0,
+          "kras_prob": 0.9521312713623047,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "AMC-019",
+          "fold": 0,
+          "egfr_prob": 0.20078346133232117,
+          "egfr_true": 1,
+          "kras_prob": 0.0013173767365515232,
+          "kras_true": -1
+        },
+        {
+          "patient_id": "AMC-031",
+          "fold": 0,
+          "egfr_prob": 0.04134445637464523,
+          "egfr_true": 0,
+          "kras_prob": 0.0021923023741692305,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-040",
+          "fold": 0,
+          "egfr_prob": 0.9933578372001648,
+          "egfr_true": 0,
+          "kras_prob": 0.007204086985439062,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-047",
+          "fold": 0,
+          "egfr_prob": 0.9613451957702637,
+          "egfr_true": 0,
+          "kras_prob": 0.0017309141112491488,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-019",
+          "fold": 0,
+          "egfr_prob": 0.31368592381477356,
+          "egfr_true": 0,
+          "kras_prob": 0.00109650450758636,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-023",
+          "fold": 0,
+          "egfr_prob": 0.9880693554878235,
+          "egfr_true": 0,
+          "kras_prob": 0.004298212006688118,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-031",
+          "fold": 0,
+          "egfr_prob": 0.006568990182131529,
+          "egfr_true": 0,
+          "kras_prob": 0.8885425925254822,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-034",
+          "fold": 0,
+          "egfr_prob": 0.005284295883029699,
+          "egfr_true": 0,
+          "kras_prob": 0.02464985102415085,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-040",
+          "fold": 0,
+          "egfr_prob": 0.2307310253381729,
+          "egfr_true": 0,
+          "kras_prob": 0.0012752915499731898,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-045",
+          "fold": 0,
+          "egfr_prob": 0.3218270242214203,
+          "egfr_true": 0,
+          "kras_prob": 0.0011615798575803638,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-056",
+          "fold": 0,
+          "egfr_prob": 0.004953477997332811,
+          "egfr_true": 1,
+          "kras_prob": 0.03496377542614937,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-058",
+          "fold": 0,
+          "egfr_prob": 0.5351164937019348,
+          "egfr_true": 1,
+          "kras_prob": 0.001045954180881381,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-064",
+          "fold": 0,
+          "egfr_prob": 0.007621357217431068,
+          "egfr_true": 0,
+          "kras_prob": 0.9253389239311218,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-067",
+          "fold": 0,
+          "egfr_prob": 0.005643713753670454,
+          "egfr_true": 0,
+          "kras_prob": 0.0219709612429142,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-068",
+          "fold": 0,
+          "egfr_prob": 0.007291990797966719,
+          "egfr_true": 0,
+          "kras_prob": 0.8408668637275696,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-069",
+          "fold": 0,
+          "egfr_prob": 0.4567718505859375,
+          "egfr_true": 0,
+          "kras_prob": 0.0010171444155275822,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-073",
+          "fold": 0,
+          "egfr_prob": 0.00794801115989685,
+          "egfr_true": 0,
+          "kras_prob": 0.015896588563919067,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-075",
+          "fold": 0,
+          "egfr_prob": 0.16258350014686584,
+          "egfr_true": 1,
+          "kras_prob": 0.0013556114863604307,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-079",
+          "fold": 0,
+          "egfr_prob": 0.34676221013069153,
+          "egfr_true": 1,
+          "kras_prob": 0.001284776721149683,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-080",
+          "fold": 0,
+          "egfr_prob": 0.004630419425666332,
+          "egfr_true": 1,
+          "kras_prob": 0.24110324680805206,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-082",
+          "fold": 0,
+          "egfr_prob": 0.005996426567435265,
+          "egfr_true": 0,
+          "kras_prob": 0.05176898464560509,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-087",
+          "fold": 0,
+          "egfr_prob": 0.9324753284454346,
+          "egfr_true": 1,
+          "kras_prob": 0.0012684889370575547,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-106",
+          "fold": 0,
+          "egfr_prob": 0.20235024392604828,
+          "egfr_true": 0,
+          "kras_prob": 0.001201462117023766,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-115",
+          "fold": 0,
+          "egfr_prob": 0.006900327745825052,
+          "egfr_true": 0,
+          "kras_prob": 0.8410192728042603,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-119",
+          "fold": 0,
+          "egfr_prob": 0.0038945989217609167,
+          "egfr_true": 0,
+          "kras_prob": 0.26194483041763306,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-126",
+          "fold": 0,
+          "egfr_prob": 0.004920173902064562,
+          "egfr_true": 0,
+          "kras_prob": 0.051158029586076736,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-127",
+          "fold": 0,
+          "egfr_prob": 0.03265884891152382,
+          "egfr_true": 1,
+          "kras_prob": 0.0027133903931826353,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-133",
+          "fold": 0,
+          "egfr_prob": 0.5184069275856018,
+          "egfr_true": 0,
+          "kras_prob": 0.0009910516673699021,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-134",
+          "fold": 0,
+          "egfr_prob": 0.9621768593788147,
+          "egfr_true": 0,
+          "kras_prob": 0.0017228624783456326,
+          "kras_true": 0
+        }
+      ]
+    },
+    {
+      "fold": 1,
+      "best_inner": 0.9254582301972227,
+      "best_epoch": 36,
+      "test": {
+        "egfr_auc": 0.6086956521739131,
+        "egfr_n_pos": 8.0,
+        "egfr_n": 31.0,
+        "egfr_auc_lo": 0.34205263157894744,
+        "egfr_auc_hi": 0.8690521978021978,
+        "kras_auc": 0.3133333333333333,
+        "kras_n_pos": 6.0,
+        "kras_n": 31.0,
+        "kras_auc_lo": 0.02666666666666669,
+        "kras_auc_hi": 0.667166666666667,
+        "grounding_mass": 0.5276053907970587,
+        "grounding_pointing": 1.0,
+        "grounding_iou": 0.7383019758019759,
+        "grounding_mass_shuffled": 0.04312843695515767,
+        "grounding_pointing_shuffled": 0.041666666666666664,
+        "grounding_iou_shuffled": 0.03193655753219624,
+        "grounding_roi_frac": 0.04357993191418549,
+        "grounding_peak_ratio": 28.404745022455852,
+        "gen_loss": 5.02755081653595,
+        "grounding_mass_lift": 0.48447695384190104,
+        "grounding_pointing_lift": 0.9583333333333334,
+        "grounding_iou_lift": 0.7063654182697796,
+        "epoch": 36,
+        "split": "outer_test"
+      },
+      "oof": [
+        {
+          "patient_id": "AMC-003",
+          "fold": 1,
+          "egfr_prob": 0.0018793357303366065,
+          "egfr_true": 1,
+          "kras_prob": 0.0013463122304528952,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-005",
+          "fold": 1,
+          "egfr_prob": 0.06239425018429756,
+          "egfr_true": 1,
+          "kras_prob": 0.014625507406890392,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-020",
+          "fold": 1,
+          "egfr_prob": 0.039487726986408234,
+          "egfr_true": 0,
+          "kras_prob": 0.008867176249623299,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-028",
+          "fold": 1,
+          "egfr_prob": 0.024861708283424377,
+          "egfr_true": 0,
+          "kras_prob": 0.0010578874498605728,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "AMC-030",
+          "fold": 1,
+          "egfr_prob": 0.9371151924133301,
+          "egfr_true": 1,
+          "kras_prob": 0.0006378067191690207,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-032",
+          "fold": 1,
+          "egfr_prob": 0.0008459177915938199,
+          "egfr_true": 1,
+          "kras_prob": 0.9839732646942139,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-039",
+          "fold": 1,
+          "egfr_prob": 0.9525576233863831,
+          "egfr_true": 0,
+          "kras_prob": 0.06359731405973434,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-044",
+          "fold": 1,
+          "egfr_prob": 0.996405839920044,
+          "egfr_true": 1,
+          "kras_prob": 0.0012050834484398365,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-004",
+          "fold": 1,
+          "egfr_prob": 0.0003851233050227165,
+          "egfr_true": 0,
+          "kras_prob": 0.012938803993165493,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-006",
+          "fold": 1,
+          "egfr_prob": 0.9295448660850525,
+          "egfr_true": 0,
+          "kras_prob": 0.0006676878547295928,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-010",
+          "fold": 1,
+          "egfr_prob": 0.029415668919682503,
+          "egfr_true": 0,
+          "kras_prob": 0.0053596775978803635,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-012",
+          "fold": 1,
+          "egfr_prob": 0.0009301365935243666,
+          "egfr_true": 0,
+          "kras_prob": 0.019084051251411438,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-016",
+          "fold": 1,
+          "egfr_prob": 0.0009542215266264975,
+          "egfr_true": 0,
+          "kras_prob": 0.004394866526126862,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-024",
+          "fold": 1,
+          "egfr_prob": 0.0018294714391231537,
+          "egfr_true": -1,
+          "kras_prob": 0.0012169210240244865,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-025",
+          "fold": 1,
+          "egfr_prob": 0.002038528211414814,
+          "egfr_true": 0,
+          "kras_prob": 0.0012803791323676705,
+          "kras_true": -1
+        },
+        {
+          "patient_id": "R01-028",
+          "fold": 1,
+          "egfr_prob": 0.0023287972435355186,
+          "egfr_true": 0,
+          "kras_prob": 0.0319652259349823,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-032",
+          "fold": 1,
+          "egfr_prob": 0.0017527897143736482,
+          "egfr_true": 0,
+          "kras_prob": 0.0019218771485611796,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-050",
+          "fold": 1,
+          "egfr_prob": 0.001041289302520454,
+          "egfr_true": 0,
+          "kras_prob": 0.055929068475961685,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-055",
+          "fold": 1,
+          "egfr_prob": 0.00022593642643187195,
+          "egfr_true": 0,
+          "kras_prob": 0.255266398191452,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-066",
+          "fold": 1,
+          "egfr_prob": 0.09464374929666519,
+          "egfr_true": 0,
+          "kras_prob": 0.0005142853478901088,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-071",
+          "fold": 1,
+          "egfr_prob": 0.0024768158327788115,
+          "egfr_true": 0,
+          "kras_prob": 0.5520022511482239,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-084",
+          "fold": 1,
+          "egfr_prob": 0.002934497082605958,
+          "egfr_true": 0,
+          "kras_prob": 0.007316617760807276,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-086",
+          "fold": 1,
+          "egfr_prob": 0.9982714653015137,
+          "egfr_true": 0,
+          "kras_prob": 0.0015851424541324377,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-088",
+          "fold": 1,
+          "egfr_prob": 0.00047153071500360966,
+          "egfr_true": 1,
+          "kras_prob": 0.00439879298210144,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-096",
+          "fold": 1,
+          "egfr_prob": 0.002500623930245638,
+          "egfr_true": 0,
+          "kras_prob": 0.03884353116154671,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-099",
+          "fold": 1,
+          "egfr_prob": 0.14747771620750427,
+          "egfr_true": 1,
+          "kras_prob": 0.0012625950621441007,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-117",
+          "fold": 1,
+          "egfr_prob": 0.03587465360760689,
+          "egfr_true": 0,
+          "kras_prob": 0.00412727938964963,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-128",
+          "fold": 1,
+          "egfr_prob": 0.0008926585433073342,
+          "egfr_true": 0,
+          "kras_prob": 0.003574737347662449,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-130",
+          "fold": 1,
+          "egfr_prob": 0.06828328967094421,
+          "egfr_true": 0,
+          "kras_prob": 0.014983397908508778,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-135",
+          "fold": 1,
+          "egfr_prob": 0.0005055165383964777,
+          "egfr_true": 0,
+          "kras_prob": 0.012816905975341797,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-136",
+          "fold": 1,
+          "egfr_prob": 0.04609053581953049,
+          "egfr_true": 1,
+          "kras_prob": 0.002590491436421871,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-139",
+          "fold": 1,
+          "egfr_prob": 0.01383889839053154,
+          "egfr_true": 0,
+          "kras_prob": 0.0010773208923637867,
+          "kras_true": 1
+        }
+      ]
+    },
+    {
+      "fold": 2,
+      "best_inner": 0.9478561547610194,
+      "best_epoch": 12,
+      "test": {
+        "egfr_auc": 0.4402173913043478,
+        "egfr_n_pos": 8.0,
+        "egfr_n": 31.0,
+        "egfr_auc_lo": 0.2,
+        "egfr_auc_hi": 0.697121212121212,
+        "kras_auc": 0.6799999999999999,
+        "kras_n_pos": 7.0,
+        "kras_n": 32.0,
+        "kras_auc_lo": 0.4374198717948718,
+        "kras_auc_hi": 0.908072249589491,
+        "grounding_mass": 0.5292932027950883,
+        "grounding_pointing": 0.9583333333333334,
+        "grounding_iou": 0.6580477392977393,
+        "grounding_mass_shuffled": 0.047495593287749216,
+        "grounding_pointing_shuffled": 0.041666666666666664,
+        "grounding_iou_shuffled": 0.017293078438589276,
+        "grounding_roi_frac": 0.036352041196854167,
+        "grounding_peak_ratio": 35.67868642012278,
+        "gen_loss": 4.9194642305374146,
+        "grounding_mass_lift": 0.4817976095073391,
+        "grounding_pointing_lift": 0.9166666666666667,
+        "grounding_iou_lift": 0.64075466085915,
+        "epoch": 12,
+        "split": "outer_test"
+      },
+      "oof": [
+        {
+          "patient_id": "AMC-007",
+          "fold": 2,
+          "egfr_prob": 0.583111584186554,
+          "egfr_true": 0,
+          "kras_prob": 0.17490966618061066,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-016",
+          "fold": 2,
+          "egfr_prob": 0.03370131179690361,
+          "egfr_true": 0,
+          "kras_prob": 0.09134246408939362,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-022",
+          "fold": 2,
+          "egfr_prob": 0.04252736642956734,
+          "egfr_true": 1,
+          "kras_prob": 0.23730279505252838,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-023",
+          "fold": 2,
+          "egfr_prob": 0.04964517056941986,
+          "egfr_true": 1,
+          "kras_prob": 0.1964236944913864,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-024",
+          "fold": 2,
+          "egfr_prob": 0.018993668258190155,
+          "egfr_true": 0,
+          "kras_prob": 0.25474682450294495,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-033",
+          "fold": 2,
+          "egfr_prob": 0.3210024833679199,
+          "egfr_true": -1,
+          "kras_prob": 0.40093302726745605,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-034",
+          "fold": 2,
+          "egfr_prob": 0.021886127069592476,
+          "egfr_true": 1,
+          "kras_prob": 0.15122127532958984,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-049",
+          "fold": 2,
+          "egfr_prob": 0.02442817948758602,
+          "egfr_true": 0,
+          "kras_prob": 0.24552829563617706,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-018",
+          "fold": 2,
+          "egfr_prob": 0.1094730868935585,
+          "egfr_true": 0,
+          "kras_prob": 0.2535979151725769,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-027",
+          "fold": 2,
+          "egfr_prob": 0.20248892903327942,
+          "egfr_true": 0,
+          "kras_prob": 0.28730615973472595,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-035",
+          "fold": 2,
+          "egfr_prob": 0.06567917764186859,
+          "egfr_true": 0,
+          "kras_prob": 0.17907607555389404,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-046",
+          "fold": 2,
+          "egfr_prob": 0.296279639005661,
+          "egfr_true": 0,
+          "kras_prob": 0.1937205046415329,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-053",
+          "fold": 2,
+          "egfr_prob": 0.33981624245643616,
+          "egfr_true": 0,
+          "kras_prob": 0.21830293536186218,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-057",
+          "fold": 2,
+          "egfr_prob": 0.32672005891799927,
+          "egfr_true": 0,
+          "kras_prob": 0.32915037870407104,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-059",
+          "fold": 2,
+          "egfr_prob": 0.10145847499370575,
+          "egfr_true": 0,
+          "kras_prob": 0.5206288695335388,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-061",
+          "fold": 2,
+          "egfr_prob": 0.020147550851106644,
+          "egfr_true": 0,
+          "kras_prob": 0.36220210790634155,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-063",
+          "fold": 2,
+          "egfr_prob": 0.11131379008293152,
+          "egfr_true": 0,
+          "kras_prob": 0.426530122756958,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-065",
+          "fold": 2,
+          "egfr_prob": 0.09992106258869171,
+          "egfr_true": 0,
+          "kras_prob": 0.1604488044977188,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-072",
+          "fold": 2,
+          "egfr_prob": 0.11129717528820038,
+          "egfr_true": 0,
+          "kras_prob": 0.6359377503395081,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-077",
+          "fold": 2,
+          "egfr_prob": 0.13570450246334076,
+          "egfr_true": 0,
+          "kras_prob": 0.2700859308242798,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-083",
+          "fold": 2,
+          "egfr_prob": 0.057921212166547775,
+          "egfr_true": 0,
+          "kras_prob": 0.6094768047332764,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-089",
+          "fold": 2,
+          "egfr_prob": 0.07004561275243759,
+          "egfr_true": 1,
+          "kras_prob": 0.2575872540473938,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-095",
+          "fold": 2,
+          "egfr_prob": 0.3263716995716095,
+          "egfr_true": 0,
+          "kras_prob": 0.2896822392940521,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-097",
+          "fold": 2,
+          "egfr_prob": 0.057831402868032455,
+          "egfr_true": 0,
+          "kras_prob": 0.4050547778606415,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-098",
+          "fold": 2,
+          "egfr_prob": 0.12202144414186478,
+          "egfr_true": 1,
+          "kras_prob": 0.35099276900291443,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-100",
+          "fold": 2,
+          "egfr_prob": 0.08626909554004669,
+          "egfr_true": 0,
+          "kras_prob": 0.4297597110271454,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-104",
+          "fold": 2,
+          "egfr_prob": 0.49862024188041687,
+          "egfr_true": 1,
+          "kras_prob": 0.1424015462398529,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-116",
+          "fold": 2,
+          "egfr_prob": 0.02466605417430401,
+          "egfr_true": 0,
+          "kras_prob": 0.18445178866386414,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-132",
+          "fold": 2,
+          "egfr_prob": 0.3169332444667816,
+          "egfr_true": 1,
+          "kras_prob": 0.21422244608402252,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-137",
+          "fold": 2,
+          "egfr_prob": 0.1874411404132843,
+          "egfr_true": 0,
+          "kras_prob": 0.37437742948532104,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-141",
+          "fold": 2,
+          "egfr_prob": 0.0543326772749424,
+          "egfr_true": 1,
+          "kras_prob": 0.4775216281414032,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-144",
+          "fold": 2,
+          "egfr_prob": 0.12201126664876938,
+          "egfr_true": 0,
+          "kras_prob": 0.45826512575149536,
+          "kras_true": 0
+        }
+      ]
+    },
+    {
+      "fold": 3,
+      "best_inner": 0.9510371492286682,
+      "best_epoch": 32,
+      "test": {
+        "egfr_auc": 0.5738636363636364,
+        "egfr_n_pos": 8.0,
+        "egfr_n": 30.0,
+        "egfr_auc_lo": 0.31746031746031744,
+        "egfr_auc_hi": 0.8160545454545451,
+        "kras_auc": 0.4736842105263158,
+        "kras_n_pos": 9.0,
+        "kras_n": 28.0,
+        "kras_auc_lo": 0.2299270276292335,
+        "kras_auc_hi": 0.7217512077294685,
+        "grounding_mass": 0.7609135901927948,
+        "grounding_pointing": 0.88,
+        "grounding_iou": 0.7065870926459162,
+        "grounding_mass_shuffled": 0.04411582238622941,
+        "grounding_pointing_shuffled": 0.0,
+        "grounding_iou_shuffled": 0.02775509652152909,
+        "grounding_roi_frac": 0.04306122489273548,
+        "grounding_peak_ratio": 41.22542724609375,
+        "gen_loss": 4.880546927452087,
+        "grounding_mass_lift": 0.7167977678065653,
+        "grounding_pointing_lift": 0.88,
+        "grounding_iou_lift": 0.6788319961243872,
+        "epoch": 32,
+        "split": "outer_test"
+      },
+      "oof": [
+        {
+          "patient_id": "AMC-010",
+          "fold": 3,
+          "egfr_prob": 0.0006199768977239728,
+          "egfr_true": 1,
+          "kras_prob": 0.004565999377518892,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-013",
+          "fold": 3,
+          "egfr_prob": 0.6633790135383606,
+          "egfr_true": 1,
+          "kras_prob": 0.004795501474291086,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-021",
+          "fold": 3,
+          "egfr_prob": 0.10645075887441635,
+          "egfr_true": 0,
+          "kras_prob": 0.0009566985536366701,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "AMC-042",
+          "fold": 3,
+          "egfr_prob": 0.0009023671736940742,
+          "egfr_true": 1,
+          "kras_prob": 0.12319105118513107,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-045",
+          "fold": 3,
+          "egfr_prob": 0.997416615486145,
+          "egfr_true": 1,
+          "kras_prob": 0.0018449901835992932,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-046",
+          "fold": 3,
+          "egfr_prob": 0.0007357708527706563,
+          "egfr_true": 0,
+          "kras_prob": 0.9957713484764099,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-003",
+          "fold": 3,
+          "egfr_prob": 0.0006034079706296325,
+          "egfr_true": 1,
+          "kras_prob": 0.8054019808769226,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-005",
+          "fold": 3,
+          "egfr_prob": 0.0156887024641037,
+          "egfr_true": 0,
+          "kras_prob": 0.002456940244883299,
+          "kras_true": -1
+        },
+        {
+          "patient_id": "R01-020",
+          "fold": 3,
+          "egfr_prob": 0.015032317489385605,
+          "egfr_true": 0,
+          "kras_prob": 0.15297870337963104,
+          "kras_true": -1
+        },
+        {
+          "patient_id": "R01-022",
+          "fold": 3,
+          "egfr_prob": 0.577488899230957,
+          "egfr_true": -1,
+          "kras_prob": 0.002791705774143338,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-029",
+          "fold": 3,
+          "egfr_prob": 0.00039309938438236713,
+          "egfr_true": 0,
+          "kras_prob": 0.003134167054668069,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-030",
+          "fold": 3,
+          "egfr_prob": 0.004981873091310263,
+          "egfr_true": 0,
+          "kras_prob": 0.003850641893222928,
+          "kras_true": -1
+        },
+        {
+          "patient_id": "R01-041",
+          "fold": 3,
+          "egfr_prob": 0.00041865938692353666,
+          "egfr_true": 0,
+          "kras_prob": 0.0017748880200088024,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-043",
+          "fold": 3,
+          "egfr_prob": 0.00033946032635867596,
+          "egfr_true": 0,
+          "kras_prob": 0.7862577438354492,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-044",
+          "fold": 3,
+          "egfr_prob": 0.9720293879508972,
+          "egfr_true": 0,
+          "kras_prob": 0.0020019817166030407,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-047",
+          "fold": 3,
+          "egfr_prob": 0.00034085087827406824,
+          "egfr_true": 1,
+          "kras_prob": 0.9232105612754822,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-048",
+          "fold": 3,
+          "egfr_prob": 0.005602008197456598,
+          "egfr_true": 0,
+          "kras_prob": 0.003851271001622081,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-054",
+          "fold": 3,
+          "egfr_prob": 0.000611126481089741,
+          "egfr_true": 0,
+          "kras_prob": 0.0016067689284682274,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-060",
+          "fold": 3,
+          "egfr_prob": 0.008071355521678925,
+          "egfr_true": 0,
+          "kras_prob": 0.005803389940410852,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-062",
+          "fold": 3,
+          "egfr_prob": 0.0005452470504678786,
+          "egfr_true": 0,
+          "kras_prob": 0.03841419517993927,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-085",
+          "fold": 3,
+          "egfr_prob": 0.00013902918726671487,
+          "egfr_true": 0,
+          "kras_prob": 0.7116590738296509,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-090",
+          "fold": 3,
+          "egfr_prob": 0.0006083009066060185,
+          "egfr_true": 0,
+          "kras_prob": 0.024355044588446617,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-103",
+          "fold": 3,
+          "egfr_prob": 0.005822266452014446,
+          "egfr_true": 0,
+          "kras_prob": 0.018649838864803314,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-105",
+          "fold": 3,
+          "egfr_prob": 0.00823751650750637,
+          "egfr_true": 0,
+          "kras_prob": 0.0026489244773983955,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-112",
+          "fold": 3,
+          "egfr_prob": 0.00040890503441914916,
+          "egfr_true": 0,
+          "kras_prob": 0.062489353120326996,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-113",
+          "fold": 3,
+          "egfr_prob": 0.20054130256175995,
+          "egfr_true": 0,
+          "kras_prob": 0.0013043967774137855,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-118",
+          "fold": 3,
+          "egfr_prob": 0.0003090950776822865,
+          "egfr_true": 0,
+          "kras_prob": 0.0069792610593140125,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-129",
+          "fold": 3,
+          "egfr_prob": 0.01763705164194107,
+          "egfr_true": 0,
+          "kras_prob": 0.0015519001754000783,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-142",
+          "fold": 3,
+          "egfr_prob": 0.03066161274909973,
+          "egfr_true": 1,
+          "kras_prob": 0.0007318275165744126,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-145",
+          "fold": 3,
+          "egfr_prob": 0.001957892905920744,
+          "egfr_true": 0,
+          "kras_prob": 0.01130798552185297,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-146",
+          "fold": 3,
+          "egfr_prob": 0.0018563664052635431,
+          "egfr_true": 1,
+          "kras_prob": 0.0011088992469012737,
+          "kras_true": 0
+        }
+      ]
+    },
+    {
+      "fold": 4,
+      "best_inner": 0.9591375567726103,
+      "best_epoch": 16,
+      "test": {
+        "egfr_auc": 0.8409090909090908,
+        "egfr_n_pos": 8.0,
+        "egfr_n": 30.0,
+        "egfr_auc_lo": 0.672,
+        "egfr_auc_hi": 0.968,
+        "kras_auc": 0.608,
+        "kras_n_pos": 5.0,
+        "kras_n": 30.0,
+        "kras_auc_lo": 0.3578042328042328,
+        "kras_auc_hi": 0.8214285714285714,
+        "grounding_mass": 0.4149376789019221,
+        "grounding_pointing": 0.9523809523809523,
+        "grounding_iou": 0.7555116996293467,
+        "grounding_mass_shuffled": 0.021500343578823265,
+        "grounding_pointing_shuffled": 0.0,
+        "grounding_iou_shuffled": 0.0031746031746031746,
+        "grounding_roi_frac": 0.03279883405637173,
+        "grounding_peak_ratio": 25.808084714980353,
+        "gen_loss": 5.118101954460144,
+        "grounding_mass_lift": 0.3934373353230989,
+        "grounding_pointing_lift": 0.9523809523809523,
+        "grounding_iou_lift": 0.7523370964547436,
+        "epoch": 16,
+        "split": "outer_test"
+      },
+      "oof": [
+        {
+          "patient_id": "AMC-006",
+          "fold": 4,
+          "egfr_prob": 0.006180435884743929,
+          "egfr_true": 0,
+          "kras_prob": 0.5592273473739624,
+          "kras_true": -1
+        },
+        {
+          "patient_id": "AMC-018",
+          "fold": 4,
+          "egfr_prob": 0.12194637209177017,
+          "egfr_true": 0,
+          "kras_prob": 0.1766340732574463,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-026",
+          "fold": 4,
+          "egfr_prob": 0.1303606927394867,
+          "egfr_true": 0,
+          "kras_prob": 0.23743827641010284,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "AMC-027",
+          "fold": 4,
+          "egfr_prob": 0.9843288660049438,
+          "egfr_true": 1,
+          "kras_prob": 0.011542405933141708,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-029",
+          "fold": 4,
+          "egfr_prob": 0.4511158764362335,
+          "egfr_true": 0,
+          "kras_prob": 0.1738288849592209,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-036",
+          "fold": 4,
+          "egfr_prob": 0.14985476434230804,
+          "egfr_true": 1,
+          "kras_prob": 0.1702183037996292,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-037",
+          "fold": 4,
+          "egfr_prob": 0.017192292958498,
+          "egfr_true": 0,
+          "kras_prob": 0.19913575053215027,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-038",
+          "fold": 4,
+          "egfr_prob": 0.9412230253219604,
+          "egfr_true": 1,
+          "kras_prob": 0.009122619405388832,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-041",
+          "fold": 4,
+          "egfr_prob": 0.13093125820159912,
+          "egfr_true": 1,
+          "kras_prob": 0.19678081572055817,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "AMC-048",
+          "fold": 4,
+          "egfr_prob": 0.8788690567016602,
+          "egfr_true": -1,
+          "kras_prob": 0.06734734773635864,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-007",
+          "fold": 4,
+          "egfr_prob": 0.019106220453977585,
+          "egfr_true": 0,
+          "kras_prob": 0.32527440786361694,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-008",
+          "fold": 4,
+          "egfr_prob": 0.04626386612653732,
+          "egfr_true": 0,
+          "kras_prob": 0.3216816186904907,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-015",
+          "fold": 4,
+          "egfr_prob": 0.012028209865093231,
+          "egfr_true": 0,
+          "kras_prob": 0.32841089367866516,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-026",
+          "fold": 4,
+          "egfr_prob": 0.03579900413751602,
+          "egfr_true": 1,
+          "kras_prob": 0.37197986245155334,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-036",
+          "fold": 4,
+          "egfr_prob": 0.02608177624642849,
+          "egfr_true": 0,
+          "kras_prob": 0.19173404574394226,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-037",
+          "fold": 4,
+          "egfr_prob": 0.07528962939977646,
+          "egfr_true": 1,
+          "kras_prob": 0.1937287598848343,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-038",
+          "fold": 4,
+          "egfr_prob": 0.026150306686758995,
+          "egfr_true": 0,
+          "kras_prob": 0.08471907675266266,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-051",
+          "fold": 4,
+          "egfr_prob": 0.17099404335021973,
+          "egfr_true": 0,
+          "kras_prob": 0.1047467365860939,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-070",
+          "fold": 4,
+          "egfr_prob": 0.01960359700024128,
+          "egfr_true": 0,
+          "kras_prob": 0.3516063094139099,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-074",
+          "fold": 4,
+          "egfr_prob": 0.2935504615306854,
+          "egfr_true": 0,
+          "kras_prob": 0.158659428358078,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-076",
+          "fold": 4,
+          "egfr_prob": 0.578073263168335,
+          "egfr_true": 1,
+          "kras_prob": 0.08773495256900787,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-078",
+          "fold": 4,
+          "egfr_prob": 0.7489132285118103,
+          "egfr_true": 0,
+          "kras_prob": 0.04704207926988602,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-081",
+          "fold": 4,
+          "egfr_prob": 0.020040428265929222,
+          "egfr_true": 0,
+          "kras_prob": 0.4187588095664978,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-091",
+          "fold": 4,
+          "egfr_prob": 0.012437764555215836,
+          "egfr_true": 0,
+          "kras_prob": 0.7177213430404663,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-094",
+          "fold": 4,
+          "egfr_prob": 0.037271928042173386,
+          "egfr_true": 0,
+          "kras_prob": 0.35366570949554443,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-109",
+          "fold": 4,
+          "egfr_prob": 0.01454191841185093,
+          "egfr_true": 0,
+          "kras_prob": 0.4663880467414856,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-110",
+          "fold": 4,
+          "egfr_prob": 0.05067718029022217,
+          "egfr_true": 0,
+          "kras_prob": 0.25760552287101746,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-122",
+          "fold": 4,
+          "egfr_prob": 0.027343662455677986,
+          "egfr_true": 0,
+          "kras_prob": 0.2937335669994354,
+          "kras_true": 1
+        },
+        {
+          "patient_id": "R01-125",
+          "fold": 4,
+          "egfr_prob": 0.019535431638360023,
+          "egfr_true": 0,
+          "kras_prob": 0.3921078145503998,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-131",
+          "fold": 4,
+          "egfr_prob": 0.23549287021160126,
+          "egfr_true": 1,
+          "kras_prob": 0.21152566373348236,
+          "kras_true": 0
+        },
+        {
+          "patient_id": "R01-140",
+          "fold": 4,
+          "egfr_prob": 0.03870375454425812,
+          "egfr_true": 0,
+          "kras_prob": 0.23844338953495026,
+          "kras_true": 0
+        }
+      ]
+    }
+  ]
+}

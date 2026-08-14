@@ -106,3 +106,58 @@ def test_no_superseded_figures_survive_in_prose():
 def test_the_config_does_not_cite_a_superseded_number():
     cfg = open("configs/default.yaml").read()
     assert "0.522" not in cfg, "config still cites the superseded KRAS AUC"
+
+
+def test_claimed_checklists_exist():
+    """The manuscript says checklists 'accompany' it. They must exist.
+
+    It said 'checklists' (plural) while only CLAIM was written -- the same class
+    of unearned claim as citing an artifact that was never produced.
+    """
+    import os
+    import re
+
+    import pytest
+
+    if not os.path.exists("paper/main.tex"):
+        pytest.skip("manuscript not present")
+    src = open("paper/main.tex").read()
+    if re.search(r"checklists? accompany this manuscript", src):
+        assert os.path.exists("docs/CLAIM_CHECKLIST.md")
+        assert os.path.exists("docs/TRIPOD_AI_CHECKLIST.md"), (
+            "manuscript claims a TRIPOD+AI checklist accompanies it")
+
+
+def test_tripod_checklist_covers_every_item():
+    """All 27 TRIPOD+AI items, including the lettered sub-items."""
+    import os
+
+    import pytest
+
+    if not os.path.exists("docs/TRIPOD_AI_CHECKLIST.md"):
+        pytest.skip("no TRIPOD checklist")
+    doc = open("docs/TRIPOD_AI_CHECKLIST.md").read()
+    items = ["1", "2", "3a", "3b", "3c", "4", "5a", "5b", "6a", "6b", "6c", "7",
+             "8a", "8b", "8c", "9a", "9b", "9c", "10", "11",
+             "12a", "12b", "12c", "12d", "12e", "12f", "12g",
+             "13", "14", "15", "16", "17", "18a", "18b", "18c", "18d", "18e",
+             "18f", "19", "20a", "20b", "20c", "21", "22", "23a", "23b", "24",
+             "25", "26", "27a", "27b", "27c"]
+    missing = [i for i in items if f"| {i} |" not in doc]
+    assert not missing, f"TRIPOD+AI items not answered: {missing}"
+
+
+def test_every_tripod_na_carries_a_reason():
+    """An unexplained NA reads as an omission rather than a decision."""
+    import os
+    import re
+
+    import pytest
+
+    if not os.path.exists("docs/TRIPOD_AI_CHECKLIST.md"):
+        pytest.skip("no TRIPOD checklist")
+    bad = []
+    for line in open("docs/TRIPOD_AI_CHECKLIST.md"):
+        if re.search(r"\*\*NA\.?\*\*", line) and "*Reason:*" not in line:
+            bad.append(line.split("|")[1].strip() if "|" in line else line[:40])
+    assert not bad, f"NA without a stated reason: {bad}"
