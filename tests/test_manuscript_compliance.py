@@ -402,3 +402,32 @@ def test_cover_letter_ai_disclosure_names_the_errors():
     assert "Errors the assistance introduced" in cl
     for e in ("sample-size formula", "mis-attributed", "stale command-line"):
         assert e in cl, f"cover letter no longer names: {e}"
+
+
+def test_cover_letter_numbers_match_the_manuscript():
+    """The cover letter quoted 414 after the manuscript was corrected to 1159.
+
+    It is a separate file, so a fix applied to main.tex does not reach it, and
+    the editorial office reads the cover letter first. Any figure quoted in both
+    places must agree.
+    """
+    import json
+    import os
+
+    import pytest
+
+    if not (os.path.exists(COVER_LETTER) and os.path.exists("results/power.json")):
+        pytest.skip("artifacts not present")
+    cl = " ".join(open(COVER_LETTER).read().split())
+    src = " ".join(open(MAIN).read().split())
+
+    riley = json.load(open("results/power.json"))["riley_min_n"]
+    n = riley[[k for k in riley if k.startswith("clinical")][0]]
+    assert f"{n} patients" in cl, f"cover letter must quote the current {n}"
+    assert "414" not in cl, "cover letter still quotes the superseded 414"
+
+    # Headline figures that appear in both documents.
+    for fig in ("0.618", "0.794", "-0.029", "0.154"):
+        if fig.lstrip("-") in src:
+            assert fig.lstrip("-") in cl or fig in cl, (
+                f"{fig} is in the manuscript but not the cover letter")
