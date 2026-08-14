@@ -35,4 +35,8 @@ for seed in "${SEEDS[@]}"; do
 done
 
 echo "[multiseed] aggregating"
-python -m theia.analysis.aggregate --pattern 'results/ms-s*.json'
+# NOT a glob. `results/ms-s*.json` swept in ms-s1337 -- a run with a stalled fold,
+# scored on 122 of 153 patients -- and kept its inflated 0.674 alive in three
+# documents. It would now also sweep in the 20 stability runs. The canonical set
+# has one definition, in results/CANONICAL.json, and aggregate reads it.
+python -m theia.analysis.aggregate
