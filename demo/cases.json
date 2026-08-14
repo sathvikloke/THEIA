@@ -1,0 +1,108 @@
+{
+  "checkpoint": "checkpoints/ms-s7/fold0/best.pt",
+  "run": "ms-s7.json",
+  "fold": 0,
+  "collection": "NSCLC-Radiogenomics",
+  "licence": "CC BY 3.0",
+  "attribution": "Bakr S, Gevaert O, Echegaray S, et al. Sci Data 2018;5:180202",
+  "cohort": {
+    "model_auc": 0.618,
+    "model_auc_sd": 0.025,
+    "clinical_auc": 0.764,
+    "smoking_auc": 0.794,
+    "delta_auc": -0.029,
+    "delta_sd": 0.015,
+    "calibration_slope": 0.19,
+    "brier": 0.236,
+    "brier_floor": 0.193,
+    "base_rate": 0.261,
+    "external_pointing": 0.609,
+    "external_centre_prior": 0.476
+  },
+  "cases": [
+    {
+      "id": "R01-025",
+      "age": 68,
+      "sex": "male",
+      "histology": "Adenocarcinoma",
+      "egfr_true": 0,
+      "model_prob": 0.013,
+      "clinical_prob": 0.274,
+      "grounding": {
+        "grounding_mass": 0.525,
+        "grounding_pointing": 1.0,
+        "grounding_iou": 0.571,
+        "grounding_mass_shuffled": 0.107,
+        "grounding_pointing_shuffled": 0.0,
+        "grounding_iou_shuffled": 0.048,
+        "grounding_roi_frac": 0.056,
+        "grounding_peak_ratio": 19.292
+      },
+      "ct": "assets/R01-025_ct.png",
+      "attn": "assets/R01-025_attn.png"
+    },
+    {
+      "id": "R01-027",
+      "age": 76,
+      "sex": "male",
+      "histology": "NSCLC NOS (not otherwise specified)",
+      "egfr_true": 0,
+      "model_prob": 0.034,
+      "clinical_prob": 0.373,
+      "grounding": {
+        "grounding_mass": 0.452,
+        "grounding_pointing": 1.0,
+        "grounding_iou": 0.636,
+        "grounding_mass_shuffled": 0.078,
+        "grounding_pointing_shuffled": 0.0,
+        "grounding_iou_shuffled": 0.059,
+        "grounding_roi_frac": 0.046,
+        "grounding_peak_ratio": 21.545
+      },
+      "ct": "assets/R01-027_ct.png",
+      "attn": "assets/R01-027_attn.png"
+    },
+    {
+      "id": "R01-031",
+      "age": 64,
+      "sex": "male",
+      "histology": "NSCLC NOS (not otherwise specified)",
+      "egfr_true": 0,
+      "model_prob": 0.008,
+      "clinical_prob": 0.443,
+      "grounding": {
+        "grounding_mass": 0.302,
+        "grounding_pointing": 1.0,
+        "grounding_iou": 0.4,
+        "grounding_mass_shuffled": 0.021,
+        "grounding_pointing_shuffled": 0.0,
+        "grounding_iou_shuffled": 0.0,
+        "grounding_roi_frac": 0.036,
+        "grounding_peak_ratio": 13.961
+      },
+      "ct": "assets/R01-031_ct.png",
+      "attn": "assets/R01-031_attn.png"
+    },
+    {
+      "id": "R01-146",
+      "age": 81,
+      "sex": "female",
+      "histology": "Adenocarcinoma",
+      "egfr_true": 1,
+      "model_prob": 0.008,
+      "clinical_prob": 0.826,
+      "grounding": {
+        "grounding_mass": 0.498,
+        "grounding_pointing": 1.0,
+        "grounding_iou": 0.6,
+        "grounding_mass_shuffled": 0.17,
+        "grounding_pointing_shuffled": 0.0,
+        "grounding_iou_shuffled": 0.143,
+        "grounding_roi_frac": 0.061,
+        "grounding_peak_ratio": 14.842
+      },
+      "ct": "assets/R01-146_ct.png",
+      "attn": "assets/R01-146_attn.png"
+    }
+  ]
+}

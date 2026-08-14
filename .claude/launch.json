@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "theia-demo",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "7871", "--directory", "demo"],
+      "port": 7871
+    },
+    {
+      "name": "theia-reader",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "theia.reader_study.serve", "--reader", "DEMO"],
+      "port": 7860
+    }
+  ]
+}
