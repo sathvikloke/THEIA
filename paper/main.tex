@@ -363,19 +363,17 @@ lift of exactly $+0.000$ at a peak-to-mean ratio of 1.01 and pointing accuracy
 0.005, ruling out architectural inductive bias.
 
 \textbf{The fold count is a weak estimator, reported because it was
-pre-specified.} The margin over the threshold is one fold, 11 of 15 (73.3\%)
-against 71.4\%, and the 15 evaluations are not 15 studies: they are three seeds by
-five folds scored on the same 420 patients with overlapping training sets, so the
-count treats dependent replicates as independent. A patient-level analysis
-resampling the 420 patients is reported below as post hoc. We did not substitute
-it for H\textsubscript{1}, because choosing a better endpoint after seeing the
-data is the failure pre-specification exists to prevent.
+pre-specified.} The margin is one fold, 11 of 15 (73.3\%) against 71.4\%, and the
+15 evaluations are not 15 studies: three seeds by five folds on the same 420
+patients with overlapping training sets, so the count treats dependent replicates
+as independent. A patient-level analysis is reported below as post hoc; we did not
+substitute it for H\textsubscript{1}, because choosing a better endpoint after
+seeing the data is the failure pre-specification prevents.
 
 Table 3 reports every evaluation individually, and the distribution is bimodal
 rather than marginal: the weakest success has pointing accuracy 0.757 and the
 strongest failure exactly 0.000, with nothing between. Folds either align
-decisively or not at all, so the verdict is insensitive to where the threshold
-sits within a wide interval while remaining sensitive to the fold count.
+decisively or not at all.
 
 The failures are concentrated rather than scattered: one run aligned in two of five
 folds while the others reached five of five and four of five, and that same run
@@ -384,20 +382,23 @@ AUC of the three. \textbf{Attention alignment is therefore training-unstable}, a
 nothing in the internal metrics predicts which run will transfer.
 
 \textbf{Post hoc: the margin over the center prior depends on treating the
-training run as fixed.} Resampling the 420 external patients, mean pointing
-accuracy exceeded the center prior by $+0.133$ (95\% CI: 0.082, 0.183;
-\textit{P} $<$ .001) and area-matched overlap by $+0.107$ (95\% CI: 0.082, 0.133;
-\textit{P} $<$ .001). Resampling the three training runs as well, both intervals
-include zero ($+0.133$; 95\% CI: $-0.128$, 0.350; \textit{P} $=$ .30, and
-$+0.107$; 95\% CI: $-0.064$, 0.248; \textit{P} $=$ .19). Only the contrast against
-an untrained head survives that reading (mass $+0.243$; 95\% CI: 0.130, 0.351;
-\textit{P} $<$ .001).
+training run as fixed.} Resampling the 420 patients, pointing accuracy exceeded
+the center prior by $+0.133$ (95\% CI: 0.082, 0.183; \textit{P} $<$ .001) and
+overlap by $+0.107$ (95\% CI: 0.082, 0.133; \textit{P} $<$ .001). Resampling the
+three training runs as well, both intervals include zero (\textit{P} $=$ .30 and
+\textit{P} $=$ .19); only the contrast against an untrained head survives
+(\textit{P} $<$ .001). Between-run variance therefore dominates. A hierarchical
+interval on three runs is wide by construction and underpowered at the run level,
+but that is the finding rather than an excuse for it.
 
-Between-run variance therefore dominates --- the instability reported above seen
-from a second direction. A hierarchical interval on three runs is wide by
-construction and underpowered at the run level, but that is the finding rather
-than an excuse for it: we can claim these models attend to the lesion on an unseen
-cohort, not that the next one would.
+\textbf{Displacing the lesion separates the model from the prior directly.} We
+translated each external crop, and its reference contour, so the tumor was no
+longer centered, changing nothing else. Training used 30\% crop jitter, so 20\% is
+inside that regime and 35\% is at the edge of where the lesion stays in frame.
+Across the 11 aligning folds, pointing accuracy fell from 0.831 centered to 0.776
+at 20\% and 0.711 at 35\%, while the center prior fell from 0.476 to 0.140 to
+0.002 (Table 3). A model attending to the middle would track the prior; this one
+tracks the tumor.
 
 Representative attention maps appear in Figure 6.
 
@@ -448,13 +449,15 @@ clear a five-variable clinical model on the cohort it was trained on
 worse than a constant on the probability scale (Brier score 0.236 against a
 base-rate floor of 0.193).
 
-Two limits bound what ``transferred'' means. The attention task is
-ROI-conditioned --- the lesion is near the center of the input by construction, so
-this is alignment, not detection in a whole chest CT --- and the transfer is
-training-unstable. The post-hoc analysis makes the second limit precise: the
-margin over a center prior is unambiguous across patients and disappears once the
-training run is treated as a random effect. The dissociation below is a statement
-about the models we trained, not a guarantee about the next one.
+Two limits bound what ``transferred'' means, and they resolve differently. The
+task is ROI-conditioned, so this is alignment rather than detection --- but the
+attention is not merely exploiting that conditioning: displacing the lesion to
+35\% of the frame costs the aligning folds 0.12 of pointing accuracy while the
+center prior loses essentially all of its (0.476 to 0.002). The binding limit is
+the second. Transfer is training-unstable, and once the run is treated as a random
+effect the margin over the center prior is no longer distinguishable from zero.
+The dissociation below is a statement about the models we trained, not a guarantee
+about the next one.
 
 \textit{What the localization endpoint does and does not establish.} Attention
 mass, pointing accuracy and area-matched intersection over union are not measures
@@ -489,14 +492,13 @@ defensible claim is narrower: a reported AUC in this literature is not
 interpretable without the preprocessing and validation protocol that produced it.
 
 \textit{Comparison with prior reports.} Our peritumoral finding replicates six
-prior reports in direction while failing to reach significance after correction
-for the ten arms actually examined. We consider that a more likely description of
-this literature than the alternative, given that the same six reports place the
-optimal ring width anywhere from 1 to 15~mm. Similarly, our histology result
-reproduces Yamazaki et al \citep{yamazaki2022}: performance falls when the
-patients with squamous cell carcinoma, who are wild-type without exception, are
-removed. Any study reporting \textit{EGFR} AUC across mixed histologies is partly
-reporting a histology classifier.
+prior reports in direction while failing significance after correction for the ten
+arms examined --- a likelier description of that literature than the alternative,
+given the same six reports place the optimal ring width anywhere from 1 to 15~mm.
+Our histology result reproduces Yamazaki et al \citep{yamazaki2022}: performance
+falls when the squamous patients, wild-type without exception, are removed. Any
+study reporting \textit{EGFR} AUC across mixed histologies is partly reporting a
+histology classifier.
 
 \textit{Limitations.} The internal cohort is single-institution and historical,
 with no recoverable accrual window. The classification arm has no external
@@ -803,6 +805,12 @@ C & 4 & 0.384 & 0.048 & $+0.336$ & 0.874 & 0.553 \\
 \multicolumn{2}{l}{Trained, mean} & 0.292 & 0.048 & $+0.244$ & 0.609 & 0.394 \\
 \multicolumn{2}{l}{Control: center prior} & 0.270 & 0.056 & $+0.214$ & 0.476 & 0.287 \\
 \multicolumn{2}{l}{Control: untrained head} & 0.049 & 0.049 & $-0.000$ & 0.005 & 0.008 \\
+\midrule
+\multicolumn{7}{l}{\textit{Off-center stress test: lesion displaced from the frame center}}\\
+\multicolumn{2}{l}{20\%, trained} & 0.263 & ... & ... & 0.569 & 0.344 \\
+\multicolumn{2}{l}{20\%, center prior} & 0.136 & ... & ... & 0.140 & 0.099 \\
+\multicolumn{2}{l}{35\%, trained} & 0.226 & ... & ... & 0.522 & 0.281 \\
+\multicolumn{2}{l}{35\%, center prior} & 0.032 & ... & ... & 0.002 & 0.007 \\
 \bottomrule
 \end{tabular}
 
@@ -814,7 +822,14 @@ reference tumor contour, Shuffle is the same values permuted across cells, and
 Lift is their difference. Pointing is the fraction of patients whose peak
 attention cell falls inside the contour. Eleven of 15 evaluations exceed their
 shuffle, meeting the pre-specified threshold of 71.4\% by one evaluation. All 11
-successes exceed the center prior on pointing accuracy.
+successes exceed the center prior on pointing accuracy. In the stress test the
+whole crop and its reference contour are translated so the lesion is no longer
+centered, each patient along a different angle, with the vacated region filled
+with air; trained values are means over all 15 evaluations, including the four
+that do not align and so contribute 0.000 at every displacement. Over the 11
+aligning evaluations alone, pointing accuracy is 0.831, 0.776 and 0.711 at 0\%,
+20\% and 35\%. Ellipses indicate not applicable, the shuffle baseline being
+defined for the undisplaced comparison.
 IoU = area-matched intersection over union,
 NSCLC = non--small cell lung cancer.
 \end{table}
