@@ -30,8 +30,8 @@ def test_resistance_mutations_are_not_counted_as_activating(change):
     assert classify(change) == "RESISTANCE"
 
 
-@pytest.mark.parametrize("change,", [
-    ("L62R",), ("R222L",), ("E545Q",), ("K479I",), ("H358R",), ("E84K",), ("I143L",),
+@pytest.mark.parametrize("change", [
+    "L62R", "R222L", "E545Q", "K479I", "H358R", "E84K", "I143L",
 ])
 def test_extracellular_variants_are_passengers(change):
     """Every one of these is really present in TCGA/CPTAC labelled 'EGFR mutant'.
@@ -41,7 +41,7 @@ def test_extracellular_variants_are_passengers(change):
     class -- which at ~17 external positives is a patient or two labelled
     backwards.
     """
-    assert classify(change[0]) == "PASSENGER"
+    assert classify(change) == "PASSENGER"
 
 
 def test_exon20_insertions_are_kept_separate_from_activating():
