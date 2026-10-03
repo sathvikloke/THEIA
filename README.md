@@ -49,7 +49,7 @@ THEIA takes lung imaging (CT, and H&E pathology in the multi-modal build) and re
 | **Explanation** | generation | a short, structured rationale a clinician can audit |
 | **Deferral** | uncertainty | an honest "defer to biopsy" when the imaging call is not confident enough |
 
-The name is the Greek titaness of sight and light: the model *sees* (vision) and *illuminates* what it saw (grounding). That linkage between a prediction, the pixels behind it, and a written rationale is the whole point.
+The name comes from the Greek titaness of sight and light: the model *sees* (vision) and *illuminates* what it saw (grounding). That linkage between a prediction, the pixels behind it, and a written rationale is the whole point.
 
 > **Scope note.** This repo is the CT-only core (classify + ground + generate on a single cohort), which is phase one of a 12-month program. The multi-modal branch (pathology, multi-gene, cross-institution external validation, uncertainty-aware deferral, and a radiogenomic discovery atlas) is the larger build. See [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) for the full plan.
 
