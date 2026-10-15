@@ -1,0 +1,308 @@
+{
+  "schema_version": 1,
+  "source_to_task": {
+    "compute": {
+      "CMP-01": [
+        "M01"
+      ],
+      "CMP-02": [
+        "M02"
+      ],
+      "CMP-03": [
+        "M03"
+      ],
+      "CMP-04": [
+        "M04"
+      ],
+      "CMP-05": [
+        "M05"
+      ],
+      "CMP-06": [
+        "M06"
+      ],
+      "CMP-07": [
+        "M07"
+      ],
+      "CMP-08": [
+        "M08"
+      ],
+      "CMP-09": [
+        "E02",
+        "A01"
+      ],
+      "CMP-10": [
+        "M09"
+      ],
+      "CMP-11": [
+        "M10"
+      ],
+      "CMP-12": [
+        "P04",
+        "P06"
+      ],
+      "CMP-13": [
+        "E06"
+      ],
+      "CMP-14": [
+        "R02"
+      ]
+    },
+    "optional": {
+      "CMP-X01": [
+        "X01"
+      ],
+      "CMP-X02": [
+        "X02"
+      ],
+      "CMP-X03": [
+        "X03"
+      ],
+      "CMP-X04": [
+        "X04"
+      ],
+      "CMP-X05": [
+        "X05"
+      ],
+      "CMP-X06": [
+        "X06"
+      ],
+      "CMP-X07": [
+        "X07"
+      ],
+      "CMP-X08": [
+        "X08"
+      ],
+      "CMP-X09": [
+        "X09"
+      ],
+      "CMP-X10": [
+        "X10"
+      ],
+      "CMP-X11": [
+        "X11"
+      ]
+    },
+    "public_ct": {
+      "CMP-PCT01": [
+        "N01",
+        "N02"
+      ],
+      "CMP-PCT02": [
+        "N03"
+      ],
+      "CMP-PCT03": [
+        "N09"
+      ],
+      "CMP-PCT04": [
+        "N04"
+      ],
+      "CMP-PCT05": [
+        "N05"
+      ],
+      "CMP-PCT06": [
+        "N08"
+      ],
+      "CMP-PCT07": [
+        "N06",
+        "D21"
+      ],
+      "CMP-PCT08": [
+        "N07"
+      ],
+      "CMP-PCT09": [
+        "M11"
+      ]
+    },
+    "data": {
+      "DATA-01": [
+        "E01",
+        "E02",
+        "D19"
+      ],
+      "DATA-02": [
+        "E04"
+      ],
+      "DATA-03": [
+        "D09",
+        "M01"
+      ],
+      "DATA-04": [
+        "D16"
+      ],
+      "DATA-05": [
+        "D08",
+        "D13"
+      ],
+      "DATA-06": [
+        "D05"
+      ],
+      "DATA-07": [
+        "D06",
+        "D07"
+      ],
+      "DATA-08": [
+        "D01",
+        "D02"
+      ],
+      "DATA-09": [
+        "D03"
+      ],
+      "DATA-10": [
+        "D04"
+      ],
+      "DATA-11": [
+        "D04"
+      ],
+      "DATA-12": [
+        "D20"
+      ],
+      "DATA-13": [
+        "D21"
+      ],
+      "DATA-14": [
+        "D13",
+        "D18"
+      ],
+      "DATA-15": [
+        "E04",
+        "D03"
+      ],
+      "DATA-16": [
+        "N02",
+        "N04"
+      ],
+      "DATA-17": [
+        "D10"
+      ],
+      "DATA-18": [
+        "R01",
+        "R03"
+      ],
+      "DATA-19": [
+        "D17"
+      ],
+      "DATA-20": [
+        "D11",
+        "D17"
+      ],
+      "DATA-21": [
+        "D12"
+      ],
+      "DATA-22": [
+        "D17",
+        "M11"
+      ],
+      "DATA-23": [
+        "A02"
+      ],
+      "DATA-24": [
+        "D18"
+      ],
+      "DATA-25": [
+        "D19",
+        "X08",
+        "X12"
+      ],
+      "DATA-26": [
+        "R02",
+        "D15"
+      ],
+      "DATA-27": [
+        "D15",
+        "R05"
+      ],
+      "DATA-28": [
+        "E01",
+        "P06"
+      ]
+    },
+    "publication": {
+      "PUB-01": [
+        "E01",
+        "E02"
+      ],
+      "PUB-02": [
+        "M01",
+        "M02",
+        "M03",
+        "M04",
+        "M05",
+        "M07"
+      ],
+      "PUB-03": [
+        "M08"
+      ],
+      "PUB-04": [
+        "D17",
+        "M11",
+        "R01",
+        "R03",
+        "R04"
+      ],
+      "PUB-05": [
+        "P01"
+      ],
+      "PUB-06": [
+        "P02"
+      ],
+      "PUB-07": [
+        "P03"
+      ],
+      "PUB-08": [
+        "P04"
+      ],
+      "PUB-09": [
+        "P05"
+      ],
+      "PUB-10": [
+        "P06"
+      ],
+      "PUB-11": [
+        "P07"
+      ]
+    }
+  },
+  "historical_light_queue": {
+    "state": "completed_in_2026-10-14_scope; reuse, not rerun",
+    "integration": [
+      "I01",
+      "I02",
+      "I03",
+      "I04",
+      "I05",
+      "I06",
+      "C03"
+    ],
+    "challenge": [
+      "C01",
+      "C02",
+      "C04",
+      "C05",
+      "C06"
+    ],
+    "readiness": [
+      "R01",
+      "R02",
+      "R03",
+      "R04",
+      "R06"
+    ],
+    "synthesis": [
+      "R05",
+      "D01",
+      "D02",
+      "D03",
+      "D04",
+      "D05",
+      "D06"
+    ],
+    "warning": "Historical IDs use a different namespace from this new execution register."
+  },
+  "additional_tasks": {
+    "E03": "Portable fresh environment",
+    "E05": "User requested standalone nightly handling",
+    "X12": "Explicitly bounded multigene/discovery scope from project roadmap",
+    "D14": "User paired CT\u2013EGFR target and separate imaging-scale target, with explicit feasibility/unique-person funnel."
+  },
+  "limits": "Coverage of the inspected project specifications and receipts; not a claim of exhaustive future science or publication acceptance."
+}

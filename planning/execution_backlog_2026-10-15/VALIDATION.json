@@ -1,0 +1,31 @@
+{
+  "validation_scope": "Backlog structure, staged-route dependency graph, coverage crosswalk and local documentation links; no research execution or scientific validation.",
+  "task_cards": 73,
+  "dataset_or_resource_records": 37,
+  "dependency_nodes_including_stages": 80,
+  "dependency_graph_acyclic_including_conditional_routes": true,
+  "all_audit_crosswalks_resolve": true,
+  "all_tasks_covered": true,
+  "local_markdown_links_checked": 17,
+  "scope_counts": {
+    "core": 32,
+    "alternative_route": 1,
+    "data_expansion": 11,
+    "external_access": 4,
+    "optional_research": 13,
+    "claim_conditional": 3,
+    "expanded_study": 9
+  },
+  "files": {
+    "AUDIT.md": "0e8dd7e9c2c4b5f8ad08d1cf5c3bb39942b9c05ef691f60abc839eb85e49847e",
+    "COMPUTE_SOURCE_AUDIT.md": "d44e1b627b90850077e61e75215c9b32158c4f022ac5a180da796f9c1c6ba91f",
+    "COVERAGE.json": "f1878152f55bde572598024aa0cc302758d1e515f543a085d99a2f53331263dd",
+    "DATASETS.json": "e9f6315f265129f518197768b449ddde6b796c3441c66a75a3937b95ce6a4530",
+    "DATASETS.md": "b78cc92e12c7b7b7bdba5c68ab173b00326625eecdb0a593e8a4096aaeb871fc",
+    "HUMAN_REVIEW.md": "2976830742b9274857379e6c4176e64d3e7b5f0250e83c9a33653d64b35114f0",
+    "NIGHTLY_RUNBOOK.md": "25868197352645ff74d09ab6f5c247681104ccd881d6987c87b2f2ecda617852",
+    "START_HERE.md": "676dfc5bc846ae32097075c72eae0c75d79c0b1b20f7194e59c1050d529ffc98",
+    "TASKS.json": "e1cc42e12eb7be3c5832a63996f2b86d3ab1c87b48a37334f114cf0a324f4c02",
+    "TASKS.md": "f0caab6bf86994d7484478327be9e235ca66c0b5dc7e0ac296362bcefa96699c"
+  }
+}

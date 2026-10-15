@@ -1,0 +1,2656 @@
+{
+  "schema_version": 1,
+  "audited_date": "2026-10-15",
+  "owner": "Sathvik + Claude",
+  "active_human_collaborators": 0,
+  "purpose": "Remaining computational execution backlog; pending items require receipt reconciliation before rerun.",
+  "global_completion_percentage": null,
+  "human_decisions": "HUMAN_REVIEW.md",
+  "tasks": [
+    {
+      "id": "E01",
+      "title": "Publish the portable execution source, without importing the dirty checkout wholesale",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [],
+      "human_dependencies": [],
+      "inputs": [
+        "Public main d70c091a9fa63d276d8c0fd5d6336136d4517273",
+        "Local HEAD 4fc73abb2cf1466d8830de202076e13f855292c7 and staged/unstaged/untracked source",
+        "COMPUTE_SOURCE_AUDIT.md paths BW, NR, PX, PF and I3"
+      ],
+      "steps": [
+        "Inventory the exact trainer, loader, acceptance, split, map/readout, acquisition and reader modules used by this backlog; record local file hashes and their imports.",
+        "Export those code/config/protocol files and safe fixtures to an execution branch; include the actual 50-row fit matrix and its source-defined split/protocol files. Exclude datasets, labels, private linkage keys, credentials, email drafts and bulky campaign scratch directories.",
+        "Use explicit staged paths and review the diff. Preserve every original local change. Record any file that cannot be publicly distributed as an access dependency with a local lookup."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "SOURCE_EXPORT_MANIFEST.json",
+        "Portable source/config commits and LOCAL_INPUTS.example.json",
+        "README mapping current entrypoints to their versions"
+      ],
+      "completion_checks": [
+        "A fresh clone resolves every required import/config/CLI for the selected task.",
+        "No missing local-only dependency is described as already published.",
+        "No patient data or private material appears in staged additions."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "E02",
+      "title": "Reconcile all selected results and newer Claude returns before assigning unfinished work",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [],
+      "human_dependencies": [],
+      "inputs": [
+        "AUDIT.md evidence locator",
+        "Historical N08/C22/N03/RIDER/TCGA results",
+        "Any post-October-14 standalone Claude returns"
+      ],
+      "steps": [
+        "Build one task/run/fold/output inventory with input and method versions, actual exits, accepted-unit status and evidence path.",
+        "For each task below, mark reused_complete, ready, waiting_dependency, waiting_external or needs_method_decision. Separate implemented, smoke-tested, executed and technically accepted.",
+        "Reconcile source task IDs (I/C/R/D, CMP, WP, acquisition) against this register; add only demonstrated uncovered deliverables."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "EXECUTION_STATUS.json",
+        "RESULT_INDEX.csv",
+        "DATED_MILESTONES.json"
+      ],
+      "completion_checks": [
+        "All 24 closed light tasks retained as completed within scope.",
+        "Accepted fits counted by unique planned identity; downloads/readers/evaluable people reported separately.",
+        "Newer work overrides old status only with compatible evidence."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "E03",
+      "title": "Make a fresh environment and one targeted workflow smoke reproducible",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "requirements.txt",
+        "requirements-lock.txt",
+        "setup.py",
+        "configs/default.yaml",
+        "Selected model/cache identities"
+      ],
+      "steps": [
+        "Record Python/platform/dependency versions and model file identities; resolve installed versus pinned differences.",
+        "Build an isolated environment and exercise the selected data/model interface with a small permitted or synthetic fixture.",
+        "Run only tests needed for edited paths and genuine previously observed failures; save logs."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "environment.lock or equivalent exact dependency record",
+        "ENVIRONMENT_RECEIPT.json",
+        "Targeted smoke/test logs"
+      ],
+      "completion_checks": [
+        "Import and CLI resolution from fresh clone succeed.",
+        "Unavailable model files are explicit; no silent online model/version switch.",
+        "Smoke is not credited as a scientific fit."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "E04",
+      "title": "Measure storage, memory and runtime capacity for the next real units",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [],
+      "human_dependencies": [],
+      "inputs": [
+        "Actual local mounted volumes/power/device",
+        "Frozen NLST plan and corrected fit storage requirements"
+      ],
+      "steps": [
+        "Check current power, writable real paths, backing-volume free bytes, RAM and chosen device.",
+        "Budget retained checkpoints, staged downloads, uncompressed scans, scratch and safety headroom separately.",
+        "Record capacity-limited tranche sizes and local/HPC route; refresh estimates after D03 and M04. Keep other-project and active sources untouched."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "RESOURCE_PLAN.json",
+        "Measured pilot/per-fit resource updates"
+      ],
+      "completion_checks": [
+        "Plan uses current observations, not October-14 free-space values.",
+        "No arbitrary historical internal reserve becomes a permanent blocker; projected writes fit real available capacity.",
+        "Transfers stop before backing storage reserve exhaustion."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "E05",
+      "title": "Provide standalone checkpoint/return handling for nightly sessions",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E03"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "NIGHTLY_RUNBOOK.md",
+        "Existing trainer resume/deadline facilities",
+        "Existing transfer receipts"
+      ],
+      "steps": [
+        "Implement only missing adapters for exact session timing, attempt logs and output collection; reuse existing resume logic.",
+        "Give each task one output namespace and each local process a recorded identity.",
+        "Exercise a small interruption/resume case and a failing exit; preserve both attempts."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Standalone session command or documented command batch",
+        "Session/attempt/output schemas and one fixture receipt"
+      ],
+      "completion_checks": [
+        "No dependency on Codex controller, expired window file or hourly reviewer.",
+        "Interrupted unit resumes only with matching fingerprints; failed exit remains failed.",
+        "Cutoff/deadline do not extend on waits."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "E06",
+      "title": "Prepare the same run matrix for an available HPC route",
+      "owner": "Sathvik + Claude",
+      "scope": "alternative_route",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E03",
+        "E04"
+      ],
+      "human_dependencies": [
+        "H09"
+      ],
+      "inputs": [
+        "revamp/campaign/execution_path_integration_2026-10-07_124017-2d0aea/compute/hpc/HPC_PLAN.md",
+        "n08_fit_hpc4.sbatch and submit_n08_hpc4.sh",
+        "Actual authorized cluster/account/storage details"
+      ],
+      "steps": [
+        "Adapt existing scheduler templates to the real cluster, environment and M02 argument-array driver.",
+        "Transfer only permitted inputs with checksum validation; execute a real target-machine smoke before full jobs.",
+        "Capture scheduler IDs, exit/accounting and checkpoint manifests; collect outputs into the same acceptance interface as local fits."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Cluster-specific job template and transfer manifest",
+        "Target-device smoke/parity record",
+        "Per-fit scheduler/return receipts"
+      ],
+      "completion_checks": [
+        "No invented host/account/allocation.",
+        "Scheduler success alone does not count as accepted fit.",
+        "Local work remains runnable when no HPC route exists."
+      ],
+      "resources": "Cluster route unmeasured; profile actual CPU/GPU memory, walltime and threads",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "D01",
+      "title": "Implement receipt-aware NLST continuation",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "planning/outreach_acquisition_2026-10-14/download_nlst.py",
+        "NLST_DOWNLOAD_PLAN.json",
+        "Append-only terminal transfer receipts and partials"
+      ],
+      "steps": [
+        "Create a versioned successor; preserve the sealed original. Replace hardcoded expired window constants with explicit session parameters.",
+        "Skip existing archives only when canonical success receipt, frozen-plan membership, size/hash and file identity agree. The old script only recognizes its first existing archive and cannot simply be rerun.",
+        "Reconcile incomplete files, bounded transport retries and terminal access errors. Keep frozen roster order and nested P1k/P3k/P10k selections."
+      ],
+      "command": "Current download_nlst.py has no argparse CLI. Implement and document the successor interface; do not use the expired script as a ready command.",
+      "outputs": [
+        "Versioned resumable downloader",
+        "Resume reconciliation manifest and bounded fixture checks"
+      ],
+      "completion_checks": [
+        "Already verified archives are not downloaded twice.",
+        "Unknown/mismatched existing bytes are quarantined for review, never silently accepted.",
+        "Cutoff and backing-volume capacity checks operate on the actual session."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "D02",
+      "title": "Finish the remaining frozen P10k imaging archive acquisition",
+      "owner": "Sathvik + Claude",
+      "scope": "data_expansion",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "D01",
+        "E04"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Frozen P10k plan: 10000 identifiers",
+        "2391 terminal verified archive receipts; refresh before resume"
+      ],
+      "steps": [
+        "Continue remaining plan entries in order with the existing two-transfer design unless measured capacity justifies a change.",
+        "Checkpoint P1k, P3k and P10k membership separately; verify archive CRC, file/image count, header identity and unique SOP within each archive.",
+        "Keep terminal attempts and partials; seal aggregate counts/bytes and remaining queue each session."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Verified archive receipts and archive inventory",
+        "P1k/P3k/P10k acquisition progress and remaining queue"
+      ],
+      "completion_checks": [
+        "Unique plan IDs and receipts reconcile exactly.",
+        "No whole-collection dump, implicit EGFR eligibility or pixel-processing credit.",
+        "No retry loop on access/quota errors."
+      ],
+      "resources": "Network + external storage; frozen selected uncompressed total about 893 GB, compressed total still unknown",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "D03",
+      "title": "Profile NLST decoding and preprocessing on a bounded tranche",
+      "owner": "Sathvik + Claude",
+      "scope": "data_expansion",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E03",
+        "E04"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Designated10-personengineeringpilotrole,13series in HX/public_ct/p04/local/pilot_plan_v2_local.json",
+        "Existing pilot allowance inventory and ingester; P10k people are a different role"
+      ],
+      "steps": [
+        "Execute the designated engineering pilot, preserving its cumulative person/series inventory and using the current session resource plan. Do not borrow P1k/P10k people as undocumented pilot subjects.",
+        "Keep raw archive identity, CT-series/SOP association, duplicate reconstructions and missing/corrupt items visible.",
+        "Measure peak RAM, decoded/scratch bytes and per-series time; choose stream/chunk layout from actual measurements."
+      ],
+      "command": "DATASETS.md NLST pilot_cli.py plan/release-template/verify-release/run/report interfaces. Replace retired controller coupling truthfully if needed; preserve cohort role and input checks.",
+      "outputs": [
+        "Pilot processed rows/arrays and geometry sidecars",
+        "DECODE_PROFILE.json",
+        "Failed/excluded-series ledger"
+      ],
+      "completion_checks": [
+        "Output rows trace to archive/source series.",
+        "No silent axis/spacing/sample-order changes.",
+        "Pilot images do not become accepted molecular subjects."
+      ],
+      "resources": "CPU/I/O; bound pilot size before decoding",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "D04",
+      "title": "Process acquired NLST tranches for the selected pretraining use",
+      "owner": "Sathvik + Claude",
+      "scope": "data_expansion",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "D03"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Verified archives as each D02 tranche closes; entire P10k not required to start",
+        "Pilot-verified processing configuration and frozen role manifest"
+      ],
+      "steps": [
+        "Bridge already verified ZIP receipts to the scientific ingester through an explicit offline/archive adapter if absent; bind source ZIP/hash/config and avoid re-download.",
+        "Process only checksum-verified closed tranches, retaining person-level nested subsets and source identity.",
+        "Exclude alternate reconstructions from cross-split leakage; do not count multiple series as independent persons.",
+        "Record train/validation/test exposure and actual usable rows; retain rejected series and reasons."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Versioned pretraining rows/arrays",
+        "NLST preprocessing manifest and role/exposure ledger"
+      ],
+      "completion_checks": [
+        "Every processed output has a verified source receipt and geometry result.",
+        "Actual usable counts, exclusions and expanded disk use reconcile.",
+        "Pretraining has no access to downstream protected test persons."
+      ],
+      "resources": "CPU/I/O; full processed footprint determined by D03, stream to real external storage",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "D05",
+      "title": "Complete the LIDC-IDRI source inventory and permitted missing acquisition",
+      "owner": "Sathvik + Claude",
+      "scope": "data_expansion",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E04"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "LIDC-IDRI collection CT/XML inventory",
+        "theia/data/lidc.py and existing local LIDC receipts"
+      ],
+      "steps": [
+        "Reconcile actual CT series, annotation XML, subjects and metadata against source inventory.",
+        "Download only missing permitted objects; record version, license/access and hashes.",
+        "Resolve XML-to-series/SOP coverage and enumerate unmatchable annotations without inventing labels."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "LIDC source manifest",
+        "CT/XML pairing coverage and missing-source queue"
+      ],
+      "completion_checks": [
+        "Source counts distinguish persons/series/nodules/readers.",
+        "No claimed downstream row count from XML availability alone."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "D06",
+      "title": "Connect LIDC consensus masks to usable training rows",
+      "owner": "Sathvik + Claude",
+      "scope": "data_expansion",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "D05"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "theia/data/lidc.py",
+        "theia/data/preprocess_masks.py",
+        "Existing consensus NPZ outputs"
+      ],
+      "steps": [
+        "Implement explicit consensus-NPZ-to-row adapter: the advertised preprocess_masks path currently expects DICOM SEG.",
+        "Preserve SOP/slice correspondence, geometry and existing min-agreement definition; do not invent a new clinical nodule eligibility threshold.",
+        "Validate with a tiny known geometry fixture and real matched-source pilot."
+      ],
+      "command": "Existing source mask export: python -m theia.data.lidc --lidc_root LIDC_ROOT --min_agreement 3 --masks_out MASKS --out SUMMARY; implement downstream adapter before invoking preprocessing.",
+      "outputs": [
+        "LIDC mask/row adapter",
+        "Geometry and membership checks",
+        "Documented actual command"
+      ],
+      "completion_checks": [
+        "No SEG-parser misuse on NPZ.",
+        "Consensus mask lands on the correct CT pixels and original source identity.",
+        "Empty/unmatched sources fail explicitly."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "D07",
+      "title": "Build the LIDC pretraining cohort under the selected consensus method",
+      "owner": "Sathvik + Claude",
+      "scope": "data_expansion",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "D06",
+        "E04"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "LIDC CT/XML and corrected adapter",
+        "Selected consensus and patient-level split definition"
+      ],
+      "steps": [
+        "Generate versioned masks and processed CT rows using the declared method.",
+        "Audit person-level partitions, missing annotations and source coverage; keep reader/consensus provenance.",
+        "Produce label-free grounding/pretraining input manifest without molecular claims."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "LIDC processed rows/masks",
+        "Cohort flow and split manifest"
+      ],
+      "completion_checks": [
+        "All usable rows are loadable and source-bound.",
+        "No patient appears in both train and held-out role."
+      ],
+      "resources": "CPU/I/O; measure on pilot before full preprocessing",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "D08",
+      "title": "Reconcile and preprocess NSCLC-Radiomics for its documented role",
+      "owner": "Sathvik + Claude",
+      "scope": "data_expansion",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E04"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "NSCLC-Radiomics CT and tumor SEG sources",
+        "theia/data/import_nbia.py",
+        "theia/data/preprocess_masks.py"
+      ],
+      "steps": [
+        "Bind legacy LUNG1 grounding exposure: reconcile422source vs420processed vs stale421docstring, pretraining partitions and checkpoint lineage. Reuse unchanged historical inputs.",
+        "Inventory actual CT/SEG series and missing source objects.",
+        "Build source-linked tumor-mask rows with frame/geometry and empty-mask checks.",
+        "Keep this segmentation/pretraining role distinct from NSCLC-Radiogenomics molecular endpoints; assess overlap before pooled use."
+      ],
+      "command": "python -m theia.data.import_nbia --nbia_root NBIA_ROOT --out IMPORT_OUT; python -m theia.data.preprocess_masks --config CFG --raw_dir RAW --out_dir PROCESSED",
+      "outputs": [
+        "NSCLC-Radiomics source/processed manifests",
+        "Geometry/coverage failures and cohort-role ledger"
+      ],
+      "completion_checks": [
+        "No presumed EGFR labels from this collection name.",
+        "Rows trace to tumor-only SEG and selected CT series."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "D09",
+      "title": "Close the corrected NSCLC-Radiogenomics source/attrition inventory",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E02"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Reviewed 211\u2192188\u2192158\u2192153 cohort ledger",
+        "Selected CT/SEG/AIM source receipts",
+        "PF reviewed registry and content manifest"
+      ],
+      "steps": [
+        "Reuse the completed attrition reconstruction and 158-row manifest verification.",
+        "Resolve only source identity/availability gaps needed for M01; keep the three unknown import-selection reasons explicitly unknown unless new records exist.",
+        "Record AIM-only series mismatches, reconstructed air exclusions and reference-semantics limitations."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Versioned source-location and attrition addendum",
+        "Exact input list for M01"
+      ],
+      "completion_checks": [
+        "No duplicate reconstruction of unchanged historical flow.",
+        "Current reference alignment is not claimed to certify historical M0 masks."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "D10",
+      "title": "Reconcile TCGA-LUAD external CT and existing label metadata",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E02"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "TCIA TCGA-LUAD local metadata; TCGA-LUSC is unverified prospective scope under D19/X08.",
+        "Historical external TCGA arrays/results and existing label records"
+      ],
+      "steps": [
+        "Inventory imaging series, molecular availability, time/role exposure and protected-vs-already-scored cases.",
+        "Resolve person/series crosswalk in local controlled storage and record usable/error reasons. Do not promote the unverified TCGA-LUSC roadmap into an existing external cohort.",
+        "Reuse historical small-TCGA predictions as historical evidence; prepare only genuinely new eligible or changed-input cases for M11."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Local external cohort manifest and exposure ledger",
+        "Aggregate eligible/unresolved/excluded counts"
+      ],
+      "completion_checks": [
+        "Previously scored patients never become fresh holdout by relabeling.",
+        "Starter labelled ceiling is not inflated by unlabeled CPTAC cases."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "D11",
+      "title": "Complete CPTAC-LUAD CT and molecular file availability inventory",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E02"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "TCIA CPTAC-LUAD CT subject inventory",
+        "GDC_DOWNLOAD_SUMMARY_FINAL.json",
+        "36 verified public WXS MAFs"
+      ],
+      "steps": [
+        "Reconcile CT availability and exact GDC case/file mappings without reading quarantined molecular content.",
+        "Verify retrieval receipts and request/download only legitimately missing permitted files.",
+        "Keep the excluded controlled targeted-sequencing file and all missing modalities explicit; prepare the blinded linkage interface."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "CPTAC imaging/file-availability manifest",
+        "Blinded linkage plan and aggregate coverage"
+      ],
+      "completion_checks": [
+        "No repeat download of verified files.",
+        "No claim of newly evaluable patients or decoded EGFR from file count."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "D12",
+      "title": "Decode and link molecular outcomes only in the recorded exposure sequence",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "D11"
+      ],
+      "human_dependencies": [
+        "H03"
+      ],
+      "inputs": [
+        "Genuine H03 outcome definition and exposure/access record",
+        "Frozen model/prediction hashes when prospective evaluation requires them",
+        "Verified compressed MAFs and controlled crosswalk"
+      ],
+      "steps": [
+        "Implement parser/join on synthetic fixtures first; encode assay coverage, callable outcome, variant class and missingness.",
+        "After the required freeze/exposure record exists, decode permitted real files and link only the intended cases.",
+        "Distinguish verified negative from no variant row, incomplete panel and unknown result. Record mutation-positive count separately."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Versioned local CT\u2013molecular endpoint table",
+        "Assay/outcome dictionary and join/exclusion ledger",
+        "Aggregate positive/negative/unknown counts"
+      ],
+      "completion_checks": [
+        "Exactly one supported person/outcome record per evaluable endpoint or explicit longitudinal rule.",
+        "No absent MAF row automatically treated as clinical-assay negative.",
+        "Exposure timestamps and input hashes preserved."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit.",
+      "execution_stages": {
+        "label_join": {
+          "depends_on": [
+            "D11",
+            "M11.prediction_freeze"
+          ],
+          "output": "Qualified CPTAC labels linked after the selected model/prediction freeze and H03 exposure record."
+        }
+      }
+    },
+    {
+      "id": "D13",
+      "title": "Establish person-level overlap and split/exposure accounting across cohorts",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "D09",
+        "D10",
+        "D11"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Local crosswalks and all source/role manifests",
+        "Retained R03 sampled-pixel overlap result"
+      ],
+      "steps": [
+        "Use permissible person/study/series identifiers and source lineage to detect cross-collection duplicates and repeat acquisitions.",
+        "Record remaining uncertainty where private identifiers cannot be compared; use image evidence only within its stated sampling/transform limits.",
+        "Freeze cohort roles and exclusion/overlap decisions before downstream fitting or protected evaluation."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Controlled overlap matrix and role manifest",
+        "Public aggregate overlap/unknown-count summary"
+      ],
+      "completion_checks": [
+        "Zero sampled pixel matches is not person-disjointness proof.",
+        "Alternate reconstruction/repeated visit does not count as new independent person.",
+        "No protected test-person exposure through pretraining or tuning."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "D14",
+      "title": "Build the acquisition funnel for 1,000 paired CT\u2013EGFR persons and the separate 10,000 aspiration",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E02"
+      ],
+      "human_dependencies": [
+        "H04"
+      ],
+      "inputs": [
+        "DATASETS.md current/candidate register",
+        "Existing cohort feasibility/outreach records",
+        "User paired-cohort target and separate imaging target"
+      ],
+      "steps": [
+        "Record per source: available persons, CT coverage, assay coverage, linkage rights, timing, unique overlap, positives, usable pairs and reason unknown.",
+        "Keep institutional cohorts request-only until actual approved data/access arrives; reuse eight unsent drafts without sending automatically.",
+        "Report an honest sum/union range and gaps. Plan acquisition batches from supported availability; do not multiply published cohort totals into usable local participants."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "COHORT_FUNNEL.csv",
+        "Unique paired-person/positive counts and target shortfall",
+        "Next data-access requirements"
+      ],
+      "completion_checks": [
+        "Imaging totals and molecular-evaluable totals remain distinct.",
+        "10,000 target is not presented as worldwide ceiling or journal minimum."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "D15",
+      "title": "Prepare and run incoming institutional-cohort ingestion when access exists",
+      "owner": "Sathvik + Claude",
+      "scope": "external_access",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "D14"
+      ],
+      "human_dependencies": [
+        "H03",
+        "H04"
+      ],
+      "inputs": [
+        "Approved institutional export/data dictionary",
+        "Actual data-use/access conditions",
+        "Frozen cohort/endpoint/time-alignment method"
+      ],
+      "steps": [
+        "Prepare reusable metadata validation, de-identification checks, CT inventory, assay mapping and source-to-eligible flow before data arrives.",
+        "Once access exists, import into controlled storage and apply the declared method; record missingness, overlap and label exposure.",
+        "Return aggregate coverage and explicit unresolved mapping questions; do not fabricate local copies from published study descriptions."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Cohort-specific validated importer and local manifest",
+        "Data dictionary, exclusions and eligible-pair flow"
+      ],
+      "completion_checks": [
+        "Access and identity provenance traceable.",
+        "No assumptions that a published CT cohort includes usable EGFR labels."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "D16",
+      "title": "Assess the 19 labelled but unbuilt internal development cases",
+      "owner": "Sathvik + Claude",
+      "scope": "data_expansion",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E02",
+        "D09"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Existing private list and 211\u2192188\u2192158\u2192153 attrition evidence"
+      ],
+      "steps": [
+        "Resolve CT/annotation availability, reference UID and actual exclusion reason for each candidate.",
+        "Produce repairability/eligibility/bytes estimates without changing frozen158-person M1 membership.",
+        "If adopted later, create a separate cohort version with development/exposure role retained."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Aggregate repairability ledger",
+        "Separate future-cohort proposal and source requirements"
+      ],
+      "completion_checks": [
+        "No independent-external-person credit.",
+        "No silent expansion of the current M1 matrix."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "D17",
+      "title": "Build genuinely reader-resolved external input arrays and the final analysis join",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "R03",
+        "D10",
+        "D11",
+        "D13"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Accepted reader localizations/series identity",
+        "Existing external adapter and frozen timing/air rules",
+        "Declared endpoint/exposure record; D12 for included CPTAC labels"
+      ],
+      "steps": [
+        "Convert accepted centers/series into label-free versioned arrays with source/geometry/error ledger.",
+        "Lock model/predictions before any required protected label join; then align exactly one person to a supported endpoint.",
+        "Report stage/event counts and explicit exclusions. Current 13 TCGA + 28 CPTAC is conditional capacity, not achieved patients."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Accepted external input manifest and private aligned analysis table",
+        "Source\u2192reader\u2192input\u2192prediction\u2192endpoint flow"
+      ],
+      "completion_checks": [
+        "Development identity-check cases excluded from new evaluation count.",
+        "Never-scored TCGA outcomes already exposed remain outcome-exposed.",
+        "Newly evaluable count advances only after all actual requirements."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit.",
+      "execution_stages": {
+        "input_arrays": {
+          "depends_on": [
+            "R03",
+            "D10",
+            "D11",
+            "D13"
+          ],
+          "output": "Accepted label-free reader-resolved input arrays; this stage can close before prediction or label linkage."
+        },
+        "analysis_join": {
+          "depends_on": [
+            "D17.input_arrays",
+            "M11.prediction_freeze"
+          ],
+          "conditional_dependencies": {
+            "CPTAC": [
+              "D12.label_join"
+            ]
+          },
+          "output": "Aligned prediction/endpoint table after appropriate exposure and label evidence; genuine new-evaluable counts only here."
+        }
+      }
+    },
+    {
+      "id": "D18",
+      "title": "Materialize a selected human-annotation robustness subset",
+      "owner": "Sathvik + Claude",
+      "scope": "optional_research",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E02",
+        "D13"
+      ],
+      "human_dependencies": [
+        "H10"
+      ],
+      "inputs": [
+        "NLST 1,092-person reserve,LIDC,Interobserver1,CrowdsCure2018 source registers",
+        "Declared single reference-comparison question"
+      ],
+      "steps": [
+        "Resolve exact annotation release,reference type,person overlap and CT mapping.",
+        "Build only the selected bounded subset with appropriate source-linked labels.",
+        "Keep reserve out of pretraining and do not force nodule/primary-tumor/line annotations into one interchangeable truth label."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Versioned human-reference subset",
+        "Annotation-role/overlap/provenance ledger"
+      ],
+      "completion_checks": [
+        "AI-derived masks not presented as human truth.",
+        "Derivative releases never add new people."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "D19",
+      "title": "Resolve every optional public candidate into an executable include/defer/exclude record",
+      "owner": "Sathvik + Claude",
+      "scope": "data_expansion",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E02"
+      ],
+      "human_dependencies": [
+        "H04",
+        "H10"
+      ],
+      "inputs": [
+        "DATASETS.json: all 37 resource records",
+        "Recorded official source links and source registers"
+      ],
+      "steps": [
+        "Refresh selected source release/access/license before use; reconcile CT-RATE,RadGenome,LNDb,LUNA25,QIN,Lung-PET-CT-Dx,Radiomics-Genomics,I3LUNG,PhysioNet,TCGA-LUSC/WSI and other named candidates.",
+        "For each, record role,format,person counting,endpoint,overlap and local availability; specify adapter/acquisition work only for selected experiments.",
+        "Keep hidden/gated data unavailable until genuine access, and extracted features distinct from raw CT."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Candidate decision matrix and source access records",
+        "Selected-source adapter specifications"
+      ],
+      "completion_checks": [
+        "Every candidate has an explicit state and reason.",
+        "No unsupported universal downloader or implied local access."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "D20",
+      "title": "Build the separate 250-person unlabeled NLST development cohort",
+      "owner": "Sathvik + Claude",
+      "scope": "data_expansion",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "D03",
+        "E04"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Frozen 250-person development role",
+        "Verified scientific ingester and role manifest"
+      ],
+      "steps": [
+        "Acquire/process selected development series separately from pretraining and held-out roles.",
+        "Use source-bound HU/geometry/sampling checks and retain failures.",
+        "Return real usable derivatives for preprocessing/augmentation choices."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Development derivative manifest",
+        "Measured storage/QC/yield report"
+      ],
+      "completion_checks": [
+        "No molecular labels or held-out robustness outcomes used for development choices."
+      ],
+      "resources": "Recorded expected source~22.47GB;actual compressed/derivative budget from pilot",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "D21",
+      "title": "Acquire and verify the held-out NLST same-acquisition reconstruction pairs",
+      "owner": "Sathvik + Claude",
+      "scope": "data_expansion",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "D03",
+        "E04"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Frozen1,000-person held-out role and1,052 technique-equal candidate pairs",
+        "Declared pair eligibility rules"
+      ],
+      "steps": [
+        "Select exact index/alternate series and capture acquisition/frame/orientation/coverage/spacing/kernel/time evidence.",
+        "Exclude unresolved shared-study identity anomaly and record all pair failures without silent substitution.",
+        "Materialize source-bound pair derivatives; use patient-level weighting for multiple pairs."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Private verified pair ledger",
+        "E0/E1/E2/E3/usable aggregate counts",
+        "Paired derivative manifests"
+      ],
+      "completion_checks": [
+        "Metadata candidate pair is not automatically a same-acquisition pair.",
+        "No longitudinal substitution or double-counted persons.",
+        "Final paired derivative manifest uses N06 aligned sampling; old independent16-slice arrays are not promoted as accepted paired derivatives."
+      ],
+      "resources": "Recorded planned source~187.68GB;profile actual ZIP/extraction/derivative cost",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit.",
+      "execution_stages": {
+        "acquisition_headers": {
+          "depends_on": [
+            "D03",
+            "E04"
+          ],
+          "output": "Verified source archives and same-acquisition header evidence; can proceed before sampler implementation."
+        },
+        "paired_derivatives": {
+          "depends_on": [
+            "D21.acquisition_headers",
+            "N06"
+          ],
+          "output": "Final paired arrays use the N06 aligned sampler; retain sources until this step succeeds."
+        }
+      }
+    },
+    {
+      "id": "M01",
+      "title": "Execute real corrected-input S1-a acceptance",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E03",
+        "D09"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "PF/review/REPAIR_REGISTRY_S1_v1_optA_REVIEWED.json",
+        "PF/source/manifest_S1_v1/CONTENT_MANIFEST.json",
+        "Real bound CT/SEG files and existing corrected arrays"
+      ],
+      "steps": [
+        "Reuse manifest verification; execute the real rebuilt-array/source/loader comparison with the reviewed registry.",
+        "Write new acceptance and A15 membership outputs, preserving historical rejected receipts.",
+        "Repair a demonstrated failure narrowly and repeat only affected checks. Keep archive-byte equivalence unverified when not established."
+      ],
+      "command": "COMPUTE_SOURCE_AUDIT.md template A: build_m1_manifest.py verify; m1_acceptance.py --registry REG --registry-sha256 REGSHA --manifest MAN --out NEW_ACCEPTANCE --rebuild-arrays; a15_population.py --rows ROWS --out NEW_A15",
+      "outputs": [
+        "Real M1 acceptance JSON",
+        "A15 membership audit",
+        "Source/rebuild/loader comparison logs"
+      ],
+      "completion_checks": [
+        "Fixtures false, all required technical comparisons pass and decision accepted.",
+        "Biological tumor truth remains a claim limitation where unadjudicated; it is not a blanket prohibition on the disclosed reference benchmark."
+      ],
+      "resources": "CPU/I/O; historical ~1.5h and ~7.43GB read, actual peak RAM unmeasured",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "M02",
+      "title": "Bind a direct corrected-fit driver to the existing acceptance/readout contract",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E03"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "BW/n08/M1/FIT_MATRIX_M1.csv",
+        "NR/run_n08_replication.py, accept_fit.py, data_manifest.py, fit_witness.py",
+        "I3 final first-fit proposal"
+      ],
+      "steps": [
+        "Build a thin argument-array batch driver or documented equivalent around existing trainer/acceptance logic; retire only controller-specific admission coupling.",
+        "Inject paths.processed_dir, data.content_manifest and data.dataset_version explicitly: the matrix alone omits these overrides.",
+        "Preserve real fit/checkpoint/summary identity, fold membership, epoch-selection replay and acceptance receipt schema; adapt consumers consistently if schema changes."
+      ],
+      "command": "Use actual trainer flags and data overrides in COMPUTE_SOURCE_AUDIT.md template B; inspect accept_fit caller/schema before implementation.",
+      "outputs": [
+        "Standalone matrix driver and command documentation",
+        "Receipt compatibility fixture and acceptance integration"
+      ],
+      "completion_checks": [
+        "No fake release/allow/procedure-validation receipt or test hook in real runs.",
+        "Final executable/protocol/config bindings are acyclic; records do not hash themselves or future mutable outputs.",
+        "No dependency on old Codex review or unrelated custodian promotion."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "M03",
+      "title": "Run the real corrected loader/model/loss smoke on target hardware",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "M01",
+        "M02",
+        "E04"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Accepted corrected manifest/rows",
+        "B/query-union cell init42 fold0",
+        "Actual target device and model cache"
+      ],
+      "steps": [
+        "Use a distinct smoke run with the existing two-epoch stop override.",
+        "Check finite loss, expected ground gradients, data/checkpoint identity and loader membership.",
+        "If hardware/precision differs from the fixed route, measure and record parity/tolerance before combining results."
+      ],
+      "command": "Retained run_n08_replication.py smoke after M02 adaptation, or template B with B-cell overrides, separate run_id and train.stop_after_epochs=2.",
+      "outputs": [
+        "Two-epoch smoke outputs and hardware profile",
+        "Technical acceptance/failure receipt"
+      ],
+      "completion_checks": [
+        "Real data/model path succeeds; no synthetic success substituted.",
+        "Smoke excluded from scientific 50-fit count."
+      ],
+      "resources": "Historical CPU smoke135.5s solo/585.3s loaded; refresh on real machine",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "M04",
+      "title": "Complete the first corrected scientific fit",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "M03"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Matrix row n08m1-cellA-init42-part1337-fold0",
+        "Accepted data/splits and driver"
+      ],
+      "steps": [
+        "Execute the exact first row with fixed split1337 and init42; zero automatic failed-fit retries.",
+        "Retain best/last weights, full logs, fold summary and OOF predictions.",
+        "Run existing acceptance replay and measure wall/device/peak memory/output bytes for remaining scheduling."
+      ],
+      "command": "COMPUTE_SOURCE_AUDIT.md template B through M02 receipt-producing driver.",
+      "outputs": [
+        "First planned fit outputs",
+        "Accepted-fit or explicit failure receipt",
+        "Measured fit resource profile"
+      ],
+      "completion_checks": [
+        "Selected/stop epochs replay correctly and OOF members equal the frozen split.",
+        "Exit0 alone is insufficient; negative/imprecise predictive result is not grounds for rerun."
+      ],
+      "resources": "Historical estimate0.2\u20133.3h; ~0.70\u20130.72GB checkpoints per fit, not RAM",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "M05",
+      "title": "Complete the remaining fixed corrected 50-fit matrix",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "M04"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Existing A\u2013E \u00d7 init42/7 \u00d7 five-fold matrix",
+        "Frozen partition1337",
+        "Closed accepted-unit inventory"
+      ],
+      "steps": [
+        "Execute genuinely missing rows, one fit at a time or safely isolated parallel jobs after measurement.",
+        "A/B:mean with ground0/0.5; C/D:query0 with union ground0/0.5; E:query0 with query0 ground0.5. Keep the exact full source config.",
+        "Resume only matching partials; keep failed attempts and both checkpoints. Do not change split seed with initialization or prune weights before downstream maps."
+      ],
+      "command": "Generate exact argument arrays from the checked-in matrix plus explicit M1 overrides, using M02. Continue across nightly windows, never silently extend one.",
+      "outputs": [
+        "50 planned fit identities accounted for",
+        "Best/last checkpoints and fold/OOF/log outputs",
+        "Per-unit technical acceptance inventory"
+      ],
+      "completion_checks": [
+        "No missing/duplicate run-fold IDs.",
+        "Accepted count is explicit; an unsuccessful unit is retained as unsuccessful.",
+        "No favourable-outcome reruns or unplanned extra seeds."
+      ],
+      "resources": "Historical entire two-seed matrix12.7\u201320.5h, central13.4h; ~35.1GB retained checkpoints; measure, not a promise",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "M06",
+      "title": "Produce corrected best/last maps and reload controls",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "M03"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Five accepted folds for each ready cell/seed from M04/M05",
+        "Corrected rows/splits/manifest/acceptance and exact checkpoints"
+      ],
+      "steps": [
+        "Start each cell/seed as soon as its five folds are accepted; do not wait for every other fit.",
+        "Generate readout-consistent mean/query0 and union spatial maps for best and last weights.",
+        "Verify baseline prediction reload, membership and checkpoint bindings; preserve per-patient metrics and arrays locally."
+      ],
+      "command": "COMPUTE_SOURCE_AUDIT.md template C; n08_maps_param.py --cell ... --run ... --ckpt-root ... --out-dir ... --which best|last --splits ... --rows ... --data-manifest ... --dataset-version ... --data-acceptance ...",
+      "outputs": [
+        "10 cell/seed map sets \u00d7 best/last as units become ready",
+        "Map receipts and reload-control metrics"
+      ],
+      "completion_checks": [
+        "All planned folds are included.",
+        "Best/last identities and inner-validation reload control are correct."
+      ],
+      "resources": "Forward inference; runtime unmeasured on corrected inputs",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "M07",
+      "title": "Materialize the prespecified corrected replication readout",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "M05"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Accepted all-fold fits/maps/receipts",
+        "M1 matrix, source-defined procedure and splits",
+        "M06 is required for spatial quantities only; produce predictive readout as soon as its fit inputs are closed."
+      ],
+      "steps": [
+        "Compute seed-specific (D\u2212C)\u2212(B\u2212A) AUC interactions and their specified mean; preserve proper losses and per-fold/per-seed outputs.",
+        "Run paired uncertainty with the same resampled people across cells/seeds; produce all34 secondary estimates, MC error, recurrence and best/last sensitivity.",
+        "Retain family-validation qualifications and distinguish M0 discovery from M1 whose input and initialization changes are combined."
+      ],
+      "command": "COMPUTE_SOURCE_AUDIT.md template D; pass M1 matrix explicitly, --verify-files full and --which best/last as specified.",
+      "outputs": [
+        "Machine-readable replication estimates/uncertainty",
+        "Table/figure input files",
+        "Membership and full-checkpoint validation report"
+      ],
+      "completion_checks": [
+        "No pooling duplicate patients across folds/seeds.",
+        "No naive final-fold-only result.json aggregation.",
+        "Unavailable procedure validation downgrades claims, not fabricated pass."
+      ],
+      "resources": "CPU saved-result analysis; full checkpoint verification reads ~35GB",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit.",
+      "conditional_dependencies": {
+        "spatial readout": [
+          "M06"
+        ]
+      }
+    },
+    {
+      "id": "M08",
+      "title": "Execute the prepared evaluation-only fragment and repaired-case sensitivities",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "M06"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Existing C5 worklist: eight affected and two companion cases,stream20261006",
+        "Seven repaired-AMC evaluation-only exclusion specification",
+        "Accepted M1 predictions/maps for ready units"
+      ],
+      "steps": [
+        "Locate the prepared implementation or add a narrow adapter to the existing worklist; no verified ready CLI is established by this audit.",
+        "Compute specified paired estimates and resampling for the fixed cases.",
+        "Keep seven-case exclusions separate; no silent changes to training population and no substitution of M0 models."
+      ],
+      "command": "Implementation/locate task: see I3 predecessor I05 packet and PF/manuscript/P07_PAPER_PRIORITY_QUEUE.md; bind exact adapter before execution.",
+      "outputs": [
+        "C5 affected/companion tables and plot data",
+        "Seven-case evaluation-only sensitivity table",
+        "Exact model/input/method bindings"
+      ],
+      "completion_checks": [
+        "Results describe evaluation-only effects, not causal training influence.",
+        "No Tier2 retraining introduced implicitly."
+      ],
+      "resources": "Saved-result CPU plus any source-specified forward variants",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "M09",
+      "title": "Build matched corrected native-feature and non-THEIA comparators",
+      "owner": "Sathvik + Claude",
+      "scope": "claim_conditional",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "M01",
+        "E03"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Corrected cohort/splits1337 and training covariates",
+        "theia.analysis.frozen_features,baselines,site_decomposition,peritumoral_by_site,campaign_prediction"
+      ],
+      "steps": [
+        "Extract native encoder features with provenance, not a legacy randomly projected cache.",
+        "Fit the prespecified clinical/radiomic/site/geometry comparators with training-only fitting/imputation and fixed matched partitions.",
+        "Produce OOF probabilities on identical eligible people and explicit annotation/site tiers; adapter must preserve separate initialization and partition seeds."
+      ],
+      "command": "COMPUTE_SOURCE_AUDIT.md analysis catalog: frozen_features --config CFG --out TOKENS --prov PROV --device cpu; baselines --config CFG --theia_run RUN --seed 1337 --out OUT. Adapt manifest binding where needed.",
+      "outputs": [
+        "Native feature cache/provenance",
+        "Matched comparator OOF outputs and split audit"
+      ],
+      "completion_checks": [
+        "No outer-test fitting or mask-derived feature portrayed as unassisted prediction.",
+        "baselines seed1337 is partition seed; do not feed init42/7 as a substitute."
+      ],
+      "resources": "Encoder pass plus CPU fitting; current-input runtime unmeasured",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "M10",
+      "title": "Compute corrected calibration, proper losses and incremental-value tables",
+      "owner": "Sathvik + Claude",
+      "scope": "claim_conditional",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "M07",
+        "M09"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Corrected matched OOF predictions",
+        "Approved calibration/fusion methods and training-side data"
+      ],
+      "steps": [
+        "Calculate AUC,log loss,Brier and calibration with paired clinical/site comparisons.",
+        "Fit any stacking/recalibration only inside the declared training boundary; keep raw and within-fold-rank estimators distinct.",
+        "Retain small-event instability, uncertainty and denominators; do not select a better method on outer-test results."
+      ],
+      "command": "Actual modules calibration --runs ... --out ...; fusion --theia ... --baselines ... --out ...; incremental --canonical ... --out ... . Bind corrected runset and data through M02/E01.",
+      "outputs": [
+        "Calibration/proper-loss/incremental-value tables",
+        "Training-boundary and matched-identity audit"
+      ],
+      "completion_checks": [
+        "Logistic CITL is not raw mean-risk minus prevalence.",
+        "No outer-test calibrator,threshold or fusion tuning."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "M11",
+      "title": "Run locked-model external prediction and prespecified external endpoints",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E03",
+        "D10",
+        "D13"
+      ],
+      "human_dependencies": [
+        "H03",
+        "H06"
+      ],
+      "inputs": [
+        "Human-selected locked model/version and declared external protocol",
+        "Eligible external CT/labels with H03 exposure sequence",
+        "CPTAC D12 or institutional D15 outputs only if included",
+        "For new reader-resolved cases require D17.input_arrays; for custodian-run route require R02. Neither blocks permitted local inference on already accepted historical external inputs.",
+        "For adapted-model external claims,lock scale/model before outcomes and route inference through the accepted N03 transfer path; exposed TCGA40 remains descriptive."
+      ],
+      "steps": [
+        "Validate input adapter against native inference on a permitted fixture; freeze prediction/model identities before protected label opening.",
+        "Run external cases in resumable batches, retaining all input failures/exclusions and historical-vs-new exposure categories.",
+        "Execute the existing discrimination/calibration/grounding endpoints and comparator calculations on actual eligible persons; keep prediction and reference-localization outcomes distinct."
+      ],
+      "command": "Use existing evaluate/external_grounding/native library interface after binding actual CLI. frozen_external.py is a library, not an assumed argparse command. R02 supplies the verified packaged/native interface.",
+      "outputs": [
+        "Local frozen external predictions and technical inference receipts",
+        "Source-to-evaluable flow and endpoint tables",
+        "Aggregate external result package"
+      ],
+      "completion_checks": [
+        "Genuinely eligible person count, positive count and prior exposure are explicit.",
+        "No clinical-assay-negative assumption from missing labels.",
+        "No model tuning on this evaluation cohort."
+      ],
+      "resources": "Inference CPU/GPU after profiling; actual cohort size unknown",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit.",
+      "conditional_dependencies": {
+        "CPTAC endpoint scoring": [
+          "D17.analysis_join"
+        ],
+        "new reader-resolved TCGA inputs": [
+          "D17.input_arrays"
+        ],
+        "institutional endpoint scoring": [
+          "D15"
+        ],
+        "custodian-return scoring": [
+          "R05"
+        ],
+        "adapted-model external evaluation": [
+          "N05"
+        ]
+      },
+      "stages": [
+        "Native adapter plus accepted label-free inputs permits prediction freeze without outcome access.",
+        "Score a selected cohort only after its conditional endpoint/join dependencies and H03 record are satisfied."
+      ],
+      "execution_stages": {
+        "prediction_freeze": {
+          "depends_on": [
+            "E03",
+            "D10",
+            "D13"
+          ],
+          "conditional_dependencies": {
+            "new reader-resolved inputs": [
+              "D17.input_arrays"
+            ],
+            "adapted model": [
+              "N05"
+            ]
+          },
+          "output": "Exact selected model/input-bound predictions frozen before protected label access; historical already-accepted inputs may proceed independently."
+        },
+        "endpoint_scoring": {
+          "depends_on": [
+            "M11.prediction_freeze"
+          ],
+          "conditional_dependencies": {
+            "new reader-resolved cohort": [
+              "D17.analysis_join"
+            ],
+            "institutional cohort": [
+              "D15"
+            ],
+            "custodian route": [
+              "R05"
+            ]
+          },
+          "output": "Endpoint tables only for the selected cohort with actual supported outcomes."
+        }
+      }
+    },
+    {
+      "id": "N01",
+      "title": "Close the remaining NLST adaptation settings from the existing design",
+      "owner": "Sathvik + Claude",
+      "scope": "expanded_study",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E02"
+      ],
+      "human_dependencies": [
+        "H10"
+      ],
+      "inputs": [
+        "planning/parallel_campaign_handoff_2026-10-02/PUBLIC_CT_ANALYSIS_SPEC.md",
+        "PCT/code/adaptation primitives",
+        "Latest HX public_ct return and draft settings",
+        "P6/ADAPTATION_RUNNER_INPUTS.json contains21 draft/unresolved values; frozen memberships do not mean frozen runtime/training protocol."
+      ],
+      "steps": [
+        "Extract the exact existing objective,optimizer,view,update-budget and transfer choices into a concrete configuration.",
+        "Identify unresolved values such as U with source-backed alternatives and computational consequences for human selection; do not invent final science settings.",
+        "Freeze six independent runs P1k/P3k/P10k \u00d7 seeds42,7 and their matched downstream comparison before examining held-out outcomes.",
+        "Resolve U,views,augmentation,slice selection,negatives,schedule,device/precision and remaining fields without molecular/held-out tuning. Ordinary gradient accumulation does not create batch 32 / 62 simultaneous negatives semantics."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Final adaptation/transfer configuration or precise unresolved-setting record",
+        "Six-run matrix and method/version binding"
+      ],
+      "completion_checks": [
+        "Draft settings are not represented as preregistered or already executed.",
+        "No held-out or molecular outcome tuning."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "N02",
+      "title": "Implement the scientific NLST adaptation runner using existing primitives",
+      "owner": "Sathvik + Claude",
+      "scope": "expanded_study",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E03",
+        "N01"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "PCT/code/adaptation/ntxent.py,model.py,train_step.py,views.py,transfer.py",
+        "Final N01 config",
+        "Source-bound derivative manifests",
+        "BW/public_ct/scripts/exposure_sampler.py; resume must restore optimizer,projector,RNG,sampler progress."
+      ],
+      "steps": [
+        "Implement missing dataset batching,optimizer/checkpoint loop,resume and exact model/data/config identity using existing objective/model/train_step primitives.",
+        "Record distinct people actually contributing to applied finite updates,views/update counts and failure/replacement provenance.",
+        "Verify tiny interruption/resume and transfer-export behavior without rerunning the already completed synthetic benchmark merely for counts.",
+        "Pass finalized temperature explicitly to production NT-Xent rather than relying on a prototype constant; person_key,not seriesID,defines distinct batch members."
+      ],
+      "command": "Implementation required: no ready scientific adaptation-runner CLI was verified. Reuse PCT/code/adaptation primitives.",
+      "outputs": [
+        "Runnable adaptation CLI and exact documentation",
+        "Versioned checkpoint/resume/exposure schemas",
+        "Focused real-path smoke outputs"
+      ],
+      "completion_checks": [
+        "Scientific runner existence is demonstrated; primitives alone do not count.",
+        "Skipped/failed updates do not inflate training exposure.",
+        "No reset of a historical allowance by changing run names."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "N03",
+      "title": "Integrate the adapted-vision transfer hook into downstream training",
+      "owner": "Sathvik + Claude",
+      "scope": "expanded_study",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E03",
+        "N01"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "PCT/code/adaptation/transfer.py",
+        "Current theia/engine/train.py and model construction",
+        "Declared transferred parameter set and baseline identity",
+        "P6/P06_TRANSFER_REBASE.diff and theia_engine_train_py_rebased.diff candidate; live trainer lacks adapted_vision_payload."
+      ],
+      "steps": [
+        "Implement the unmerged transfer hook in a versioned training path.",
+        "Load only the intended pretrained parameters,record exact checkpoint/tensor identities,and initialize remaining components according to the fixed seed.",
+        "Validate unchanged baseline behavior when hook disabled and declared transfer behavior when enabled."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Transfer hook and compatible configuration",
+        "Loaded/missing/unexpected parameter report",
+        "Baseline/transfer smoke and identity checks"
+      ],
+      "completion_checks": [
+        "No silent partial load or random fallback.",
+        "Transfer arm differs only as declared; gene labels did not enter adaptation.",
+        "Only26 allowlisted encoder tensors transfer; projector,projection,GroundingHead and classifier do not. Validate payload scale/seed/membership/U/exposure and bind digest in trainer fingerprint."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "N04",
+      "title": "Execute the six independent NLST scale/seed adaptation runs",
+      "owner": "Sathvik + Claude",
+      "scope": "expanded_study",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "N02",
+        "E04",
+        "N09"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Closed QC-accepted P1k/P3k/P10k derivatives from D04 as each tranche becomes available",
+        "Frozen six-run matrix and exposure ledger"
+      ],
+      "steps": [
+        "Start P1k after its derivative tranche closes; do not wait for all P10k downloads.",
+        "Run each scale\u00d7seed independently under final method,budget and exact role membership.",
+        "Preserve best/final as method specifies,resume partials with fingerprints,and report distinct actually used people and finite applied updates."
+      ],
+      "command": "N02 implemented runner; record exact generated argv/config, not an invented currently available command.",
+      "outputs": [
+        "Six adaptation checkpoints and full logs",
+        "Scale/seed technical acceptance and exposure receipts",
+        "Actual runtime/memory/bytes measurements"
+      ],
+      "completion_checks": [
+        "No growing one checkpoint through scales and calling it independent runs.",
+        "P10k training claim requires the specified people actually used,not only downloaded."
+      ],
+      "resources": "Historical synthetic scenarios for all six: ~0.95/3.02/11.97h at U313/1000/3000; excludes real I/O and is not a selected U. Six fp32 transfer payloads ~0.34GB.",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "N05",
+      "title": "Execute the 30 matched downstream adaptation-transfer fits",
+      "owner": "Sathvik + Claude",
+      "scope": "expanded_study",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "N03",
+        "M01"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Closed, accepted N04 checkpoints as available",
+        "Fixed cell-B downstream protocol and partition1337",
+        "Existing N08 B baseline identities"
+      ],
+      "steps": [
+        "Run each of six adaptation runs across five fixed downstream folds with matching fit/selection procedure.",
+        "Reuse the10 N08 B baseline fits only if actual code/data/init/partition/selection identities match. Otherwise record mismatch and execute exactly the needed10 matched baseline fits in separate identities.",
+        "Retain full checkpoints,OOF outputs and same technical acceptance criteria; release analyses per complete scale/seed."
+      ],
+      "command": "Current trainer with N03 hook and exact N01 matrix; preserve M02 fit-receipt contract.",
+      "outputs": [
+        "30 planned downstream transfer fits",
+        "Baseline reuse/mismatch manifest and any required baseline fits",
+        "OOF predictions,checkpoints and acceptance receipts"
+      ],
+      "completion_checks": [
+        "No stale baseline reused merely because cell name is B.",
+        "No additional baseline rerun if compatible units already complete.",
+        "Baseline reuse also matches downstream projection/head/classifier starting-weight schedule, optimizer and selection procedure; not just the patient split."
+      ],
+      "resources": "Historical 30 fits ~7.82\u201311.42h; conditional 10 baseline fits ~2.67\u20133.81h; ~21.1GB best+last storage. Remeasure on M1.",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "N06",
+      "title": "Implement pair-aware sampling and the held-out reconstruction evaluator",
+      "owner": "Sathvik + Claude",
+      "scope": "expanded_study",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E03",
+        "N01"
+      ],
+      "human_dependencies": [
+        "H10"
+      ],
+      "inputs": [
+        "BW/public_ct/scripts/recon_feature_metrics.py",
+        "D21 same-acquisition pair plan",
+        "Frozen slice/pair eligibility definition"
+      ],
+      "steps": [
+        "Resolve pair-aware aligned slice selection: independent16-slice sampling has yielded8/16 matches against the existing\u226510 criterion. Preserve method semantics; do not silently lower the threshold.",
+        "Wrap the existing metric library with an explicit input/checkpoint/pair interface and source-bound outputs.",
+        "Validate pairing,coverage,patient-averaged weights and identity controls on bounded development/fixture inputs."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Pair-aware sampler/evaluator CLI",
+        "Alignment/coverage and patient-weight checks"
+      ],
+      "completion_checks": [
+        "No pretending recon_feature_metrics.py has a ready CLI.",
+        "Sampling correction is declared before held-out outcome evaluation."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "N07",
+      "title": "Run frozen-encoder and adapted-encoder reconstruction robustness",
+      "owner": "Sathvik + Claude",
+      "scope": "expanded_study",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "N06",
+        "D21"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Six closed adaptation checkpoints from N04 as ready plus original frozen encoder",
+        "Verified held-out pairs and finalized paired sampler"
+      ],
+      "steps": [
+        "Extract matched representations without altering the encoder on held-out pairs.",
+        "Compute source-specified patient-averaged cosine/norm contrasts and uncertainty with exact pair exclusions.",
+        "Retain frozen-versus-scale/seed outputs and method/coverage qualifiers.",
+        "Use native pre-projection pooled slice features,not the disposable projector or molecular 512D features. Use the exact declared E3 header rule and unchanged matched slices across encoders."
+      ],
+      "command": "N06 wrapper calls pair_metrics,patient_means,paired_summary in BW/public_ct/scripts/recon_feature_metrics.py; existing rule minimum 10 matched slices,z tolerance0.5\u00d7maximum thickness,10,000 bootstrap draws,seed20261003. Do not silently replace acquisition-number equality with a new time rule.",
+      "outputs": [
+        "Per-pair local feature metrics",
+        "Aggregate paired robustness tables and checkpoint bindings"
+      ],
+      "completion_checks": [
+        "Same-acquisition verified pairs only for primary contrast.",
+        "Technical representation stability is not EGFR validity or clinical benefit."
+      ],
+      "resources": "Forward encoder passes plus CPU aggregation;profilepaircount/coverage",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "N08",
+      "title": "Compute the declared scale/transfer readout and close the expanded program",
+      "owner": "Sathvik + Claude",
+      "scope": "expanded_study",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "N05"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Completed/reused baseline and transfer OOF fits",
+        "Adaptation exposure counts and reconstruction outputs",
+        "Frozen analysis specification"
+      ],
+      "steps": [
+        "Implement a small validated OOF-loader/CLI around BW/public_ct/scripts/primary_logloss.py:analyse(oof,labels,fold,B=10000,seed=20261003); check nonempty intended cohort,probability range,alignment and explicit exclusions before invoking.",
+        "Produce prescribed scale\u00d7seed downstream contrasts,paired uncertainty and robustness results.",
+        "Report actual used-person/update/runtime/storage quantities alongside data availability and unusable pairs.",
+        "Return machine-readable findings for human interpretation; no performance-improvement requirement or posthoc best-scale promotion."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Scale/transfer and robustness readout",
+        "Complete program inventory and uncertainty/coverage tables"
+      ],
+      "completion_checks": [
+        "All six adaptation / 30 downstream planned units reconciled; failures explicit.",
+        "No molecular patient count from label-free pretraining exposure.",
+        "Primary is P10k minus matched baseline patient EGFR log loss,mean of two seed-specific contrasts,clip1e-6,10,000 fold-stratified patient bootstrap draws; lower favours adaptation. P1k/P3k never replace missing P10k primary."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit.",
+      "conditional_dependencies": {
+        "reconstruction portion": [
+          "N07"
+        ]
+      }
+    },
+    {
+      "id": "N09",
+      "title": "Run real-derivative adaptation smoke and measure actual update cost",
+      "owner": "Sathvik + Claude",
+      "scope": "expanded_study",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "N02",
+        "D03"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Properly role-bound engineering derivatives",
+        "Original encoder cache and finalized adaptation config"
+      ],
+      "steps": [
+        "Exercise real loader,augmentations,finite update,exposure log,checkpoint,payload export and reload end to end.",
+        "Use the actual ten distinct pilot people for a small input-path check; never duplicate them to simulate batch32 distinct-person negatives.",
+        "Measure RAM,I/O,negatives per anchor,checkpoint cost and update throughput. Repeat old synthetic benchmarking only for a changed path or unresolved measurement."
+      ],
+      "command": "N02 implemented runner in an explicit smoke mode; actual scientific batch/objective semantics must remain separately declared.",
+      "outputs": [
+        "Real adaptation smoke receipt",
+        "Measured loader/update/checkpoint resource record"
+      ],
+      "completion_checks": [
+        "Engineering weights excluded from six scientific adaptations.",
+        "Only allowlisted tensors update and payload reload agrees."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "A01",
+      "title": "Reproduce only missing or changed historical all-fold evidence outputs",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E02",
+        "E03"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "SC/n08/n08_consolidate.py and discovery n08_readout.py",
+        "SC/c22/C22_INTERPRETATION.json",
+        "SC/n03/N03_REPLAY_ANALYSIS.json",
+        "SC/rider/RIDER_CORRECTED.json",
+        "Latest source pins and all-fold summaries"
+      ],
+      "steps": [
+        "Map retained N08,C22,N03,RIDER,TCGA/stability outputs to claimed table fields. Close by reuse when matching outputs already exist.",
+        "For a real missing/changed output, run the fixed saved-array consolidation in a fresh directory, preserving source values and denominators.",
+        "Reconcile exact family and simulation qualifications and missing units; leave scientific interpretation to humans."
+      ],
+      "command": "COMPUTE_SOURCE_AUDIT.md CMP-09 and existing fixed consolidation entrypoints; record exact selected command per missing output.",
+      "outputs": [
+        "Historical selected-output index",
+        "Only necessary regenerated aggregate tables and comparisons"
+      ],
+      "completion_checks": [
+        "Never substitute final separately run fold4 result.json for all folds.",
+        "No repeated unchanged simulation,20-seed sweep or bounded overlap run."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "A02",
+      "title": "Evaluate accepted corrected models on retained RIDER test\u2013retest inputs",
+      "owner": "Sathvik + Claude",
+      "scope": "claim_conditional",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "M03",
+        "E02"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "RIDER 28 paired people / 56 scan arrays and manual contour sources",
+        "Accepted corrected model/checkpoints needed for selected comparison"
+      ],
+      "steps": [
+        "Reuse unchanged accepted RIDER arrays; rebuild only if a changed model input contract requires it.",
+        "Execute paired test/retest inference and the existing fixed repeatability/reference-alignment calculations.",
+        "Preserve per-scan contour semantics and person-level pairing; retain baseline M0 comparison."
+      ],
+      "command": "ACQ/rider/run_rider.py and existing RIDER_PROTOCOL.md; bind corrected model/config/rows explicitly, implementing a narrow adapter if needed.",
+      "outputs": [
+        "Corrected-model paired inference and repeatability tables",
+        "Input/contour/model provenance and exclusions"
+      ],
+      "completion_checks": [
+        "No 56-independent-person denominator.",
+        "No voxelwise registered-map or EGFR claim."
+      ],
+      "resources": "Forward inference plus CPU aggregation; current model runtime unmeasured",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "R01",
+      "title": "Materialize the prepared reader packet and perform technical viewer QA",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E02"
+      ],
+      "human_dependencies": [
+        "H05"
+      ],
+      "inputs": [
+        "RUN/readiness/attempt_03/R04/starter_copy_candidate.py",
+        "Existing eight-case/680-image copy plan and exact file membership",
+        "Actual authorized destination and secret handling"
+      ],
+      "steps": [
+        "Reuse the completed correction candidate and preflight; apply only source-compatible changes.",
+        "Create the planned packet in controlled storage, with exact manifest/file membership and missing-source refusal.",
+        "Open in the intended viewer and verify technical loading/orientation/presentation; route clinical content questions to human readers."
+      ],
+      "command": "Use prepared candidate interface after E01 help/contract verification; do not run an invented copy CLI. Sending requires the separately specified recipient/delivery action.",
+      "outputs": [
+        "Actual packet and checksummed manifest",
+        "Technical viewer QA record",
+        "Delivery-ready local inventory"
+      ],
+      "completion_checks": [
+        "No read/clinical-adjudication count from packet preparation.",
+        "No secret in argv/log/GitHub; no extra images or missing cases."
+      ],
+      "resources": "~358.55MB source images in existing eight-case proposal; measure copies",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "R02",
+      "title": "Finish the native-compatible custodian inference package",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E03"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "SC/custodian_package",
+        "PF/provenance/custodian_v0.1.6 candidate",
+        "Actual selected model,schemas and existing producer/validator fixtures"
+      ],
+      "steps": [
+        "Re-run synthetic producers, not just update their manifest hashes. Resolve demonstrated compatibility failures narrowly.",
+        "Build a versioned environment/container and inference entrypoint; compare packaged versus native outputs on a fixture and allowed actual input.",
+        "Require model/input/exposure provenance in returns and explicit refusal of malformed or unknown-exposure records."
+      ],
+      "command": "Existing package producers/validator harnesses; document exact built entrypoint and image/environment identity, not a speculative ready Docker tag.",
+      "outputs": [
+        "Versioned runnable custodian package",
+        "Native/package comparison and schema compatibility results",
+        "Documented aggregate return schema"
+      ],
+      "completion_checks": [
+        "Old 51/56 and41/42 results are not relabeled all-pass.",
+        "No need to promote this package before local N08 fits."
+      ],
+      "resources": "CPU/container build; model load memory measured",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "R03",
+      "title": "Ingest genuine reader returns with provenance",
+      "owner": "Sathvik + Claude",
+      "scope": "external_access",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "R01"
+      ],
+      "human_dependencies": [
+        "H05"
+      ],
+      "inputs": [
+        "Actual reader returned files and reading records",
+        "Fixed case/reader identities and versioned packet",
+        "Declared reading/adjudication method"
+      ],
+      "steps": [
+        "Validate returned schema,case completeness,reader identity,duplicate/partial status and packet version.",
+        "Keep original returns immutable and separate raw reads from adjudicated outcomes.",
+        "Prepare discrepancy tables for human adjudication and update actual return counts."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Controlled return ledger and validated files",
+        "Aggregate completeness/discrepancy report"
+      ],
+      "completion_checks": [
+        "No fabricated approvals,returns or clinical adjudication.",
+        "Duplicate return does not create a new independent case/reader."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "R04",
+      "title": "Compute the prespecified reader endpoints from genuine completed reads",
+      "owner": "Sathvik + Claude",
+      "scope": "external_access",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "R03"
+      ],
+      "human_dependencies": [
+        "H05",
+        "H06"
+      ],
+      "inputs": [
+        "Accepted real read/return data",
+        "Existing approved reader endpoint/analysis specification"
+      ],
+      "steps": [
+        "Execute fixed paired reader/case calculations and uncertainty after the relevant real data exists.",
+        "Respect repeated cases/readers and missing-return rules; retain noninterpretable/partial strata.",
+        "Produce tables/data for human interpretation, without invented clinical utility conclusions."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Reader endpoint tables and underlying aggregate data",
+        "Missingness and repeated-measure accounting"
+      ],
+      "completion_checks": [
+        "Real returned count and denominator match ledger.",
+        "Method changes go to H06 before inferential claims."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "R05",
+      "title": "Ingest custodian model-output returns independently of reader packets",
+      "owner": "Sathvik + Claude",
+      "scope": "external_access",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "R02"
+      ],
+      "human_dependencies": [
+        "H03",
+        "H04"
+      ],
+      "inputs": [
+        "Actual custodian return bundle",
+        "Locked model/package/schema and input/exposure evidence"
+      ],
+      "steps": [
+        "Validate model/package identity, person-level uniqueness, completeness and exposure/schema fields.",
+        "Keep failed/partial returns immutable and report exact incompatibilities.",
+        "Pass accepted predictions and separately qualified endpoint joins to M11; do not count a prediction return as a reader assessment."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Custodian return receipt and aggregate coverage",
+        "Accepted local prediction/endpoint interface"
+      ],
+      "completion_checks": [
+        "No R01 reader-packet dependency for a pure custodian inference route.",
+        "Unknown labels/exposure remain unresolved,not accepted by missing fields."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "P01",
+      "title": "Regenerate Figure1 image from the corrected accepted flow",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E02"
+      ],
+      "human_dependencies": [
+        "H01"
+      ],
+      "inputs": [
+        "Selected corrected attrition ledger and approved flow definition",
+        "Existing already-corrected legend"
+      ],
+      "steps": [
+        "Create vector/raster image and source table from the selected flow.",
+        "Preserve unknown/reconstructed exclusions and separate internal/external populations.",
+        "Compare labels,arrows,counts and caption to the source data."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Figure1 source data,SVG/PNG and caption link"
+      ],
+      "completion_checks": [
+        "Image itself matches the corrected legend; a text-only fix does not close this task."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "P02",
+      "title": "Finalize mechanical C06 layout and labeling without recomputing it",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E02"
+      ],
+      "human_dependencies": [
+        "H01"
+      ],
+      "inputs": [
+        "Existing package_v2 SVG/PNG and panel JSON/CSV",
+        "Approved main/supplement placement and F/G label choices"
+      ],
+      "steps": [
+        "Apply selected relabeling/layout in a new version while retaining exact panel data.",
+        "Preserve posthoc null/binormal and calibration qualifications in the caption.",
+        "Check panel legibility,source references and consistency across paper/supplement."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Final C06 assets and data-identity link",
+        "Layout/caption comparison record"
+      ],
+      "completion_checks": [
+        "No recalculated statistics solely for caption/layout changes.",
+        "Human placement decision recorded."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "P03",
+      "title": "Assemble the final selected table/figure data and value traceability",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E02",
+        "A01"
+      ],
+      "human_dependencies": [
+        "H01",
+        "H06"
+      ],
+      "inputs": [
+        "Human-selected paper claims and latest accepted outputs",
+        "Current journal_set_v3 review package",
+        "M07/M10/M11/R04 outputs only for claims actually selected"
+      ],
+      "steps": [
+        "Create one inventory mapping every displayed estimate,uncertainty,denominator and figure panel to source fields.",
+        "Regenerate only assets whose data or approved labels changed; include scientific missing values honestly.",
+        "Check all numerical/text references and cross-document counts against the chosen version."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Table CSV/JSON and figure-data inventory",
+        "Value/denominator/source crosswalk",
+        "Cross-document consistency report"
+      ],
+      "completion_checks": [
+        "No mixed M0/M1 or historical/new external label.",
+        "Missing scientific output cannot be filled with a surrogate number.",
+        "All assets and scientific outputs selected in the final content manifest have their applicable conditional dependency completed; unselected extensions do not block packaging."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit.",
+      "conditional_dependencies": {
+        "selected Figure1": [
+          "P01"
+        ],
+        "selected C06": [
+          "P02"
+        ],
+        "corrected primary claims": [
+          "M07"
+        ],
+        "corrected calibration/fusion claims": [
+          "M10"
+        ],
+        "new external claims": [
+          "M11"
+        ],
+        "reader-outcome claims": [
+          "R04"
+        ]
+      }
+    },
+    {
+      "id": "P04",
+      "title": "Run a source-preserving reproduction of selected publication outputs",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E03",
+        "P03"
+      ],
+      "human_dependencies": [],
+      "inputs": [
+        "Selected output inventory and permitted inputs",
+        "scripts/reproduce.sh and newer revamp builders"
+      ],
+      "steps": [
+        "Extend only missing coverage so selected newer outputs have explicit reproduction commands.",
+        "Run in a fresh output directory/checkout, preserving originals. Separate saved-output reproduction from expensive refitting and data-access-required steps.",
+        "Compare fieldwise outputs using method-appropriate tolerances and save every exit/log/difference."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Reproduction commands and environment",
+        "Fresh outputs/manifest",
+        "Fieldwise comparison and unresolved-difference report"
+      ],
+      "completion_checks": [
+        "No absolute mount/local-only import dependency hidden in published instructions.",
+        "Scientific acceptance is not inferred from a successful reproduction script."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "P05",
+      "title": "Typeset and mechanically inspect the human-approved submission files",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "P03"
+      ],
+      "human_dependencies": [
+        "H01",
+        "H07"
+      ],
+      "inputs": [
+        "Human-approved main/supplement/title/cover text",
+        "Final selected figures/tables/references",
+        "Confirmed venue/article type profile"
+      ],
+      "steps": [
+        "Update the selected source format and compile/export all required documents.",
+        "Render and inspect pages for missing figures,clipping,numbering,reference and metadata errors.",
+        "Count against current chosen journal requirements; report remaining OPEN fields rather than invent authors/ethics statements."
+      ],
+      "command": "Use actual chosen document toolchain after source selection; older paper/ PDFs are not a build of the October review set.",
+      "outputs": [
+        "Submission source files and compiled exports",
+        "Build logs and layout/count report"
+      ],
+      "completion_checks": [
+        "No ghostwritten scientific manuscript or initial IJAS prose.",
+        "Inherited Methods800 rule is not enforced as official unless confirmed."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "P06",
+      "title": "Create the final technical release/reviewer bundle",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "P04",
+        "P05",
+        "P07"
+      ],
+      "human_dependencies": [
+        "H07"
+      ],
+      "inputs": [
+        "Frozen selected code/results/assets",
+        "Approved licenses and release/access inventory"
+      ],
+      "steps": [
+        "Bundle reproducible safe code,aggregate outputs,dependency/model identities and acquisition instructions.",
+        "Produce blinded review copy when required and inspect metadata,text,paths and figures for identity/private data leakage.",
+        "Record excluded controlled inputs and how an authorized reviewer can obtain them; hash the final package."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Technical release archive/manifest",
+        "Reviewer package and disclosure/access inventory"
+      ],
+      "completion_checks": [
+        "No clinical images/subject predictions/private crosswalks/unsent drafts in public package.",
+        "Public deposition/submission and author attestations remain explicit human actions."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "P07",
+      "title": "Populate technical reporting and IJAS evidence attachments",
+      "owner": "Sathvik + Claude",
+      "scope": "core",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E02",
+        "P03"
+      ],
+      "human_dependencies": [
+        "H07",
+        "H08"
+      ],
+      "inputs": [
+        "Frozen results and actual approvals/contribution records supplied by humans",
+        "CLAIM/TRIPOD+AI templates and current IJAS route"
+      ],
+      "steps": [
+        "Map reporting items to real methods/output locations,flagging missing human statements.",
+        "Compile chronological code/AI contribution log and student-provided evidence files.",
+        "Check file inventory,dates,links and required formats without writing the initial student plan/abstract/paper/poster."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Technical reporting evidence map",
+        "AI/code chronology and reproducibility annex",
+        "IJAS technical evidence inventory"
+      ],
+      "completion_checks": [
+        "No invented approvals,contributions,assay labels or deadline.",
+        "Submission readiness awaits human scientific and institutional decisions."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "X01",
+      "title": "Validate predictive/spatial null procedures if retaining the familywise claim",
+      "owner": "Sathvik + Claude",
+      "scope": "optional_research",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E02",
+        "E03"
+      ],
+      "human_dependencies": [
+        "H01",
+        "H10"
+      ],
+      "inputs": [
+        "Existing null_size_study.py",
+        "Production replication procedure"
+      ],
+      "steps": [
+        "Run fixed predictive null regime/replicates using production readout.",
+        "Implement the genuinely missing spatial generator only under the declared null design; report type-I and coverage uncertainty.",
+        "Failure/absence leaves secondary reporting exploratory and does not block M01\u2013M07."
+      ],
+      "command": "python PX/n08/readout/null_size_study.py --regime moderate --replicates 1000 --start 0 --out-dir OUT",
+      "outputs": [
+        "Null-size and coverage tables",
+        "Known-answer/alignment results"
+      ],
+      "completion_checks": [
+        "Apply existing V rule without claiming it validates .05/34 tail."
+      ],
+      "resources": "Historical~6.35CPU-s/replicate,~1.8CPU-h per predictive regime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "X02",
+      "title": "Transfer selected mechanism/intervention analyses to corrected models",
+      "owner": "Sathvik + Claude",
+      "scope": "optional_research",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E02",
+        "E03",
+        "M07"
+      ],
+      "human_dependencies": [
+        "H01",
+        "H10"
+      ],
+      "inputs": [
+        "Accepted M1 checkpoints/rows and training-only reference pools",
+        "Existing M0 mechanism modules/receipts"
+      ],
+      "steps": [
+        "Select only mechanism claims retained by researchers.",
+        "Adapt corrected manifest/matrix bindings for attention/value donors,coalitions,context,attribution/randomization and stress; existing modules and exact CLI shapes are cataloged.",
+        "Shard by fit/fold and preserve identity/reload/donor-role controls; do not relabel old G50/G0 results as N08 B/A."
+      ],
+      "command": "COMPUTE_SOURCE_AUDIT.md existing analysis catalog; add only required corrected-data adapters.",
+      "outputs": [
+        "Versioned per-unit mechanism shards",
+        "Paired effect/uncertainty tables"
+      ],
+      "completion_checks": [
+        "No unapproved method or test-patient donor use.",
+        "Unchanged M0 analyses close by reuse."
+      ],
+      "resources": "Forward/backward jobs; profile, old backward-heavy jobs often CPU faster",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "X03",
+      "title": "Implement and run wrong-mask training controls if selected",
+      "owner": "Sathvik + Claude",
+      "scope": "optional_research",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E02",
+        "E03",
+        "M01"
+      ],
+      "human_dependencies": [
+        "H01",
+        "H10"
+      ],
+      "inputs": [
+        "Accepted rows/partitions",
+        "Declared within-training permutation/displacement method"
+      ],
+      "steps": [
+        "Reuse A/B absent/correct controls.",
+        "Implement training-only wrong-mask permutation and geometry-matched displacement; audit masks/gradients.",
+        "Execute declared new arms with matched budget and separate run identities."
+      ],
+      "command": "No ready wrong-mask training CLI verified; implement narrow control builder and explicit new matrix.",
+      "outputs": [
+        "Control-generation code/manifest",
+        "New fit/OOF outputs and contrast tables"
+      ],
+      "completion_checks": [
+        "No held-out mask donors.",
+        "New controls not silently part of frozen50."
+      ],
+      "resources": "Historical ~10 new fits for two one-seed arms",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "X04",
+      "title": "Implement annotation-efficiency subsets if selected",
+      "owner": "Sathvik + Claude",
+      "scope": "optional_research",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E02",
+        "E03",
+        "M01"
+      ],
+      "human_dependencies": [
+        "H01",
+        "H10"
+      ],
+      "inputs": [
+        "Accepted rows",
+        "Declared 0/25/50/100% training-annotation design"
+      ],
+      "steps": [
+        "Create fixed training-only patient subsets and preserve test labels/membership.",
+        "Run the declared subset draws/fit matrix.",
+        "Report achieved annotation/event counts and uncertainty."
+      ],
+      "command": "New subset adapter/matrix required; not an existing ready flag.",
+      "outputs": [
+        "Subset manifests",
+        "Fit and efficiency tables"
+      ],
+      "completion_checks": [
+        "No tuning subset selection for favourable outcome."
+      ],
+      "resources": "Historical proposal ~20 fits; actual chosen design governs",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "X05",
+      "title": "Run clipped grounding-pretraining transfer comparisons if needed",
+      "owner": "Sathvik + Claude",
+      "scope": "optional_research",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E02",
+        "E03"
+      ],
+      "human_dependencies": [
+        "H01",
+        "H10"
+      ],
+      "inputs": [
+        "LIDC/NSCLC-Radiomics masks or chosen accepted mask cohort",
+        "Existing warm-start results and default.yaml warnings"
+      ],
+      "steps": [
+        "First check for newer successful clipped reruns.",
+        "Pretrain on disjoint permitted masks; compare fixed no-warm,head-only and vision+head arms under declared clipping.",
+        "Retain NaN/dead folds and actual method differences."
+      ],
+      "command": "python -m theia.engine.pretrain --config CFG --rows ROWS --out CKPT --epochs N --val_frac .15; use actual model.grounding_pretrain_ckpt/model.warm_start_vision/train.backbone_lr_mult/train.grad_clip overrides.",
+      "outputs": [
+        "Pretraining checkpoint/provenance",
+        "Matched transfer fit matrix and results"
+      ],
+      "completion_checks": [
+        "No stalled-fold omission or protected-test pretraining."
+      ],
+      "resources": "Pretraining plus new matched fits; profile actual cohort",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "X06",
+      "title": "Run additional architecture/frozen-versus-finetuned comparator if selected",
+      "owner": "Sathvik + Claude",
+      "scope": "optional_research",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E02",
+        "E03",
+        "M01"
+      ],
+      "human_dependencies": [
+        "H01",
+        "H10"
+      ],
+      "inputs": [
+        "Native features",
+        "Declared architecture/tuning budget and fixed cohort"
+      ],
+      "steps": [
+        "Reuse existing frozen BiomedCLIP probe where compatible.",
+        "Implement alternative encoder/adapter where absent; do not invent a supported config value.",
+        "Run training-only tuning and matched OOF evaluation."
+      ],
+      "command": "Existing frozen-feature path plus explicit new architecture implementation.",
+      "outputs": [
+        "Architecture implementation and smoke",
+        "OOF comparator results"
+      ],
+      "completion_checks": [
+        "Common eligible people and partitions; no outer-test selection."
+      ],
+      "resources": "Encoder/training capacity unmeasured",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "X07",
+      "title": "Implement within-site training-label permutation if selected",
+      "owner": "Sathvik + Claude",
+      "scope": "optional_research",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E02",
+        "E03",
+        "M01"
+      ],
+      "human_dependencies": [
+        "H01",
+        "H10"
+      ],
+      "inputs": [
+        "Fixed cohorts/site labels/splits",
+        "Declared null-training design"
+      ],
+      "steps": [
+        "Permute training labels only within site.",
+        "Keep outer truth and budget unchanged; create separate run IDs.",
+        "Execute fixed null arms and return actual statistics."
+      ],
+      "command": "New training-label adapter/matrix; do not substitute randomization.py.",
+      "outputs": [
+        "Permutation audit",
+        "Null fits/OOF outputs"
+      ],
+      "completion_checks": [
+        "Existing parameter randomization is not label randomization."
+      ],
+      "resources": "Historical 5 fits per one-seed arm",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "X08",
+      "title": "Develop geometry-aware3D or CT\u2013pathology branch if selected",
+      "owner": "Sathvik + Claude",
+      "scope": "optional_research",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E02",
+        "E03"
+      ],
+      "human_dependencies": [
+        "H01",
+        "H10"
+      ],
+      "inputs": [
+        "Verified geometry/raw sources",
+        "Paired pathology availability and patient overlap ledger"
+      ],
+      "steps": [
+        "Produce feasibility and person-level modality intersection before training.",
+        "Implement loaders/backbones/fusion for chosen physical-mm/slice-aware/3D or multimodal design.",
+        "Run actual geometry/interface smoke,then declared fixed split experiment; missing modality stays missing."
+      ],
+      "command": "New implementation scoped by H10; existing code entrypoints identified in source audit only.",
+      "outputs": [
+        "Feasibility/cohort ledger",
+        "Loader/model implementation",
+        "Versioned experiments"
+      ],
+      "completion_checks": [
+        "Roadmap/config comment is not runnable implementation.",
+        "No paired pathology claim from CT-only cohort."
+      ],
+      "resources": "Large preprocessing/training; unknown capacity",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "X09",
+      "title": "Run Tier2 retraining or input-versus-initialization separation if selected",
+      "owner": "Sathvik + Claude",
+      "scope": "optional_research",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E02",
+        "E03",
+        "M07"
+      ],
+      "human_dependencies": [
+        "H01",
+        "H10"
+      ],
+      "inputs": [
+        "Accepted M1 matrix",
+        "Human-declared new sensitivity design"
+      ],
+      "steps": [
+        "Specify exact additional cells and case-exclusion policy.",
+        "Run all declared units with immutable data versions.",
+        "Produce matched contrasts separating the chosen factors."
+      ],
+      "command": "Design then concrete matrix; no ready CLI/matrix invented.",
+      "outputs": [
+        "New versioned matrix",
+        "Fit outputs and contrast tables"
+      ],
+      "completion_checks": [
+        "Evaluation-only M08 does not estimate training influence.",
+        "No extra 40+ fits without a declared design."
+      ],
+      "resources": "Additional full fits; size from selected matrix",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "X10",
+      "title": "Stabilize and evaluate generation/reader-benefit branch if retained",
+      "owner": "Sathvik + Claude",
+      "scope": "optional_research",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E02",
+        "E03"
+      ],
+      "human_dependencies": [
+        "H01",
+        "H10"
+      ],
+      "inputs": [
+        "Existing generation/reader modules",
+        "Declared rationale endpoints and genuine human reads"
+      ],
+      "steps": [
+        "Resolve actual generation gradient/runtime failures on a bounded test.",
+        "Run fixed training/inference and existing factuality/confabulation calculations.",
+        "Build technical reader cases; genuine benefit measurement follows real reader data."
+      ],
+      "command": "Actual build_cases/serve/build_demo interfaces; bind generation config explicitly,default loss0 is not a trained-generation result.",
+      "outputs": [
+        "Generation stability and fit outputs",
+        "Factuality tables and reader packets"
+      ],
+      "completion_checks": [
+        "Fluent text metrics are not clinical correctness.",
+        "run_eval.sh builds cases,not quantitative model evaluation."
+      ],
+      "resources": "Training, inference and reader work; profile",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "X11",
+      "title": "Run additional selection/stability study only if scientifically retained",
+      "owner": "Sathvik + Claude",
+      "scope": "optional_research",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E02",
+        "E03"
+      ],
+      "human_dependencies": [
+        "H01",
+        "H10"
+      ],
+      "inputs": [
+        "Existing20-seed stability and mass/pointing-gated3-seed results",
+        "Declared new selection/stability question"
+      ],
+      "steps": [
+        "Reconcile/reuse completed sweeps first.",
+        "If required,execute only genuinely missing declared units with independent output paths.",
+        "Keep selection-rule versions separate; retain weights needed downstream."
+      ],
+      "command": "Use current explicit trainer matrix; legacy stability.sh may prune checkpoints.",
+      "outputs": [
+        "Missing-unit results or reuse receipt",
+        "Selection/stability tables"
+      ],
+      "completion_checks": [
+        "Do not use legacy pruning script on needed checkpoints.",
+        "No automatic canonical headline promotion."
+      ],
+      "resources": "Potentially many fits; avoid unchanged repeats",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    },
+    {
+      "id": "X12",
+      "title": "Implement retained multigene endpoints and the declared discovery branch",
+      "owner": "Sathvik + Claude",
+      "scope": "optional_research",
+      "status": "pending_reconciliation",
+      "depends_on": [
+        "E01",
+        "E02",
+        "D13"
+      ],
+      "human_dependencies": [
+        "H03",
+        "H10"
+      ],
+      "inputs": [
+        "Existing EGFR/KRAS source labels and any separately verified additional endpoints",
+        "Human-declared target,hypothesis,multiplicity and validation design"
+      ],
+      "steps": [
+        "Inventory real assay coverage and target-specific eligible/positive counts; do not use expression as mutation status.",
+        "Implement selected target or paired-modality adapters and frozen experiment matrix.",
+        "Execute only prespecified model/discovery computations; return features,hypothesis outputs and validation evidence without inventing biological interpretations."
+      ],
+      "command": "Implementation/entry-point binding task; do not invent a ready CLI.",
+      "outputs": [
+        "Endpoint-specific cohort dictionary and exposure manifest",
+        "Explicit experiment matrix/code",
+        "Raw discovery/evaluation outputs for human review"
+      ],
+      "completion_checks": [
+        "No broad multigene capability claimed from EGFR-only execution.",
+        "Exploratory discovery and confirmatory validation use appropriately separated data."
+      ],
+      "resources": "CPU / small metadata; measure actual runtime",
+      "reuse_rule": "Consume any newer compatible result first. Reuse if code, data, method and output criteria match; otherwise retain prior output and record the exact changed input or missing unit."
+    }
+  ]
+}
