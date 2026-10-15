@@ -20,6 +20,10 @@ One multi-modal vision-language model that classifies, grounds, and generates, v
 
 ---
 
+## Current execution plan
+
+Start with the [audited execution backlog](EXECUTION_BACKLOG.md): detailed task cards, dataset register, and a standalone nightly Claude runbook. This is the current remaining-work entry point; older roadmap claims and completion statements are historical. Compute ownership is Sathvik + Claude, separate from the paper author roster.
+
 ## Contents
 
 - [What THEIA does](#what-theia-does)

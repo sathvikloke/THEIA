@@ -1,0 +1,266 @@
+{
+  "schema_version": 1,
+  "audited_date": "2026-10-15",
+  "warning": "Provider figures are dated source descriptions, not acquired or eligible counts. No raw person identifiers. See DATASETS.md for exact source/code/receipt paths.",
+  "resources": [
+    {
+      "resource": "NSCLC-Radiogenomics",
+      "recorded_role_status_or_scale": "Internal development. 211 source CT-listed subjects; 188 imported; 158 historical input arrays; 153 EGFR two-class (40 mutant), 5 EGFR unknown. 119 supplied extent masks and 39 point-tier inputs. Corrected M1 candidate has 158 rows but no accepted real M1 input release or corrected fits in latest closeout.",
+      "remaining_operations_or_prerequisites": "Finish source-preserving corrected input acceptance, repair/linkage/geometry checks and versioned arrays; separately assess 19 labeled-but-never-built development subjects without altering frozen M1 membership.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "NSCLC-Radiomics / LUNG1",
+      "recorded_role_status_or_scale": "Prior grounding development exposure; source 422, project evidence records 420 processed crops. Not a fresh external molecular cohort.",
+      "remaining_operations_or_prerequisites": "Bind legacy pretraining membership/weights/transform provenance; any rebuild must be a new version; resolve annotation provenance and tumor-only segments. No blanket re-download indicated.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "LIDC-IDRI / LUNA16",
+      "recorded_role_status_or_scale": "Auxiliary nodule/reader-uncertainty/localization route. Source register 1,010 people/1,018 scans; LUNA16 is a derivative subset of 888 scans. XML converter exists; no verified current acquired, processed or model-used count established by this audit.",
+      "remaining_operations_or_prerequisites": "Reconcile actual files/receipts; verify access/version, XML\u2194CT SOP linkage, reader consensus policy, explicit mask-to-row adapter, patient grouping and overlap before use.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "NLST P10k",
+      "recorded_role_status_or_scale": "Label-free representation development. Frozen plan 10,000 people, one index series each. 2,391 archives verified, 118,384,085,731 compressed bytes; 7,609 remain. All P1k archives and 2,391 of P3k are verified. The October 14 transfer decoded no pixels.",
+      "remaining_operations_or_prerequisites": "Receipt-aware transfer successor; real ingestion pilot; archive-to-derivative adapter; QC and versioned derivatives; complete P3k/P10k; separate development and held-out reconstruction-pair acquisition; exposure ledger.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "NLST human annotation derivatives",
+      "recorded_role_status_or_scale": "1,092-person reserved union in frozen roles. Includes LIDC-annot-NLST501, NLSTseg, Sybil-related lesion references and new-lesion longitudinal annotations. These are not extra people.",
+      "remaining_operations_or_prerequisites": "Resolve annotation release/version/access and exact reference types; keep reserve out of pretraining; only build localization inputs after a specified evaluation question.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "NLST AI-only derivatives",
+      "recorded_role_status_or_scale": "BAMF/AIMI, nnU-Net-BPR and TotalSegmentator membership flags recorded. Not independent human tumor references.",
+      "remaining_operations_or_prerequisites": "Preserve provenance and derivative overlap flags; use only for an explicitly defined engineering/segmentation comparison, not molecular or human-reference credit.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "TCGA-LUAD + Crowds Cure 2017",
+      "recorded_role_status_or_scale": "Existing external research-endpoint evaluation: 40 patients, 4 positives/36 research negatives; outcomes exposed. 67 CT subjects in local source enumeration; 59 two-class endpoint records, 8 unknown. Four adapter-development subjects are separate.",
+      "remaining_operations_or_prerequisites": "Reader-enable remaining candidates; maintain timing/assay exclusions; build and lock label-free inputs/predictions before further permitted joins. Existing 40 can be reused descriptively for corrected-model comparison.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "CPTAC-LUAD",
+      "recorded_role_status_or_scale": "Provider radiology listing 38 vs local CT enumeration 37; source aggregate EGFR publication 36 imaged. 29 selected index CTs acquired; 28 eligible before reader localization; 0 evaluated. 36 public WXS MAFs acquired, compressed/quarantined, no label decoding/join.",
+      "remaining_operations_or_prerequisites": "Reconcile version/count differences; reader localization, input construction, model/prediction lock, then authorized molecular decode/linkage and endpoint qualification; labels/exposure disclosure.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "RIDER Lung CT + contour release",
+      "recorded_role_status_or_scale": "Test\u2013retest/reference alignment only. 28 paired people, 56 CT series, 13,488 CT images and 56 manual contour files used historically. Source collection has 32 people. No EGFR endpoint.",
+      "remaining_operations_or_prerequisites": "Reuse accepted pairs/arrays; only rebuild if corrected input contract actually requires it; preserve manual ROI/source linkage and per-scan coordinate semantics; re-score with accepted corrected models as its own computation.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "Crowds Cure 2018",
+      "recorded_role_status_or_scale": "Candidate alternate internal reference/annotation-uncertainty analysis, 88 internal-cohort people measured in historical register. Not additional people or fresh molecular validation.",
+      "remaining_operations_or_prerequisites": "Reassess now-restored raw CT availability, inspect annotation release and joins; implement only a frozen reference-comparison question.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "BiomedCLIP / PMC-15M",
+      "recorded_role_status_or_scale": "Existing upstream encoder exposure. Public CT participant overlap with figure-caption pretraining corpus is unknown.",
+      "remaining_operations_or_prerequisites": "Pin original weights/version/license and exposure declaration; do not claim patient-level exclusion from incomplete corpus metadata. No need to download PMC-15M for this backlog.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "CT-RATE \u2014 <https://huggingface.co/datasets/ibrahimhamamci/CT-RATE>",
+      "recorded_role_status_or_scale": "21,304 people; 25,692 scans; 50,188 reconstructed volumes; gated own-account terms; historical register CC BY-NC-SA 4.0. Alternative representation/report resource, no EGFR.",
+      "remaining_operations_or_prerequisites": "Record own access; preserve publisher validation split; enumerate original vs reconstruction groups, metadata/corrections and source checksum; benchmark selected source volumes. It is an alternative/factor, not silently mixed into NLST scale points.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "RadGenome-Chest CT \u2014 <https://www.nature.com/articles/s41597-025-05922-9>",
+      "recorded_role_status_or_scale": "README advertises 665K grounded reports, not 665K people; no genomic endpoint. No verified acquired or usable count established in this audit.",
+      "remaining_operations_or_prerequisites": "Resolve source dataset relation/overlap, actual access/license, annotation type and compatible loader. README/config intent is not proof of executed pretraining.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "TCGA-LUSC and TCGA H&E whole-slide images \u2014 GDC <https://portal.gdc.cancer.gov/> and TCIA catalogue <https://www.cancerimagingarchive.net/collections/>",
+      "recorded_role_status_or_scale": "Named only in the older README's future multimodal program; no acquired/usable CT\u2013WSI\u2013molecular join or executed pathology branch established here. TCGA-LUAD is used as external CT evaluation in the current study despite the old README calling it internal.",
+      "remaining_operations_or_prerequisites": "Treat as a legacy prospective scope item requiring an explicit scientific decision. If retained, enumerate actual CT/WSI/specimen/endpoint intersection, resolve slide/sample/person hierarchy, access/license and train/test exposure, and build a separate modality loader. Do not silently repurpose the exposed TCGA external cohort for training or count a whole genomic project as paired imaging.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "LNDb \u2014 <https://zenodo.org/records/8348419>",
+      "recorded_role_status_or_scale": "294 scans, patient uniqueness unverified; historical licensing conflict/CC BY-NC-ND conditions flagged; auxiliary nodule annotations.",
+      "remaining_operations_or_prerequisites": "Pin release, confirm permitted transformations/redistribution, deduplicate persons, build annotation/CT adapter only for declared localization question.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "LUNA25 \u2014 <https://luna25.grand-challenge.org/>",
+      "recorded_role_status_or_scale": "4,000+ examinations across challenge description, public development vs restricted hidden tests; no EGFR.",
+      "remaining_operations_or_prerequisites": "Acquire permitted manifest only, map NLST/other source overlap, preserve hidden/publisher splits and independent evaluation restrictions.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "NSCLC-Radiomics-Interobserver1 \u2014 <https://www.cancerimagingarchive.net/collection/nsclc-radiomics-interobserver1/>",
+      "recorded_role_status_or_scale": "22 people; repeated contour information for 21; historical corrected v3.",
+      "remaining_operations_or_prerequisites": "Resolve overlap with LUNG1, select corrected release, map readers/ROIs to CT; annotation uncertainty analysis, not new molecular count.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "NSCLC-Radiomics-Genomics \u2014 <https://www.cancerimagingarchive.net/collection/nsclc-radiomics-genomics/>",
+      "recorded_role_status_or_scale": "89 subjects; expression arrays rather than verified mutation calls; historical CC BY-NC 3.0.",
+      "remaining_operations_or_prerequisites": "Confirm any actual assay endpoint and linkage; otherwise only expression/biology feasibility; no expression-to-EGFR relabeling.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "Lung-PET-CT-Dx \u2014 TCIA collection catalogue <https://www.cancerimagingarchive.net/browse-collections/>",
+      "recorded_role_status_or_scale": "355 source subjects; no verified EGFR table.",
+      "remaining_operations_or_prerequisites": "Resolve exact release and terms, distinguish diagnostic chest CT from attenuation-correction CT, eligibility and overlap.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "QIN LUNG CT \u2014 TCIA catalogue <https://www.cancerimagingarchive.net/collections/>",
+      "recorded_role_status_or_scale": "47 people; historical CC BY 3.0; auxiliary acquisition variability.",
+      "remaining_operations_or_prerequisites": "Pin exact source release and pair/group definitions; distinct question beyond already completed RIDER before acquisition.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "Crowds Cure 2018 \u2014 TCIA annotation release via <https://www.cancerimagingarchive.net/collections/>",
+      "recorded_role_status_or_scale": "88 already-internal people measured; historical CC BY 3.0.",
+      "remaining_operations_or_prerequisites": "Resolve actual release URL, CT/annotation UID linkage and extent/line semantics; no additional persons.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "BAMF / AIMI \u2014 TCIA/IDC analysis-result catalogues",
+      "recorded_role_status_or_scale": "AI masks, including some TCGA/NLST derivatives; historical CC BY 4.0.",
+      "remaining_operations_or_prerequisites": "Keep model provenance/exposure and human-vs-AI reference separation; no detector route is established just by downloading masks.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "I3LUNG \u2014 <https://www.nature.com/articles/s41591-026-04488-2>",
+      "recorded_role_status_or_scale": "Public extracted features; original CT not released in inspected record.",
+      "remaining_operations_or_prerequisites": "Source access recheck; features alone cannot support THEIA spatial image experiment; CT\u2013EGFR intersection remains unknown.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "PhysioNet sepsis chest CT \u2014 <https://physionet.org/content/chest-ct-sepsis-er/1.0.0/>",
+      "recorded_role_status_or_scale": "836 scans/327 admissions in inspected page; restricted own-account and contributor review; not a lung-cancer EGFR source.",
+      "remaining_operations_or_prerequisites": "Only a justified domain-shift study; resolve people vs admissions, actual CT release/access and endpoint. Credentialing alone supplies no data.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "IDC \u2014 <https://datacommons.cancer.gov/repository/imaging-data-commons>",
+      "recorded_role_status_or_scale": "Discovery/mirror infrastructure, not another cohort.",
+      "remaining_operations_or_prerequisites": "Map accession/release/UID aliases to TCIA; do not count duplicates twice.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "AACR GENIE",
+      "recorded_role_status_or_scale": "Genomic consortium mentioned as a possible custodian route; no paired CT release or accessible patient count established here.",
+      "remaining_operations_or_prerequisites": "Imaging linkage and permissions must be established by custodian; no ready downloader or eligibility count.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "FAIS network",
+      "recorded_role_status_or_scale": "18,232 across 9 published cohorts; <https://pubmed.ncbi.nlm.nih.gov/35341713/>",
+      "remaining_operations_or_prerequisites": "Identify actual custodian/site subsets and overlap; negotiate permitted data transfer or custodian-run evaluation; confirm eligible pretreatment CT/assay-negative definitions.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "West China FCPNet",
+      "recorded_role_status_or_scale": "3,433 published; <https://papers.miccai.org/miccai-2025/paper/2645_paper.pdf>",
+      "remaining_operations_or_prerequisites": "Access not verified; check overlap with FAIS and other West China papers, raw volumes vs features, eligibility and assay metadata.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "Ajou\u2013Chungnam\u2013Inha",
+      "recorded_role_status_or_scale": "1,280 published; <https://www.nature.com/articles/s41598-024-51630-6>",
+      "remaining_operations_or_prerequisites": "Reasonable request route, no access obtained; histology/timing/volume availability and split reconciliation.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "AI-Hub catalogue",
+      "recorded_role_status_or_scale": "10,000-patient catalogue cited; <https://aihub.or.kr/aihubdata/data/view.do?dataSetSn=71394>",
+      "remaining_operations_or_prerequisites": "Restricted eligibility/access and actual CT\u2013EGFR intersection; not 10,000 verified usable pairs.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "Shanghai Chest",
+      "recorded_role_status_or_scale": "1,010 published; <https://pmc.ncbi.nlm.nih.gov/articles/PMC7500487/>",
+      "remaining_operations_or_prerequisites": "Current custodian, sharing/compute route, overlap and temporal/molecular eligibility.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "IEO",
+      "recorded_role_status_or_scale": "Relevant published molecular study; <https://pmc.ncbi.nlm.nih.gov/articles/PMC10527057/>",
+      "remaining_operations_or_prerequisites": "Current custodian feasibility; independent person/site counts, raw images, tested-negative definition and permissions. No verified accessible count.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "Guangzhou\u2013Shengjing",
+      "recorded_role_status_or_scale": "914 (709+205) published; <https://www.frontiersin.org/journals/oncology/articles/10.3389/fonc.2020.598721/full>",
+      "remaining_operations_or_prerequisites": "Both hospitals' ethics/access decision; compatible images and molecular/clinical completeness.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "Suqian\u2013Suzhou",
+      "recorded_role_status_or_scale": "826 published; <https://pubmed.ncbi.nlm.nih.gov/40328536/>",
+      "remaining_operations_or_prerequisites": "Availability of raw volumes rather than features, source sites, endpoint and terms.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "Soochow\u2013Changzhou PET-CT",
+      "recorded_role_status_or_scale": "516 published; <https://link.springer.com/article/10.1186/s12880-024-01232-5>",
+      "remaining_operations_or_prerequisites": "Conflicting access statements; clarify CT type, specimen/timing and permissions.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "Shanghai Pulmonary\u2013Tianjin",
+      "recorded_role_status_or_scale": "844 published; <https://pmc.ncbi.nlm.nih.gov/articles/PMC6437603/>",
+      "remaining_operations_or_prerequisites": "Custodian/contact current status, source overlap and compatible eligible raw data.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    },
+    {
+      "resource": "Huadong",
+      "recorded_role_status_or_scale": "579 local published; <https://pmc.ncbi.nlm.nih.gov/articles/PMC6601587/>",
+      "remaining_operations_or_prerequisites": "Separate local people from reused public TCIA external cases; no access assumed.",
+      "evidence": "DATASETS.md; dated project sources, provider URLs not freshly rechecked",
+      "owner": "Sathvik + Claude"
+    }
+  ]
+}
