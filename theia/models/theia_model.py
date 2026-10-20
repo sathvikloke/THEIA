@@ -23,7 +23,7 @@ import torch
 import torch.nn as nn
 
 from .backbone import VisionEncoder
-from .heads import ClassifierHead, GenerationHead, GroundingHead
+from .heads import ClassifierHead, GenerationHead, GroundingHead, _checked_hook
 
 
 class LoRAUnavailable(RuntimeError):
@@ -72,11 +72,32 @@ class Theia(nn.Module):
         cls_dim = m.vision_dim * (2 if self.peritumoral else 1)
         self.classifier = ClassifierHead(cls_dim, cfg.data.target_genes,
                                          m.classifier_hidden, m.dropout)
-        self.generation = GenerationHead(m.vision_dim, m.lm_name, m.lm_max_new_tokens)
+        # The generation head is built even when its loss weight is zero, which is
+        # every run in the manuscript. That costs a ~1.6 GB BioGPT download on
+        # first use and makes the training path unrunnable without network access
+        # for a component that contributes nothing -- measured: `Theia(cfg)` raises
+        # OSError offline, at the tokenizer, before any data is touched. Setting
+        # `model.build_generation_head: false` skips it; the default is unchanged
+        # so existing state dicts still load.
+        self.has_generation = bool(getattr(m, "build_generation_head", True))
+        if self.has_generation:
+            self.generation = GenerationHead(m.vision_dim, m.lm_name,
+                                             m.lm_max_new_tokens)
+        else:
+            self.generation = None
         self.lora_applied = False
+        if cfg.lora.enabled and self.generation is None:
+            raise ValueError(
+                "lora.enabled is true but model.build_generation_head is false; "
+                "LoRA in this project adapts the language model only, so there is "
+                "nothing for it to wrap. Set one of the two to match the other.")
         if cfg.lora.enabled:
             self._apply_lora(cfg.lora)
         self.warm_start_vision = bool(getattr(m, "warm_start_vision", False))
+        # E34: optional inference hook on the slice-pooled patch tokens [B, N, D],
+        # between the encoder and every consumer of the tokens. Plain attribute,
+        # absent from the state dict, None on every training/evaluation path.
+        self.token_hook = None
         ckpt = getattr(m, "grounding_pretrain_ckpt", None)
         if ckpt:
             self.load_grounding_pretrain(str(ckpt))
@@ -158,6 +179,8 @@ class Theia(nn.Module):
         if slice_mask is not None:
             slice_mask = slice_mask.to(device)
         patch_tokens, grid = self.vision.encode(images, slice_mask)
+        if self.token_hook is not None:
+            patch_tokens = _checked_hook("token_hook", self.token_hook, patch_tokens)
         g = self.grounding(patch_tokens, grid)
         pooled = self.grounding.pooled_from_regions(g["region_emb"], self.pooling)
         if self.peritumoral:
@@ -166,7 +189,14 @@ class Theia(nn.Module):
         logits = self.classifier(pooled)
 
         out = dict(logits=logits, attn_maps=g["attn_maps"], region_emb=g["region_emb"])
-        if generate:
+        if self.generation is None:
+            # No head was built. Emit a zero gen_loss on the right device so the
+            # training loop's weighted sum is unchanged -- it multiplies by
+            # loss_weights.gen, which must be 0.0 for this configuration to be
+            # meaningful, and _summarize still finds the key it expects.
+            if not generate:
+                out["gen_loss"] = torch.zeros((), device=device)
+        elif generate:
             out["text"] = self.generation.generate(g["region_emb"], device)
         else:
             out["gen_loss"] = self.generation(g["region_emb"], batch["report"], device)

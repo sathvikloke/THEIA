@@ -7,7 +7,7 @@ from typing import Any
 import yaml
 
 VALID_SLICE_STRATEGIES = {"tumor_bbox", "max_area", "all"}
-VALID_POOLING = {"mean", "max"}
+VALID_POOLING = {"mean", "max", "query0"}
 
 
 class Config(dict):
@@ -73,6 +73,10 @@ def validate_config(cfg: Config) -> None:
     # point and monitoring one would select checkpoints on a threshold the study
     # has declared meaningless. See docs/ANALYSIS_PLAN.md section 3.
     allowed = {f"{g}_auc" for g in genes} | {
+        # Proper scores. Both are LOSSES, so they belong in a monitor with a
+        # NEGATIVE weight; N08 selects on [[egfr_logloss, -1.0]].
+        f"{g}_logloss" for g in genes
+    } | {f"{g}_brier" for g in genes} | {
         "grounding_mass", "grounding_pointing", "grounding_iou",
         "grounding_mass_lift", "grounding_pointing_lift", "grounding_iou_lift",
         # A loss, so it belongs in a monitor with a NEGATIVE weight.

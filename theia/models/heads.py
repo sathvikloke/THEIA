@@ -37,6 +37,24 @@ class ClassifierHead(nn.Module):
         return {g: head(h) for g, head in self.heads.items()}
 
 
+def _checked_hook(name: str, hook, x: torch.Tensor) -> torch.Tensor:
+    """Run an inference hook and refuse anything that is not a drop-in replacement.
+
+    Exact shape (so a [1, ...] donor cannot silently broadcast across the batch
+    or the heads), dtype, device, and finite values. A wrong-but-plausible tensor
+    would otherwise give a wrong forward pass that looks like a result.
+    """
+    y = hook(x)
+    if not isinstance(y, torch.Tensor):
+        raise TypeError(f"{name} returned {type(y).__name__}, not a tensor")
+    if y.shape != x.shape or y.dtype != x.dtype or y.device != x.device:
+        raise ValueError(f"{name} returned {tuple(y.shape)} {y.dtype} on {y.device}; "
+                         f"expected {tuple(x.shape)} {x.dtype} on {x.device}")
+    if not bool(torch.isfinite(y).all()):
+        raise ValueError(f"{name} returned non-finite values")
+    return y
+
+
 class GroundingHead(nn.Module):
     """Region queries attend over patch tokens -> attention maps + region embeddings."""
 
@@ -45,12 +63,30 @@ class GroundingHead(nn.Module):
         self.queries = nn.Parameter(torch.randn(n_queries, dim) * 0.02)
         self.attn = nn.MultiheadAttention(dim, n_heads, batch_first=True)
         self.norm = nn.LayerNorm(dim)
+        # Inference-time substitution hook for theia.analysis.faithfulness, which
+        # asks whether the classifier's output depends on the attention at all.
+        # A plain attribute, not a buffer or a parameter: it is absent from the
+        # state dict, so no checkpoint changes and no gradient path is touched.
+        # None on every training and evaluation path in this repository.
+        self.attn_hook = None
+        # E33: an independent hook on the projected VALUE tensor [B, H, N, D/H],
+        # applied before `attn @ V`. Same rules as attn_hook -- plain attribute,
+        # absent from the state dict, None everywhere except the analysis harness.
+        # Q and K are computed from their own projections and never see it, so the
+        # attention weights (and the displayed map) are unchanged by construction.
+        self.value_hook = None
+        # E32 / RIG043: a hook on the normalised per-query region embeddings
+        # [B, Q, D], after `self.norm` and before any pooling. The displayed
+        # attention maps are computed earlier and never see it.
+        self.region_hook = None
 
     def forward(self, patch_tokens: torch.Tensor, grid_hw: tuple[int, int]) -> dict:
         b = patch_tokens.shape[0]
         q = self.queries.unsqueeze(0).expand(b, -1, -1)          # [B, Q, D]
         region_emb, attn_w = self._attend(q, patch_tokens)
         region_emb = self.norm(region_emb)                       # [B, Q, D]
+        if self.region_hook is not None:
+            region_emb = _checked_hook("region_hook", self.region_hook, region_emb)
         h, w = grid_hw
         maps = attn_w.view(b, -1, h, w)                          # [B, Q, H', W']
         return dict(region_emb=region_emb, attn_maps=maps)
@@ -85,9 +121,18 @@ class GroundingHead(nn.Module):
         Q = F.linear(q, qw, qb).view(b, n_q, heads, dh).transpose(1, 2)
         K = F.linear(kv, kw, kb).view(b, n_k, heads, dh).transpose(1, 2)
         V = F.linear(kv, vw, vb).view(b, n_k, heads, dh).transpose(1, 2)
+        if self.value_hook is not None:
+            V = _checked_hook("value_hook", self.value_hook, V)
 
         logits = (Q @ K.transpose(-2, -1)) / math.sqrt(dh)       # [B,H,Q,K]
         attn = torch.softmax(logits.float(), dim=-1).to(V.dtype)
+        # Substitution happens HERE, on the per-head tensor, and not on the
+        # head-averaged map returned below. Writing a head-averaged map back onto
+        # all H heads is not the identity even when the map is the patient's own,
+        # so that version has no correctness gate; at this tensor,
+        # self-substitution is exact. See docs/FAITHFULNESS_PLAN.md §2.1.
+        if self.attn_hook is not None:
+            attn = _checked_hook("attn_hook", self.attn_hook, attn)
         out = (attn @ V).transpose(1, 2).reshape(b, n_q, d)
         out = self.attn.out_proj(out)
         return out, attn.mean(dim=1)                             # average over heads
@@ -105,7 +150,13 @@ class GroundingHead(nn.Module):
             return region_emb.amax(dim=1)                        # [B, D]
         if mode == "mean":
             return region_emb.mean(dim=1)                        # [B, D]
-        raise ValueError(f"unknown region_pooling: {mode!r} (expected 'mean' or 'max')")
+        if mode == "query0":
+            # WP18/N08: a DESIGNATED query read out alone (query count
+            # unchanged). Under the union grounding loss no query is "the
+            # supervised query", which is what cells C/D/E exist to separate.
+            return region_emb[:, 0]                              # [B, D]
+        raise ValueError(
+            f"unknown region_pooling: {mode!r} (expected 'mean', 'max' or 'query0')")
 
 
 class GenerationHead(nn.Module):

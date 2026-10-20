@@ -1,0 +1,153 @@
+{
+  "schema": "theia.selected_training_source_export.v1",
+  "utc": "2026-10-20T09:01:16.101734+00:00",
+  "scope": "Actual CPU trainer static internal import closure, existing scientific acceptance helpers and fixed50-row matrix. Data/splits/acceptance inputs remain local. This is not a whole repository or completed scientific result.",
+  "files": [
+    {
+      "source_path": "theia/__init__.py",
+      "export_path": "theia/__init__.py",
+      "bytes": 78,
+      "sha256": "87c8c30dda705e7ad72a899afae9e370d3d900eb9d57d96b7ac64ed4b9463802"
+    },
+    {
+      "source_path": "theia/analysis/__init__.py",
+      "export_path": "theia/analysis/__init__.py",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source_path": "theia/analysis/shards.py",
+      "export_path": "theia/analysis/shards.py",
+      "bytes": 11008,
+      "sha256": "fb6d382cfd3892471d3fdd158d6fe6a3294506c75d680e9c38beec87998caa6d"
+    },
+    {
+      "source_path": "theia/config.py",
+      "export_path": "theia/config.py",
+      "bytes": 6736,
+      "sha256": "b37220ad4716cc1b37cf5ca0e3a9b9ded5cb4d765b7c0b5142075dfadba5fb61"
+    },
+    {
+      "source_path": "theia/data/__init__.py",
+      "export_path": "theia/data/__init__.py",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source_path": "theia/data/dataset.py",
+      "export_path": "theia/data/dataset.py",
+      "bytes": 8841,
+      "sha256": "7d5237f02b1f72889dbb087e0fdca45962b8a7e150ce6c7e12766285e707fead"
+    },
+    {
+      "source_path": "theia/engine/__init__.py",
+      "export_path": "theia/engine/__init__.py",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source_path": "theia/engine/evaluate.py",
+      "export_path": "theia/engine/evaluate.py",
+      "bytes": 20463,
+      "sha256": "64f73338f8158cbad89f333571c67519dcbdaaa6be2ad456284d677eab8144c8"
+    },
+    {
+      "source_path": "theia/engine/losses.py",
+      "export_path": "theia/engine/losses.py",
+      "bytes": 8154,
+      "sha256": "ae62eef44c9061236bd06c2484d910f524c36fe534338ac1fd9d3bb7bf6e7d73"
+    },
+    {
+      "source_path": "theia/engine/train.py",
+      "export_path": "theia/engine/train.py",
+      "bytes": 80543,
+      "sha256": "fff358eaab51a86b7980e76aab4377e5ae0f6736540bbaf82fcf48c50633a244"
+    },
+    {
+      "source_path": "theia/models/__init__.py",
+      "export_path": "theia/models/__init__.py",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source_path": "theia/models/backbone.py",
+      "export_path": "theia/models/backbone.py",
+      "bytes": 10481,
+      "sha256": "e6a382385fe14f52171f2b4890f8d1d0ca32ff98ad4bec03615a7d6b329a8c8a"
+    },
+    {
+      "source_path": "theia/models/heads.py",
+      "export_path": "theia/models/heads.py",
+      "bytes": 13027,
+      "sha256": "ff230321ba1154d87408674e8e5ae07422e3cd3d722f7d5b2be3b7447c43981c"
+    },
+    {
+      "source_path": "theia/models/theia_model.py",
+      "export_path": "theia/models/theia_model.py",
+      "bytes": 12515,
+      "sha256": "9e60929ad644ff3212950ce078ebebe31e8fd8927aa494880659ac13c8ec05cc"
+    },
+    {
+      "source_path": "theia/ranking.py",
+      "export_path": "theia/ranking.py",
+      "bytes": 4205,
+      "sha256": "5836e65b7350c351ea09fbb52020e188538b63326acacf465f8573d9292deea9"
+    },
+    {
+      "source_path": "theia/runtime.py",
+      "export_path": "theia/runtime.py",
+      "bytes": 2057,
+      "sha256": "192c799da4e6d4740eb15b171606494fb1ea8dce9fbc9cc44938c762a4c60417"
+    },
+    {
+      "source_path": "configs/default.yaml",
+      "export_path": "configs/default.yaml",
+      "bytes": 16563,
+      "sha256": "26516cef2295d17c22778c9a48255041fd78ad3707ef0a93ad2c8a5527bd613b"
+    },
+    {
+      "source_path": "requirements.txt",
+      "export_path": "requirements.txt",
+      "bytes": 523,
+      "sha256": "fec24a425735d30abc3c3bd2a4ba701d8e28ab7bac610f0075128c43eeb3d238"
+    },
+    {
+      "source_path": "requirements-lock.txt",
+      "export_path": "requirements-lock.txt",
+      "bytes": 1096,
+      "sha256": "0c69528525e1bed3ea1e8f0b2ccc61544c1b5406a586e9542e83272025ed35db"
+    },
+    {
+      "source_path": "setup.py",
+      "export_path": "setup.py",
+      "bytes": 214,
+      "sha256": "871239cfa50195d1da456b37e53c393777185903632056f9f6c9c329d93ab3c2"
+    },
+    {
+      "source_path": "revamp/campaign/nine_hour_corrected_inputs_2026-10-02/n08/src/n08/accept_fit.py",
+      "export_path": "execution_support/n08/accept_fit.py",
+      "bytes": 36251,
+      "sha256": "3d58149f0cfd124d6c370d623e3422a35f734b06bd239511782f66c82e486568"
+    },
+    {
+      "source_path": "revamp/campaign/nine_hour_corrected_inputs_2026-10-02/n08/src/n08/data_manifest.py",
+      "export_path": "execution_support/n08/data_manifest.py",
+      "bytes": 12110,
+      "sha256": "83acb26595e87075a3943c889298659a4a028c389698bf0de4af95905a56f9ff"
+    },
+    {
+      "source_path": "revamp/campaign/nine_hour_corrected_inputs_2026-10-02/n08/M1/FIT_MATRIX_M1.csv",
+      "export_path": "execution_support/n08/FIT_MATRIX_M1.csv",
+      "bytes": 102909,
+      "sha256": "fe0a0f2ffff724a184f18731bab5e7c8924eb6c94baf1409e8fc24280654aa34"
+    }
+  ],
+  "private_inputs_excluded": [
+    "Frozen patient SPLITS.json",
+    "M1 CONTENT_MANIFEST.json and rows.jsonl",
+    "Raw/processed imaging",
+    "Patient labels",
+    "Model weights",
+    "Gmail drafts/linkage keys"
+  ]
+}

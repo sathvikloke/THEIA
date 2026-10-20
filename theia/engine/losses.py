@@ -69,10 +69,21 @@ def roi_to_grid(roi: torch.Tensor, h: int, w: int, device) -> torch.Tensor:
     return binary
 
 
-def grounding_loss(attn_maps: torch.Tensor, roi: torch.Tensor, device) -> torch.Tensor:
-    """attn_maps [B,Q,h,w] vs roi [B,S,1,H,W] -> Dice + BCE on the union map."""
+def grounding_loss(attn_maps: torch.Tensor, roi: torch.Tensor, device,
+                   target: str = "union") -> torch.Tensor:
+    """attn_maps [B,Q,h,w] vs roi [B,S,1,H,W] -> Dice + BCE on the union map.
+
+    target="query0" (WP18/N08 alignment arm) supervises query 0's own map
+    instead of the max-over-query union. The default is unchanged, so every
+    historical configuration keeps its exact behaviour.
+    """
     b, q, h, w = attn_maps.shape
-    union = attn_maps.amax(dim=1)                                        # [B,h,w]
+    if target == "union":
+        union = attn_maps.amax(dim=1)                                    # [B,h,w]
+    elif target == "query0":
+        union = attn_maps[:, 0]                                          # [B,h,w]
+    else:
+        raise ValueError(f"unknown grounding target {target!r} (expected 'union' or 'query0')")
     # Rescale the map to peak at 1. The denominator stays ATTACHED: detaching it
     # removes the gradient through the maximum, which is one of the two things
     # that let a flattened map recover (the other, the clamp, is gone entirely --
@@ -124,7 +135,8 @@ def grounding_loss(attn_maps: torch.Tensor, roi: torch.Tensor, device) -> torch.
     return out.to(attn_maps.dtype)
 
 
-def total_loss(out: dict, batch, weights, device) -> tuple[torch.Tensor, dict]:
+def total_loss(out: dict, batch, weights, device,
+               ground_target: str = "union") -> tuple[torch.Tensor, dict]:
     """Returns (loss, parts).
 
     `parts` holds *detached tensors*, not floats. Calling float() on four tensors
@@ -135,7 +147,7 @@ def total_loss(out: dict, batch, weights, device) -> tuple[torch.Tensor, dict]:
     gen = out.get("gen_loss")
     if gen is None:
         gen = torch.zeros((), device=device)
-    grd = grounding_loss(out["attn_maps"], batch["roi"], device)
+    grd = grounding_loss(out["attn_maps"], batch["roi"], device, ground_target)
 
     # A zero-weighted term is DROPPED, not multiplied by zero. 0 * NaN is NaN, so
     # scaling a term to zero does not remove its gradient from the backward pass —

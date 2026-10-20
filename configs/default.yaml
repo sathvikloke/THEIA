@@ -36,6 +36,13 @@ data:
   # grounding unlearnable — the answer is "the middle" for everyone. Grounding
   # lift was ~0.000 across four ablation arms until this was added.
   crop_jitter_frac: 0.30
+  # Salt for the per-patient crop-jitter seed (theia.seeding.patient_seed).
+  # Until 2026-09-16 this offset came from the builtin hash(), which Python
+  # salts per interpreter, so the cache could not be regenerated as itself
+  # (DEF-0005). Changing this value re-derives every patient's crop and
+  # therefore produces a NEW dataset version, not a reproduction of an old one.
+  # Say so in the deviation log if you change it.
+  preprocess_seed: 0
   # Patients with an AIM annotation but no SEG get a fixed-size crop centred on
   # the annotated lesion centroid. AIM marks a location, not an extent, so there
   # is no bounding box to scale from. ~48 patients in NSCLC-RADIOGENOMICS are in
@@ -250,6 +257,29 @@ train:
   #   --set train.loss_weights.gen=1.0 \
   #   --set 'train.monitor=[[egfr_auc,1.0],[grounding_mass_lift,0.5],[gen_loss,-0.01]]'
   monitor: [[egfr_auc, 1.0], [grounding_mass_lift, 0.5]]
+
+  # An eligibility constraint the weighted sum above cannot express. Inner
+  # validation is 24-31 patients, so egfr_auc carries SE ~0.11; a lucky draw at
+  # an epoch where grounding has learned nothing outscores a trained epoch that
+  # does both, and ships. Two of the nine collapsed folds in the 20-seed
+  # stability set were exactly this -- both selected at EPOCH 0, both with a
+  # pointing-1.000 epoch available in the same fold, both then scoring ~0.00
+  # pointing on 420 external patients. See train.monitor_gate_ok.
+  #
+  # null reproduces the pre-fix behaviour bit-for-bit and is what every run in
+  # results/CANONICAL.json and every stability seed was trained under. It stays
+  # null only until the in-flight 20-seed run finishes: changing it mid-run
+  # would make those seeds differ by more than the seed, which is the same
+  # mistake the gen_loss note above records. Then:
+  #   monitor_gate: [grounding_pointing, 0.10]
+  #
+  # Gates on POINTING, not mass lift. Mass lift is continuous and the rescue
+  # survives only 0.01-0.08 on the archive; stab-s116/fold4 first localises at
+  # its last epoch with lift +0.088, so a gate at 0.10 would exclude it and
+  # re-ship the broken checkpoint. Pointing is bimodal (0.000, or 0.84 up) and
+  # the same rescue survives 0.01-0.50. 0.10 is mid-band and, at 24-31 inner
+  # patients, cannot be cleared by one lucky peak (1 patient = 0.042).
+  monitor_gate: null
 
 grounding_pretrain:
   enabled: false               # set true to pretrain grounding on RadGenome first

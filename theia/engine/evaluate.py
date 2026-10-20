@@ -33,6 +33,7 @@ import torch.nn.functional as F
 from sklearn.metrics import roc_auc_score
 
 from theia.engine.losses import roi_to_grid
+from theia.ranking import rank_normalize
 
 EPS = 1e-8
 
@@ -100,6 +101,18 @@ def evaluate(model, loader, cfg, device, full: bool = False) -> dict:
         metrics[f"{g}_auc"] = float(auc)
         metrics[f"{g}_n_pos"] = float(sum(ys[g]))
         metrics[f"{g}_n"] = float(len(ys[g]))
+        # Proper scores alongside AUC (added for N08's model selection). AUC is
+        # rank-only and blind to the overconfidence these models are documented
+        # to have (C13: log loss 0.84-1.78 against 0.575 for constant
+        # prevalence), so a selection rule built on AUC alone can prefer an
+        # epoch whose probabilities are badly calibrated. Purely additive: no
+        # existing key changes, and nothing selects on these unless
+        # train.monitor names them.
+        _y = np.asarray(ys[g], dtype=float)
+        _p = np.clip(np.asarray(probs[g], dtype=float), 1e-12, 1 - 1e-12)
+        metrics[f"{g}_logloss"] = float(
+            -(_y * np.log(_p) + (1 - _y) * np.log(1 - _p)).mean())
+        metrics[f"{g}_brier"] = float(((_p - _y) ** 2).mean())
         # No sensitivity/specificity. See _sens_spec's docstring: a 0.5 threshold on
         # these probabilities is not an operating point, it is an artefact.
         if full:
@@ -164,17 +177,19 @@ def _rank_normalize_by_fold(rows: list[dict], key: str) -> np.ndarray:
 
     AUC only depends on ordering, so converting to within-fold ranks preserves
     exactly what each model got right and makes the folds commensurable.
+
+    Ties take the mid-rank (`theia.ranking`), not the order their rows arrived
+    in: this was DEF-0001, and this function was the estimator behind every
+    pooled AUC in the paper.
     """
     out = np.zeros(len(rows))
     folds: dict[object, list[int]] = {}
     for i, r in enumerate(rows):
         folds.setdefault(r.get("fold", 0), []).append(i)
     for idx in folds.values():
-        vals = np.array([rows[i][key] for i in idx], dtype=float)
-        order = vals.argsort().argsort().astype(float)      # 0..n-1 ties broken stably
-        denom = max(len(idx) - 1, 1)
+        ranks = rank_normalize([rows[i][key] for i in idx])
         for j, i in enumerate(idx):
-            out[i] = order[j] / denom
+            out[i] = ranks[j]
     return out
 
 
@@ -287,8 +302,40 @@ def _mass_in_mask(u: torch.Tensor, t: torch.Tensor) -> list[float]:
 
 
 def _pointing(u: torch.Tensor, t: torch.Tensor) -> list[float]:
-    hit = t.gather(1, u.argmax(dim=1, keepdim=True)).squeeze(1)
+    """Is the most-attended cell inside the ROI, averaged over tied maxima.
+
+    DEF-0011. `u.argmax()` returns the FIRST cell attaining the maximum, so when
+    several cells tie the reported score is a property of the flattening order,
+    not of the map. Real trained maps are continuous and essentially never tie,
+    so this changes none of them. The centre-prior control ties by construction:
+    on a 14x14 grid the Gaussian's centre falls at (6.5, 6.5) and four cells sit
+    at exactly the same distance from it. Its pointing was reported as a single
+    0.476 when the four admissible answers span 0.457-0.505.
+
+    The tie-aware rule is the expected hit under a uniform choice among the tied
+    arg-maxima, which reduces to the old value whenever the maximum is unique.
+    `pointing_bounds` reports the spread for a map that does tie.
+    """
+    peak = u.max(dim=1, keepdim=True).values
+    tied = (u >= peak - EPS).float()
+    hit = (tied * t).sum(dim=1) / tied.sum(dim=1).clamp_min(1.0)
     return hit.tolist()
+
+
+def pointing_bounds(u: torch.Tensor, t: torch.Tensor) -> tuple[list[float], list[float]]:
+    """(worst, best) pointing over the tied arg-maxima of each map.
+
+    The sensitivity DEF-0011 asks for: a control whose bounds straddle the
+    trained arm is not evidence about the trained arm, whichever tie the
+    implementation happened to pick.
+    """
+    peak = u.max(dim=1, keepdim=True).values
+    tied = (u >= peak - EPS).float()
+    inside = (tied * t).sum(dim=1)
+    n_tied = tied.sum(dim=1).clamp_min(1.0)
+    lo = (inside > 0).float() * (inside == n_tied).float()   # 1 only if ALL tied hit
+    hi = (inside > 0).float()                                # 1 if ANY tied hits
+    return lo.tolist(), hi.tolist()
 
 
 def _area_matched_iou(u: torch.Tensor, t: torch.Tensor) -> list[float]:
