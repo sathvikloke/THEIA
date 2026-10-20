@@ -17,11 +17,9 @@ rather than a formatting detail:
     ambiguous periphery that makes a lesion a lesion, and drops nodules entirely
     when one reader missed them.
 
-    Default here is >= 3 of 4, the LUNA16 convention, which is also what most
-    published LIDC work uses. It is exposed as `min_agreement` because the right
-    answer depends on what the mask is FOR, and because a hidden default that
-    changes the supervision signal is precisely the kind of thing this project
-    has been bitten by.
+    The project's existing default is >= 3 distinct readers per voxel. This is
+    a voxel mask rule, not a clinical nodule eligibility rule. It is exposed as
+    `min_agreement` because changing it changes the supervision signal.
 
 LIDC also marks lesions < 3 mm as `nonNodule` or as nodules without contours.
 Those carry no usable extent and are excluded rather than given an invented one.
@@ -38,11 +36,27 @@ import json
 import os
 import re
 from collections import defaultdict
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 
 NS = re.compile(r"\{.*\}")
+
+
+@dataclass(frozen=True)
+class Contour:
+    """One XML ROI; exclusions belong to one reader's particular nodule."""
+
+    reader_idx: int
+    points: np.ndarray
+    inclusion: bool
+    nodule_idx: int
+
+    def __iter__(self):
+        # Preserve the reader/points unpacking used by earlier parser callers.
+        yield self.reader_idx
+        yield self.points
 
 
 def _tag(el) -> str:
@@ -54,7 +68,7 @@ def _find_all(root, name: str):
 
 
 def parse_xml(path: str) -> dict:
-    """Return {sop_uid: [contour, ...]} where a contour is (reader_idx, Nx2 array).
+    """Return {sop_uid: [Contour, ...]}, retaining inclusion and nodule identity.
 
     Reader index is the position of the readingSession, which is how the four
     annotators are distinguished; LIDC does not name them.
@@ -64,17 +78,16 @@ def parse_xml(path: str) -> dict:
     root = ET.parse(path).getroot()
     per_slice: dict[str, list] = defaultdict(list)
     for r_idx, session in enumerate(_find_all(root, "readingSession")):
-        for nodule in _find_all(session, "unblindedReadNodule"):
+        for n_idx, nodule in enumerate(_find_all(session, "unblindedReadNodule")):
             for roi in _find_all(nodule, "roi"):
                 uid_el = [e for e in roi.iter() if _tag(e) == "imageSOP_UID"]
                 if not uid_el or not (uid_el[0].text or "").strip():
                     continue
                 uid = uid_el[0].text.strip()
-                # inclusion=FALSE marks an excluded region (e.g. a vessel the
-                # reader carved out); treating it as tumour would grow the mask.
+                # Keep exclusions: dropping them fills holes inside an included
+                # outline. They must be subtracted from this nodule before votes.
                 inc = [e for e in roi.iter() if _tag(e) == "inclusion"]
-                if inc and (inc[0].text or "").strip().upper() == "FALSE":
-                    continue
+                inclusion = not (inc and (inc[0].text or "").strip().upper() == "FALSE")
                 pts = []
                 for em in _find_all(roi, "edgeMap"):
                     x = [e for e in em.iter() if _tag(e) == "xCoord"]
@@ -82,21 +95,46 @@ def parse_xml(path: str) -> dict:
                     if x and y:
                         pts.append((int(float(x[0].text)), int(float(y[0].text))))
                 if len(pts) >= 3:            # a polygon needs three points
-                    per_slice[uid].append((r_idx, np.array(pts, dtype=np.int32)))
+                    per_slice[uid].append(Contour(
+                        r_idx, np.array(pts, dtype=np.int32), inclusion, n_idx))
     return dict(per_slice)
 
 
-def _rasterize(points: np.ndarray, shape: tuple[int, int]) -> np.ndarray:
-    """Fill one polygon onto a boolean grid. (rows, cols) = (y, x)."""
-    from matplotlib.path import Path as MplPath
+def _rasterize(points: np.ndarray, shape: tuple[int, int],
+               include_boundary: bool = False) -> np.ndarray:
+    """Fill strict polygon interior, or interior plus border for exclusions.
 
+    LIDC contour pixels lie outside the nodule. Use even-odd ray crossing and
+    explicitly detect every grid point on an edge, avoiding orientation-dependent
+    boundary behavior from polygon libraries. Coordinates are integer pixels;
+    cross products are exact. Work only in the polygon's clipped bounding box.
+    """
+    points = np.asarray(points)
+    if (points.ndim != 2 or points.shape[1] != 2 or len(points) < 3
+            or not np.isfinite(points).all() or not np.equal(points, np.floor(points)).all()):
+        raise ValueError("contour must contain at least three finite integer pixel points")
+    points = points.astype(np.int64)
     h, w = shape
-    yy, xx = np.mgrid[0:h, 0:w]
-    grid = np.column_stack([xx.ravel(), yy.ravel()])
-    # radius=0.5 includes boundary pixels, matching how a reader's traced
-    # outline is normally interpreted.
-    inside = MplPath(points).contains_points(grid, radius=0.5)
-    return inside.reshape(h, w)
+    result = np.zeros(shape, dtype=bool)
+    x0, y0 = np.maximum(points.min(axis=0), (0, 0))
+    x1, y1 = np.minimum(points.max(axis=0), (w - 1, h - 1))
+    if x0 > x1 or y0 > y1:
+        return result
+    yy, xx = np.mgrid[y0:y1 + 1, x0:x1 + 1]
+    inside = np.zeros(xx.shape, dtype=bool)
+    boundary = np.zeros(xx.shape, dtype=bool)
+    for (ax, ay), (bx, by) in zip(points, np.roll(points, -1, axis=0)):
+        dx, dy = bx - ax, by - ay
+        boundary |= (((xx - ax) * dy == (yy - ay) * dx)
+                     & (xx >= min(ax, bx)) & (xx <= max(ax, bx))
+                     & (yy >= min(ay, by)) & (yy <= max(ay, by)))
+        if dy:
+            crosses = (ay > yy) != (by > yy)
+            intersection_x = ax + (yy - ay) * dx / dy
+            inside ^= crosses & (xx < intersection_x)
+    result[y0:y1 + 1, x0:x1 + 1] = (
+        inside | boundary if include_boundary else inside & ~boundary)
+    return result
 
 
 def consensus_mask(per_slice: dict, uid_to_index: dict, shape: tuple[int, int],
@@ -112,10 +150,19 @@ def consensus_mask(per_slice: dict, uid_to_index: dict, shape: tuple[int, int],
         k = uid_to_index.get(uid)
         if k is None or not (0 <= k < depth):
             continue
+        by_nodule: dict[tuple[int, int], tuple[np.ndarray, np.ndarray]] = {}
+        for contour in contours:
+            r_idx, pts = contour
+            include = getattr(contour, "inclusion", True)
+            key = r_idx, getattr(contour, "nodule_idx", 0)
+            if key not in by_nodule:
+                by_nodule[key] = np.zeros(shape, bool), np.zeros(shape, bool)
+            filled = _rasterize(pts, shape, include_boundary=not include)
+            by_nodule[key][0 if include else 1][:] |= filled
         by_reader: dict[int, np.ndarray] = {}
-        for r_idx, pts in contours:
-            filled = _rasterize(pts, shape)
-            by_reader[r_idx] = filled | by_reader.get(r_idx, np.zeros(shape, bool))
+        for (r_idx, _), (included, excluded) in by_nodule.items():
+            nodule = included & ~excluded
+            by_reader[r_idx] = nodule | by_reader.get(r_idx, np.zeros(shape, bool))
         if not by_reader:
             continue
         votes = np.sum(np.stack(list(by_reader.values())), axis=0)
@@ -151,6 +198,44 @@ def _volume_shape(ct) -> tuple[int, int, int]:
     return depth, h, w
 
 
+def export_mask_for_scan(xml_path: str, ct_dir: str, out_dir: str,
+                         min_agreement: int = 3) -> Path:
+    """Export a mask with the exact CT slice order and geometry that produced it.
+
+    The archive can subsequently be verified by ``theia.data.lidc_rows``.
+    Mask-only legacy exports cannot establish that correspondence.
+    """
+    import hashlib
+    from theia.data.lidc_rows import (CONSENSUS_METHOD, SCHEMA, _sha256, read_source_series,
+                                     write_consensus_npz)
+
+    if type(min_agreement) is not int or not 1 <= min_agreement <= 4:
+        raise ValueError("min_agreement must be an integer from 1 to 4")
+    per_slice = parse_xml(xml_path)
+    if not any(contour.inclusion for contours in per_slice.values() for contour in contours):
+        raise ValueError(f"{xml_path}: empty annotation source (no included polygons)")
+    source = read_source_series(ct_dir, required_sops=per_slice)
+    metadata = dict(source.metadata)
+    sops = metadata["sop_instance_uids"]
+    depth, h, w = source.volume_hu.shape
+    mask = consensus_mask(per_slice, {uid: i for i, uid in enumerate(sops)},
+                          (h, w), depth, min_agreement)
+    metadata.update(
+        schema=SCHEMA, mask_axes="zyx", min_agreement=min_agreement,
+        annotated_sop_instance_uids=sorted(per_slice),
+        reader_indices=sorted({reader for contours in per_slice.values()
+                               for reader, _ in contours}),
+        source_xml=str(Path(xml_path).resolve()),
+        source_xml_sha256=_sha256(xml_path),
+        consensus_method=CONSENSUS_METHOD,
+    )
+    name = "lidc_" + hashlib.sha256(
+        metadata["series_instance_uid"].encode()).hexdigest()[:20] + ".npz"
+    path = Path(out_dir) / name
+    write_consensus_npz(path, mask, metadata)
+    return path
+
+
 def summarise(xml_paths: list[str], min_agreement: int = 3) -> dict:
     """Reader-agreement statistics over a set of XMLs, without loading any CT.
 
@@ -166,8 +251,11 @@ def summarise(xml_paths: list[str], min_agreement: int = 3) -> dict:
             continue
         stats["scans"] += 1
         for _uid, contours in per_slice.items():
+            readers = {contour.reader_idx for contour in contours if contour.inclusion}
+            if not readers:
+                continue
             stats["annotated_slices"] += 1
-            stats["by_readers"][len({r for r, _ in contours})] += 1
+            stats["by_readers"][len(readers)] += 1
     stats["by_readers"] = dict(sorted(stats["by_readers"].items()))
     kept = sum(v for k, v in stats["by_readers"].items() if k >= min_agreement)
     stats["kept_at_threshold"] = kept
@@ -180,12 +268,13 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--lidc_root", required=True,
                     help="directory holding LIDC-IDRI, as the TCIA Data Retriever left it")
-    ap.add_argument("--min_agreement", type=int, default=3,
-                    help="readers who must agree on a voxel (LUNA16 uses 3 of 4)")
+    ap.add_argument("--min_agreement", type=int, choices=range(1, 5), default=3,
+                    help="distinct readers who must agree on a voxel (default: 3)")
     ap.add_argument("--summarise_only", action="store_true",
                     help="report reader agreement and exit, without touching CT")
     ap.add_argument("--masks_out", default=None,
                     help="write per-scan consensus masks here (.npz per scan)")
+    ap.add_argument("--limit", type=int, help="bounded pilot: first N sorted XMLs only")
     ap.add_argument("--out", default="results/lidc_agreement.json")
     a = ap.parse_args()
 
@@ -194,6 +283,10 @@ def main() -> None:
         raise SystemExit(
             f"no XML annotations under {a.lidc_root}. LIDC-IDRI ships one XML per "
             "scan alongside the DICOM series; check the Data Retriever output path.")
+    if a.limit is not None:
+        if a.limit < 1:
+            ap.error("--limit must be positive")
+        xmls = xmls[:a.limit]
     print(f"[lidc] {len(xmls)} annotation files")
     stats = summarise(xmls, a.min_agreement)
     print(f"[lidc] {stats['scans']} scans, {stats['annotated_slices']} annotated slices")
@@ -219,20 +312,22 @@ def main() -> None:
     for xml in xmls:
         scan_dir = os.path.dirname(xml)
         try:
-            m = mask_for_scan(xml, scan_dir, a.min_agreement)
+            export_mask_for_scan(xml, scan_dir, str(out_dir), a.min_agreement)
         except Exception as exc:                              # noqa: BLE001
             print(f"[lidc] skip {os.path.basename(scan_dir)}: "
                   f"{type(exc).__name__}: {exc}")
             skipped += 1
             continue
-        if int(m.sum()) == 0:
-            skipped += 1
-            continue
-        np.savez_compressed(out_dir / f"{Path(scan_dir).name}.npz", mask=m)
         written += 1
     print(f"[lidc] wrote {written} consensus mask(s) to {out_dir} ({skipped} skipped)")
-    print("[lidc] next: python -m theia.data.preprocess_masks --raw_dir <tree> "
-          f"--out_dir data/processed_lidc  (masks from {out_dir})")
+    if not written:
+        raise RuntimeError("no usable matched consensus sources were exported")
+    print("[lidc] next: python -m theia.data.lidc_rows "
+          f"--masks_dir {out_dir} --out_dir data/processed_lidc "
+          f"--expected_min_agreement {a.min_agreement}")
+    if skipped:
+        raise RuntimeError(f"{skipped} consensus source(s) failed export; inspect the "
+                           "messages above before treating this as a complete cohort")
 
 
 if __name__ == "__main__":
