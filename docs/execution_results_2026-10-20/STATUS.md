@@ -1,22 +1,31 @@
 # CPU execution on 20 October 2026
 
-This session is authorized to run existing-scope CPU work and permissible public downloads until 07:30 America/Chicago (12:30 UTC). GPU and HPC work are excluded. The task register remains [the October 15 backlog](../../planning/execution_backlog_2026-10-15/TASKS.md); this dated record reports execution against it.
+Checkpoint: 09:32 UTC. The authorized session ends at 07:30 America/Chicago (12:30 UTC), with lengthy-job admission closing at 12:10 UTC. GPU and HPC work are excluded. The task register remains [the October 15 backlog](../../planning/execution_backlog_2026-10-15/TASKS.md).
 
-| Task | Actual result | Remaining condition |
+| Task | Actual result | Remaining work |
 |---|---|---|
-| P01 | Corrected historical cohort-flow SVG/PNG, source tables, caption and build scripts produced; deterministic and visual checks passed. | Student/author adoption; this image does not represent a new corrected-input replication. |
-| E05 | Standalone attempt runner implemented; failure, fixed deadline, checkpoint resumption and fingerprint refusals exercised with tiny subprocesses. Independent scoped review passed after a launch-boundary timing defect was fixed. | First real training integration awaits source/data access. |
-| E01/E03 | Actual trainer, internal import closure, acceptance helpers and fixed matrix exported; trainer CLI import resolved, exit 0, in the observed external runtime. | Private split/data/model inputs remain external; full clean-environment research reproduction remains pending. |
-| D01 | Receipt, capacity, HTTP transport and header-verification components implemented; 60 tests passed with synthetic DICOM archives and loopback HTTP; independent review passed after four correctness repairs, with 11 additional adversarial checks. | Actual frozen plan and sealed downloader must be inspected, then the production acquisition command connected and actual downloads verified. |
-| D06 | Versioned consensus-mask adapter implemented and independently reviewed; exclusion regions and contour borders corrected. 61 tests passed, one Torch test skipped, and 208 independent geometry comparisons passed. | Real source-matched DICOM pilot and Torch dataset integration remain pending. |
+| P01 | Historical cohort-flow SVG/PNG and source tables regenerated and mechanically/visually checked. | Author adoption; this is not a new corrected replication. |
+| E01/E03 | Actual trainer import closure, acceptance helpers and frozen matrix exported; CLI import passed in the existing runtime. | Clean-environment reproduction and private runtime/data inputs. |
+| E05 | Bounded attempt runner implemented and reviewed; a real invocation recorded processes and stopped its training group on a storage-reserve failure. | Successful real training and acceptance integration. |
+| M01 | Reconciled and reused the October 16 real acceptance: 38/38 checks passed, fixtures false; retained A15 memberships unchanged. Current small-file bindings match. | No duplicate acceptance run was needed; no fit follows merely from source acceptance. |
+| M02 | Direct CPU smoke/fit driver published; 15 focused tests passed. Full fits require a matching accepted real smoke. | Complete compatibility with readout consumers that expect historical controller receipts. No historical release receipts are fabricated. |
+| M03 | Real invocation verified all 158 bound NPZ files, then the resource monitor stopped it at 09:24:14 UTC after internal free storage fell below reserve. Logs and partials retained. | No accepted two-epoch smoke; another execution requires restored resources and explicit review of the interruption. |
+| M04/M05 | No newly accepted corrected scientific fit. | Accepted smoke, then the fixed 50-fit matrix. |
+| D01/D02 | Actual sealed downloader and 10,000-row frozen plan bound to receipt-aware continuation. Independent review passed after terminal-stop repairs; 82 checks plus unchanged adversarial probes passed. Actual resource preflight refused admission. | Actual archive reconciliation and new acquisition; no new NLST archive this session. |
+| D05 | Official CT/XML inventory reconciled: 1,010 people, 1,018 CT series; 883 with included polygons and 135 without. Duplicates/source correction and remaining source exceptions recorded. | Remaining CT acquisition and source exceptions; inventory is not an adopted cohort. |
+| D06 | One real 133-object CT/XML pilot passed native consensus export, row construction and actual Torch dataset/collate. Technical crop/ROI QA passed. | Cohort-scale preparation and source coverage. One unlabeled row is not an EGFR-evaluable patient. |
 
-At 08:53 UTC Research and THEIA passed actual mount, identity and write/readback checks. Reconciliation found that corrected-input acceptance and population validation had already passed on October 16, so those computations are being reused. The current trainer and its static internal import closure have been exported; the exported trainer CLI resolves in the existing external environment. Corrected smoke/training are being prepared, while one public LIDC series matched to its XML annotations is being acquired. No new scientific fit or independently evaluable molecular patient is claimed at this checkpoint.
+Research and THEIA mounted and passed identity/write/readback checks at 08:53 UTC. Internal free storage later fell to approximately 330 MB; the real training monitor stopped its owned work and NLST preflight refused admission. No further reserve reduction is planned. Small metadata reconciliation continues; new training/download admission awaits adequate actual headroom.
+
+Actual new outputs at this checkpoint: **one LIDC CT archive, one loadable unlabeled row, zero new NLST archives, zero accepted corrected smokes, zero accepted corrected full fits, and zero newly independently EGFR-evaluable patients**. Prior valid outputs remain separate and are reused when compatible. There is no defensible whole-project completion percentage from these task counts.
 
 ## Reviewable artifacts
 
+- [LIDC real pilot and aggregate inventory](lidc_pilot/README.md)
 - [Corrected Figure 1](figure1/README.md)
+- [Corrected CPU execution](../CORRECTED_CPU.md)
 - [Standalone attempt commands](../CPU_ATTEMPTS.md)
 - [NLST continuation implementation and limits](../NLST_CONTINUATION.md)
 - [LIDC mask-to-row adapter](../LIDC_ROWS.md)
 
-Implementation and fixture checks are reported separately from real-data execution. Full local attempt receipts, failed checks and private input paths remain in the local session directory; they are not clinical evidence or a public data release. The task list is not a whole-project completion percentage.
+Private receipts, source identities, patient data, images and correspondence remain outside GitHub. Tests and adapter implementation are reported separately from real data outputs and accepted scientific fits.
