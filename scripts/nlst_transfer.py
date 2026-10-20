@@ -58,6 +58,9 @@ class ArchiveExpectation:
     expected_uncompressed_bytes: int
     # Exact non-image member names only; no wildcard or extension assumptions.
     non_dicom_members: tuple[str, ...] = ()
+    study_uid: str | None = None
+    dicom_bytes_only: bool = False
+    non_dicom_bytes_limit: int = 1_000_000
 
     def validate(self) -> None:
         if not self.patient_id or self.patient_id != self.patient_id.strip():
@@ -70,6 +73,10 @@ class ArchiveExpectation:
             raise Refusal("Expected uncompressed bytes must be a positive integer")
         if len(set(self.non_dicom_members)) != len(self.non_dicom_members):
             raise Refusal("Duplicate non-DICOM member declaration")
+        if self.study_uid is not None and not re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", self.study_uid):
+            raise Refusal("Invalid explicit StudyInstanceUID")
+        if type(self.non_dicom_bytes_limit) is not int or self.non_dicom_bytes_limit < 0:
+            raise Refusal("Non-DICOM byte limit must be a nonnegative integer")
 
 
 def verify_archive(
@@ -102,9 +109,18 @@ def verify_archive(
             if not set(expected.non_dicom_members).issubset({i.filename for i in files}):
                 raise ArchiveRejected("declared_non_dicom_member_missing")
             images = [i for i in files if i.filename not in expected.non_dicom_members]
+            if expected.dicom_bytes_only and any(
+                not info.filename.lower().endswith(".dcm") for info in images
+            ):
+                raise ArchiveRejected("undeclared_non_dicom_member")
             if len(images) != expected.expected_images:
                 raise ArchiveRejected("image_count_mismatch")
-            if sum(info.file_size for info in files) != expected.expected_uncompressed_bytes:
+            archive_bytes = sum(info.file_size for info in files)
+            image_bytes = sum(info.file_size for info in images)
+            if archive_bytes - image_bytes > expected.non_dicom_bytes_limit:
+                raise ArchiveRejected("non_dicom_size_bound")
+            counted_bytes = image_bytes if expected.dicom_bytes_only else archive_bytes
+            if counted_bytes != expected.expected_uncompressed_bytes:
                 raise ArchiveRejected("uncompressed_size_mismatch")
             # Draining each member validates its CRC, including opaque pixel bytes.
             # Decompression of ZIP data is not DICOM pixel decoding.
@@ -123,12 +139,16 @@ def verify_archive(
                 with archive.open(info) as stream:
                     header = pydicom.dcmread(
                         stream, stop_before_pixels=True,
-                        specific_tags=["PatientID", "SeriesInstanceUID", "SOPInstanceUID"],
+                        specific_tags=["PatientID", "StudyInstanceUID", "SeriesInstanceUID", "SOPInstanceUID"],
                     )
                 if str(getattr(header, "PatientID", "")).strip() != expected.patient_id:
                     raise ArchiveRejected("patient_header_mismatch")
                 if str(getattr(header, "SeriesInstanceUID", "")).strip() != expected.series_uid:
                     raise ArchiveRejected("series_header_mismatch")
+                if expected.study_uid is not None and str(
+                    getattr(header, "StudyInstanceUID", "")
+                ).strip() != expected.study_uid:
+                    raise ArchiveRejected("study_header_mismatch")
                 sop = str(getattr(header, "SOPInstanceUID", "")).strip()
                 if not sop:
                     raise ArchiveRejected("missing_sop_instance_uid")
@@ -142,6 +162,8 @@ def verify_archive(
     return {
         "sha256": digest, "bytes": identity["size"], "file_identity": identity,
         "images": len(images), "uncompressed_bytes": expected.expected_uncompressed_bytes,
+        "archive_uncompressed_bytes": archive_bytes, "dicom_uncompressed_bytes": image_bytes,
+        "byte_count_scope": "dicom_members" if expected.dicom_bytes_only else "all_files",
         "zip_crc_pass": True, "all_header_identities_match": True,
         "unique_sop_pass": True, "pixels_decoded": False,
     }
@@ -299,6 +321,7 @@ def transfer_one(
     }
     if os.path.lexists(final) or partial_paths(archive_dir, uid):
         result = {**base, "status": "review_required", "reason": "existing_bytes_before_transfer"}
+        guard.request_stop("terminal_existing_bytes_before_transfer")
         record(result)
         return result
     reserved = False
@@ -339,13 +362,22 @@ def transfer_one(
                 entry.update(status="stopped", error=str(exc))
             except Exception as exc:
                 entry.update(status="verification_or_io_error", error=type(exc).__name__ + ":" + str(exc))
+            terminal = not retry or attempt == max_attempts
+            if terminal and entry["status"] in {"http_error", "transport_error", "verification_or_io_error"}:
+                reason = (
+                    "terminal_http_" + str(entry["http_status"])
+                    if entry["status"] == "http_error"
+                    else "terminal_" + entry["status"]
+                )
+                # Stop admission before stat/journal I/O can block this worker.
+                guard.request_stop(reason)
             entry.update(
                 ended_utc=iso_now(), seconds=time.monotonic() - started,
                 partial_preserved=os.path.lexists(partial),
                 partial_bytes=partial.stat().st_size if partial.exists() else 0,
             )
             record(entry)
-            if not retry or attempt == max_attempts:
+            if terminal:
                 return entry
             until = time.monotonic() + retry_delay * attempt
             while time.monotonic() < until:

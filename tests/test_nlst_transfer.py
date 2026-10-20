@@ -183,6 +183,43 @@ class ArchiveFixtures(unittest.TestCase):
         with self.assertRaisesRegex(ArchiveRejected, "series_header_mismatch"):
             verify_archive(self.path, ArchiveExpectation("SYNTHETIC", "1.2.3.99", 2, self.size))
 
+    def test_actual_adapter_checks_study_identity(self):
+        with self.assertRaisesRegex(ArchiveRejected, "study_header_mismatch"):
+            verify_archive(self.path, ArchiveExpectation(
+                "SYNTHETIC", "1.2.3.4", 2, self.size, study_uid="1.2.99",
+            ))
+
+    def test_actual_plan_byte_count_excludes_license_but_crc_includes_it(self):
+        payload, total = make_archive(extra={"LICENSE": b"synthetic license"})
+        self.path.write_bytes(payload)
+        expected = ArchiveExpectation(
+            "SYNTHETIC", "1.2.3.4", 2, self.size, ("LICENSE",),
+            study_uid="1.2.3", dicom_bytes_only=True,
+        )
+        result = verify_archive(self.path, expected)
+        self.assertEqual(result["dicom_uncompressed_bytes"], self.size)
+        self.assertEqual(result["archive_uncompressed_bytes"], total)
+        self.assertEqual(result["byte_count_scope"], "dicom_members")
+        altered = bytearray(payload)
+        position = 0
+        for _ in range(3):
+            position = altered.index(b"PK\x01\x02", position)
+            if _ < 2:
+                position += 4
+        old = struct.unpack_from("<I", altered, position + 16)[0]
+        struct.pack_into("<I", altered, position + 16, old ^ 1)
+        self.path.write_bytes(altered)
+        with self.assertRaisesRegex(ArchiveRejected, "Bad CRC"):
+            verify_archive(self.path, expected)
+
+    def test_actual_adapter_refuses_undeclared_non_dicom_bytes(self):
+        payload, size = make_archive(extra={"README": b"unknown"})
+        self.path.write_bytes(payload)
+        with self.assertRaisesRegex(ArchiveRejected, "undeclared_non_dicom_member"):
+            verify_archive(self.path, ArchiveExpectation(
+                "SYNTHETIC", "1.2.3.4", 2, size, dicom_bytes_only=True,
+            ))
+
     def test_duplicate_sop_is_rejected(self):
         image = dicom_bytes()
         payload, size = make_archive([image, image])
@@ -439,6 +476,61 @@ class TransportFixtures(unittest.TestCase):
         self.assertNotIn("/1.2.3.12", seen["requests"])
         self.assertLessEqual(len(seen["requests"]), 2)
 
+    def test_terminal_corrupt_archive_stops_later_queue_admission(self):
+        with local_server(lambda h, _: respond(h, b"invalid ZIP archive")) as (url, seen):
+            specs = [self.spec(url + "/" + uid, uid) for uid in (
+                "1.2.3.10", "1.2.3.11", "1.2.3.12", "1.2.3.13",
+            )]
+            run_transfers(
+                specs, self.root, self.guard, self.records.append,
+                allow_loopback_http=True, retry_delay=0,
+            )
+        self.assertEqual(self.guard.stopped, "terminal_verification_or_io_error")
+        self.assertNotIn("/1.2.3.12", seen["requests"])
+        self.assertNotIn("/1.2.3.13", seen["requests"])
+        self.assertLessEqual(len(seen["requests"]), 2)
+        self.assertTrue(list(self.root.glob("*.part.*")))
+        self.assertFalse(list(self.root.glob("*.zip")))
+
+    def test_exhausted_transport_retries_latch_global_stop(self):
+        with local_server(lambda h, _: respond(h, status=503)) as (url, seen):
+            result = self.run_one(self.spec(url))
+        self.assertEqual(result["status"], "http_error")
+        self.assertEqual(len(seen["requests"]), 3)
+        self.assertEqual(self.guard.stopped, "terminal_http_503")
+
+    def test_nonretryable_http_latches_global_stop(self):
+        with local_server(lambda h, _: respond(h, status=404)) as (url, seen):
+            result = self.run_one(self.spec(url))
+        self.assertEqual(result["status"], "http_error")
+        self.assertEqual(len(seen["requests"]), 1)
+        self.assertEqual(self.guard.stopped, "terminal_http_404")
+
+    def test_terminal_stop_precedes_potentially_blocking_receipt_callback(self):
+        for error, expected_stop in (
+            (nlst_transfer.HTTPStatusError(404), "terminal_http_404"),
+            (nlst_transfer.HTTPStatusError(503), "terminal_http_503"),
+            (ConnectionError("exhausted transport"), "terminal_transport_error"),
+            (ArchiveRejected("corrupt archive"), "terminal_verification_or_io_error"),
+        ):
+            with self.subTest(error=type(error).__name__, reason=expected_stop):
+                guard = FakeGuard()
+                seen = []
+
+                def blocked_receipt(row):
+                    self.assertEqual(guard.stopped, expected_stop)
+                    with self.assertRaisesRegex(StopSession, expected_stop):
+                        guard.check(new_work=True)
+                    seen.append(row)
+
+                with mock.patch("scripts.nlst_transfer.receive", side_effect=error):
+                    result = transfer_one(
+                        self.spec("https://synthetic.invalid"), self.root, guard,
+                        blocked_receipt, max_attempts=1,
+                    )
+                self.assertEqual(len(seen), 1)
+                self.assertNotEqual(result["status"], "archive_verified")
+
     def test_dripping_headers_cannot_extend_absolute_deadline(self):
         def responder(handler, _):
             try:
@@ -468,7 +560,7 @@ class TransportBoundaryFixtures(unittest.TestCase):
         with self.assertRaisesRegex(Refusal, "HTTPS is required"):
             receive("http://example.com/image.zip", Path("/unused"), 100, FakeGuard())
 
-    def test_unbound_cli_refuses_unverified_original(self):
+    def test_bound_cli_refuses_unverified_original(self):
         with tempfile.TemporaryDirectory() as name:
             root = Path(name)
             original = root / "original.py"
@@ -486,8 +578,8 @@ class TransportBoundaryFixtures(unittest.TestCase):
             self.assertEqual(result.returncode, 2)
             value = json.loads(result.stdout)
             self.assertEqual(value["status"], "refused")
-            self.assertFalse(value["acquisition_enabled"])
-            self.assertIn("original downloader SHA-256 mismatch", value["reason"])
+            self.assertFalse(value["acquisition_started"])
+            self.assertIn("Sealed source SHA-256 mismatch", value["reason"])
 
 
 if __name__ == "__main__":

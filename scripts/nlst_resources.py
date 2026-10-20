@@ -35,7 +35,13 @@ def power_is_ac(*, timeout_seconds: float = 15) -> bool:
 
 def mounted_volume(root: Path, expected_uuid: str) -> dict:
     root = root.resolve(strict=True)
-    info = plistlib.loads(run_command(["/usr/sbin/diskutil", "info", "-plist", str(root)]))
+    # diskutil accepts mount points/device identifiers, not arbitrary directories.
+    requested_mount = root
+    while not requested_mount.is_mount() and requested_mount != requested_mount.parent:
+        requested_mount = requested_mount.parent
+    info = plistlib.loads(run_command([
+        "/usr/sbin/diskutil", "info", "-plist", str(requested_mount),
+    ]))
     if info.get("VolumeUUID", "").lower() != expected_uuid.lower():
         raise Refusal("Volume UUID mismatch for " + str(root))
     mount = Path(info.get("MountPoint", "/")).resolve(strict=True)
@@ -77,8 +83,9 @@ class ResourceGuard:
         self, *, theia_root: Path, research_root: Path, backing_image: Path,
         theia_uuid: str, research_uuid: str, cutoff: dt.datetime,
         deadline: dt.datetime, reserve_theia: int, reserve_research: int,
+        internal_root: Path | None = None, reserve_internal: int = 0,
     ):
-        if reserve_theia < 0 or reserve_research < 0:
+        if reserve_theia < 0 or reserve_research < 0 or reserve_internal < 0:
             raise Refusal("Storage reserves cannot be negative")
         if not utcnow() < cutoff < deadline:
             raise Refusal("Require current UTC < cutoff UTC < deadline UTC")
@@ -89,6 +96,13 @@ class ResourceGuard:
         self.backing_image = verify_backing_image(self.theia, self.research, backing_image)
         self.reserve_theia = reserve_theia
         self.reserve_research = reserve_research
+        self.reserve_internal = reserve_internal
+        self.internal = None
+        if internal_root is not None:
+            internal_root = internal_root.resolve(strict=True)
+            self.internal = {
+                "root": str(internal_root), "device": internal_root.stat().st_dev,
+            }
         self.active: dict[str, int] = {}
         self.lock = threading.RLock()
         self.stop = threading.Event()
@@ -137,10 +151,13 @@ class ResourceGuard:
                 self.last_power_check = time.monotonic()
             reservation = sum(self.active.values()) + extra_bytes
             snapshot = {"reserved_transfer_bytes": reservation}
-            for label, volume, reserve in (
-                ("theia", self.theia, self.reserve_theia),
-                ("research", self.research, self.reserve_research),
-            ):
+            volumes = [
+                ("theia", self.theia, self.reserve_theia, reservation),
+                ("research", self.research, self.reserve_research, reservation),
+            ]
+            if self.internal is not None:
+                volumes.append(("internal", self.internal, self.reserve_internal, 0))
+            for label, volume, reserve, reserved in volumes:
                 root = Path(volume["root"])
                 try:
                     if root.stat().st_dev != volume["device"]:
@@ -149,7 +166,7 @@ class ResourceGuard:
                 except OSError as exc:
                     self._fail(label + "_mount_unavailable", exc)
                 self._check_time_and_stop(new_work)
-                if free < reserve + reservation:
+                if free < reserve + reserved:
                     self._fail(label + "_capacity_reserve")
                 snapshot[label + "_free_bytes"] = free
             self._check_time_and_stop(new_work)
@@ -174,5 +191,6 @@ class ResourceGuard:
             "backing_image": self.backing_image,
             "reserve_theia_bytes": self.reserve_theia,
             "reserve_research_bytes": self.reserve_research,
+            "internal": self.internal, "reserve_internal_bytes": self.reserve_internal,
             "ac_power_required": True, "capacity": self.check(),
         }

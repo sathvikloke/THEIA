@@ -201,8 +201,8 @@ class ReceiptIndex:
 
 
 def partial_paths(archive_dir: Path, uid: str) -> list[Path]:
-    """Match only <UID>.part[.*] and <UID>.zip.part[.*], never prefix UIDs."""
-    suffix = re.compile(r"^\.(?:zip\.)?part(?:\..+)?$")
+    """Match successor and sealed-original partial forms, never prefix UIDs."""
+    suffix = re.compile(r"^(?:\.(?:zip\.)?part(?:\..+)?|\.zip\.attempt[0-9]+\.part)$")
     return sorted(
         (path for path in archive_dir.glob(uid + ".*") if suffix.fullmatch(path.name[len(uid):])),
         key=str,
@@ -216,6 +216,7 @@ def reconcile_archive(
     archive_dir: Path,
     receipts: ReceiptIndex,
     tick: Callable[[], None] = lambda: None,
+    known_partials: list[Path] | None = None,
 ) -> dict:
     """A full digest is required on every reuse; unknown bytes remain untouched."""
     if not re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", row["series_uid"]):
@@ -227,7 +228,9 @@ def reconcile_archive(
         "plan_row_sha256": json_digest(raw_row), "path": str(path),
         "ended_utc": iso_now(),
     }
-    partials = [str(p) for p in partial_paths(archive_dir, row["series_uid"])]
+    partials = [str(p) for p in (
+        partial_paths(archive_dir, row["series_uid"]) if known_partials is None else known_partials
+    )]
     base["preserved_partials"] = partials
     if not os.path.lexists(path):
         if row["series_uid"] in receipts.by_uid:

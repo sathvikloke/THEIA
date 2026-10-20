@@ -2,11 +2,15 @@
 from __future__ import annotations
 
 import hashlib
+import contextlib
+import io
 import json
 import datetime as dt
 import os
+import plistlib
 from pathlib import Path
 import tempfile
+import threading
 import types
 import unittest
 from unittest import mock
@@ -16,6 +20,8 @@ from scripts.nlst_resume_core import (
     publish_archive, reconcile_archive,
 )
 from scripts.nlst_resources import ResourceGuard, StopSession
+from scripts import nlst_resources
+from scripts import nlst_continue
 
 
 class ResumeFixtures(unittest.TestCase):
@@ -112,6 +118,14 @@ class ResumeFixtures(unittest.TestCase):
         self.assertEqual(result["status"], "pending")
         self.assertEqual(result["preserved_partials"], [])
         self.assertTrue(all((self.root / name).read_bytes() == b"unrelated" for name in names))
+
+    def test_sealed_original_attempt_partial_is_preserved(self):
+        partial = self.root / "1.2.3.4.zip.attempt01.part"
+        partial.write_bytes(b"legacy partial")
+        result = self.reconcile(self.index())
+        self.assertEqual(result["reason"], "unresolved_partial")
+        self.assertEqual(result["preserved_partials"], [str(partial)])
+        self.assertEqual(partial.read_bytes(), b"legacy partial")
 
     def test_fresh_missing_row_is_pending(self):
         self.assertEqual(self.reconcile(self.index())["status"], "pending")
@@ -292,6 +306,21 @@ class ResourceFixtures(unittest.TestCase):
             with self.assertRaisesRegex(StopSession, "research_capacity_reserve"):
                 self.guard.check()
 
+    def test_internal_journal_reserve_does_not_reserve_external_archive_bytes(self):
+        self.guard.internal = {"root": str(self.root), "device": self.root.stat().st_dev}
+        self.guard.reserve_internal = 100
+        with mock.patch(
+            "scripts.nlst_resources.shutil.disk_usage",
+            side_effect=[types.SimpleNamespace(free=n) for n in (4000, 4000, 101)],
+        ):
+            self.guard.check(extra_bytes=2000)
+        with mock.patch(
+            "scripts.nlst_resources.shutil.disk_usage",
+            side_effect=[types.SimpleNamespace(free=n) for n in (4000, 4000, 99)],
+        ):
+            with self.assertRaisesRegex(StopSession, "internal_capacity_reserve"):
+                self.guard.check()
+
     def test_power_loss_stops_work(self):
         self.guard.last_power_check = float("-inf")
         with mock.patch("scripts.nlst_resources.power_is_ac", return_value=False):
@@ -366,6 +395,243 @@ class ResourceFixtures(unittest.TestCase):
         self.guard.request_stop("terminal_http_403")
         with self.assertRaisesRegex(StopSession, "terminal_http_403"):
             self.guard.check()
+
+
+class AdapterFixtures(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name).resolve()
+        self.paths = {"ROOT": self.root}
+        for key in ("PLAN", "INTERNAL", "DEST"):
+            self.paths[key] = self.root / key.lower()
+            self.paths[key].mkdir()
+        self.items = [{
+            "series_uid": "1.2.3." + str(rank), "study_uid": "1.2.3",
+            "patient_id": "SYNTHETIC" + str(rank), "person_key": "FIXTURE-" + str(rank),
+            "rank": rank, "expected_images": 2, "expected_bytes": 1024,
+            "license": "CC BY 4.0", "role": "pretraining",
+            "in_P1k": True, "in_P3k": True,
+        } for rank in (1, 2)]
+        self.plan = {
+            "items": self.items, "ordered_persons": 2, "uncompressed_bytes": 2048,
+            "download_only": True, "pixels_decoded": False, "scientific_acceptance": False,
+        }
+        for key in ("PLAN", "INTERNAL"):
+            (self.paths[key] / "NLST_TRANSFER_RECEIPTS.jsonl").write_text("")
+        (self.paths["PLAN"] / "NLST_DOWNLOAD_STATE.json").write_text('{"status":"stopped"}')
+        self.args = types.SimpleNamespace(
+            session_dir=self.root / "new-session", mirror_root=None, receipt=[],
+            command="preflight", max_new_archives=None, max_reuse_archives=None,
+        )
+        now = dt.datetime.now(dt.timezone.utc)
+        self.guard = types.SimpleNamespace(
+            theia={"root": str(self.root)}, cutoff=now + dt.timedelta(minutes=5),
+            deadline=now + dt.timedelta(minutes=10), stop_reason=None,
+            check=lambda **_: None, receipt=lambda: {"synthetic": True},
+        )
+        self.guard.request_stop = lambda reason: setattr(self.guard, "stop_reason", reason)
+        self.contract = {"paths": self.paths, "items": self.items, "plan": self.plan}
+
+    def legacy_archive(self):
+        raw = self.items[0]
+        path = self.paths["DEST"] / (raw["series_uid"] + ".zip")
+        payload = b"fixture archive bytes for receipt hashing only"
+        path.write_bytes(payload)
+        receipt = {
+            **nlst_continue.receipt_row(raw), "status": "archive_verified",
+            "path": str(path), "images": raw["expected_images"], "bytes": len(payload),
+            "sha256": hashlib.sha256(payload).hexdigest(), "zip_crc_pass": True,
+            "all_header_identities_match": True,
+        }
+        for key in ("PLAN", "INTERNAL"):
+            (self.paths[key] / "NLST_TRANSFER_RECEIPTS.jsonl").write_text(json.dumps(receipt) + "\n")
+        return path
+
+    def index(self):
+        return ReceiptIndex(
+            [self.paths["PLAN"] / "NLST_TRANSFER_RECEIPTS.jsonl"],
+            legacy_verifier_sha256=SEALED_LEGACY_SHA256,
+        )
+
+    def execute(self):
+        with contextlib.redirect_stdout(io.StringIO()):
+            return nlst_continue.execute_session(self.args, self.contract, self.guard)
+
+    def test_frozen_schema_and_url_bindings(self):
+        self.assertEqual(nlst_continue.validate_plan(self.plan), self.items)
+        spec = nlst_continue.transfer_spec(self.items[0])
+        spec.validate()
+        self.assertTrue(spec.url.endswith("getImage?SeriesInstanceUID=1.2.3.1"))
+        self.assertEqual(spec.expected.patient_id, "SYNTHETIC1")
+        self.assertEqual(spec.expected.study_uid, "1.2.3")
+        self.assertTrue(spec.expected.dicom_bytes_only)
+        self.assertEqual(spec.expected.non_dicom_members, ("LICENSE",))
+        self.assertEqual(spec.max_archive_bytes, 1002048)
+
+    def test_bad_roster_order_or_nested_flag_refuses(self):
+        self.items[1]["rank"] = 1
+        with self.assertRaisesRegex(Refusal, "order/rank"):
+            nlst_continue.validate_plan(self.plan)
+        self.items[1]["rank"] = 2
+        self.items[1]["in_P1k"] = False
+        with self.assertRaisesRegex(Refusal, "nested membership"):
+            nlst_continue.validate_plan(self.plan)
+
+    def test_duplicate_patient_identity_refuses(self):
+        self.items[1]["patient_id"] = self.items[0]["patient_id"]
+        with self.assertRaisesRegex(Refusal, "Duplicate planned identity"):
+            nlst_continue.validate_plan(self.plan)
+
+    def test_source_path_extraction_never_executes_original(self):
+        source = b"""
+ROOT = Path('/synthetic')
+PLAN = ROOT / 'plan'
+DEST = ROOT / 'archives'
+INTERNAL = Path('/synthetic-internal')
+raise AssertionError('must not execute')
+"""
+        self.assertEqual(nlst_continue.source_paths(source)["DEST"], Path("/synthetic/archives"))
+
+    def test_inventory_credits_no_existing_bytes_without_hash(self):
+        path = self.legacy_archive()
+        before = file_identity(path)
+        with mock.patch("scripts.nlst_continue.stable_sha256", side_effect=AssertionError("hash forbidden")):
+            initial = nlst_continue.inventory(self.paths["DEST"], self.items, self.index())
+        self.assertEqual([r["status"] for r in initial["rows"]], ["existing_unverified", "pending"])
+        self.assertEqual(file_identity(path), before)
+        records = nlst_continue.SessionRecords([self.root], self.items, initial)
+        self.addCleanup(records.close)
+        self.assertEqual(records.summary()["verified_archives_this_session"], 0)
+        self.assertEqual(records.summary()["verified_bytes_this_session"], 0)
+
+    def test_inventory_partial_names_are_exact_and_include_original_form(self):
+        partial = self.paths["DEST"] / "1.2.3.1.zip.attempt01.part"
+        partial.write_bytes(b"preserve")
+        unrelated = self.paths["DEST"] / "1.2.3.20.zip.part.1"
+        unrelated.write_bytes(b"also preserve")
+        value = nlst_continue.inventory(self.paths["DEST"], self.items, self.index())
+        self.assertEqual(value["rows"][0]["reason"], "unresolved_partial")
+        self.assertEqual(value["rows"][1]["status"], "pending")
+        self.assertEqual(value["unknown_artifacts"], [str(unrelated)])
+
+    def test_missing_prior_success_is_not_admitted(self):
+        self.legacy_archive().unlink()
+        value = nlst_continue.inventory(self.paths["DEST"], self.items, self.index())
+        self.assertEqual(value["rows"][0]["reason"], "success_receipt_archive_missing")
+        self.assertEqual(value["rows"][0]["status"], "review_required")
+
+    def test_preflight_writes_inventory_without_network_or_rehash(self):
+        self.legacy_archive()
+        with mock.patch("scripts.nlst_continue.run_transfers", side_effect=AssertionError("network")):
+            with mock.patch("scripts.nlst_continue.reconcile_archive", side_effect=AssertionError("rehash")):
+                self.assertEqual(self.execute(), 0)
+        summary = json.loads((self.args.session_dir / "SUMMARY.json").read_text())
+        self.assertEqual(summary["verified_archives_this_session"], 0)
+        self.assertEqual(summary["counts"], {"existing_unverified": 1, "pending": 1})
+
+    def test_absent_work_can_start_while_existing_hash_is_in_progress(self):
+        self.legacy_archive()
+        self.args.command = "run"
+        hashing = threading.Event()
+        release = threading.Event()
+        original = nlst_continue.reconcile_archive
+
+        def slow_hash(*args, **kwargs):
+            hashing.set()
+            self.assertTrue(release.wait(2))
+            return original(*args, **kwargs)
+
+        def transfers(specs, _directory, _guard, _record):
+            self.assertTrue(hashing.wait(2))
+            self.assertEqual([s.raw_row["rank"] for s in specs], [2])
+            release.set()
+            return []
+
+        with mock.patch("scripts.nlst_continue.reconcile_archive", side_effect=slow_hash):
+            with mock.patch("scripts.nlst_continue.run_transfers", side_effect=transfers):
+                self.assertEqual(self.execute(), 0)
+        summary = json.loads((self.args.session_dir / "SUMMARY.json").read_text())
+        self.assertEqual(summary["verified_archives_this_session"], 1)
+        self.assertEqual(summary["remaining_queue"][0]["rank"], 2)
+
+    def test_terminal_row_error_returns_nonzero(self):
+        self.args.command = "run"
+
+        def transfers(specs, _directory, _guard, record):
+            record({**specs[0].row, "status": "http_error", "http_status": 404})
+            return []
+
+        with mock.patch("scripts.nlst_continue.run_transfers", side_effect=transfers):
+            self.assertEqual(self.execute(), 1)
+        summary = json.loads((self.args.session_dir / "SUMMARY.json").read_text())
+        self.assertEqual(summary["status"], "failed")
+        self.assertEqual(summary["counts"]["http_error"], 1)
+
+    def test_reconciliation_refusal_stops_admission_before_journal_callback(self):
+        self.legacy_archive()
+        self.args.command = "run"
+        journal_reached = threading.Event()
+        original_record = nlst_continue.SessionRecords.record
+        refusal = {
+            **nlst_continue.receipt_row(self.items[0]), "status": "review_required",
+            "reason": "archive_sha256_mismatch",
+        }
+
+        def record(records, journal, row):
+            if journal == "RECONCILIATION.jsonl":
+                self.assertEqual(self.guard.stop_reason, "terminal_reconciliation_review_required")
+                journal_reached.set()
+            return original_record(records, journal, row)
+
+        def transfers(_specs, _directory, guard, _record):
+            self.assertTrue(journal_reached.wait(2))
+            self.assertEqual(guard.stop_reason, "terminal_reconciliation_review_required")
+            return []
+
+        with mock.patch("scripts.nlst_continue.reconcile_archive", return_value=refusal):
+            with mock.patch.object(nlst_continue.SessionRecords, "record", new=record):
+                with mock.patch("scripts.nlst_continue.run_transfers", side_effect=transfers):
+                    self.assertEqual(self.execute(), 1)
+        summary = json.loads((self.args.session_dir / "SUMMARY.json").read_text())
+        self.assertEqual(summary["stop_reason"], "terminal_reconciliation_review_required")
+        self.assertEqual(summary["verified_archives_this_session"], 0)
+        self.assertEqual(summary["counts"], {"review_required": 1, "pending": 1})
+
+    def test_journal_error_still_preserves_internal_mirror(self):
+        second = self.root / "mirror"
+        second.mkdir()
+        initial = nlst_continue.inventory(self.paths["DEST"], self.items, self.index())
+        records = nlst_continue.SessionRecords([self.root, second], self.items, initial)
+        self.addCleanup(records.close)
+        row = {**nlst_continue.receipt_row(self.items[0]), "status": "http_error"}
+        writer = records.journals["TRANSFER_RECEIPTS.jsonl"][0]
+        with mock.patch.object(writer, "append", side_effect=OSError("external unavailable")):
+            with self.assertRaisesRegex(OSError, "Journal persistence failed"):
+                records.record("TRANSFER_RECEIPTS.jsonl", row)
+        self.assertEqual(json.loads((second / "TRANSFER_RECEIPTS.jsonl").read_text()), row)
+
+
+class MountedVolumeFixtures(unittest.TestCase):
+    def test_diskutil_receives_mount_point_instead_of_nested_project_root(self):
+        # Mock only the observed host filesystem, preserving actual path traversal.
+        volume = Path("/synthetic-volume")
+        project = volume / "nested" / "project"
+        info = plistlib.dumps({"VolumeUUID": "synthetic", "MountPoint": str(volume)})
+        # autospec forwards self for path methods patched on the class.
+        with mock.patch.object(Path, "resolve", autospec=True, side_effect=lambda p, **_: p):
+            with mock.patch.object(Path, "is_mount", autospec=True, side_effect=lambda p: p == volume):
+                with mock.patch.object(Path, "stat", autospec=True, side_effect=lambda p: types.SimpleNamespace(
+                    st_dev=1 if p == Path("/") else 2,
+                )):
+                    with mock.patch.object(Path, "is_dir", return_value=True):
+                        with mock.patch("scripts.nlst_resources.os.access", return_value=True):
+                            with mock.patch("scripts.nlst_resources.shutil.disk_usage", return_value=types.SimpleNamespace(free=1234)):
+                                with mock.patch("scripts.nlst_resources.run_command", return_value=info) as probe:
+                                    result = nlst_resources.mounted_volume(project, "synthetic")
+        self.assertEqual(probe.call_args.args[0][-1], str(volume))
+        self.assertEqual(result["root"], str(project))
+        self.assertEqual(result["mount_point"], str(volume))
 
 
 if __name__ == "__main__":

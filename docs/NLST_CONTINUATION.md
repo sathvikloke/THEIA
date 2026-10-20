@@ -1,136 +1,121 @@
-# NLST continuation components (D01, version 2)
+# Receipt-aware NLST continuation (D01, version 2)
 
-Status on 2026-10-20: receipt, resource, transport, and archive-verification
-components are implemented and fixture-tested. Production acquisition is
-**not yet integrated or enabled**. Reading the sealed original downloader and
-frozen plan is still blocked by external-volume availability. No actual plan
-schema, endpoint construction, or PatientID mapping has been guessed.
+The successor is bound to the actual sealed 2026-10-14 downloader and selected
+10,000-person NLST plan. It never edits those sources. Source hashes, full plan
+rows, frozen order, unique patient/person/series identities, nested P1k/P3k flags,
+role, license, and byte totals are checked before a session starts. The original
+script's literal ROOT, PLAN, DEST, and INTERNAL paths are parsed without executing
+it. All archive and partial bytes remain on verified external storage.
 
-The original downloader remains sealed. D01 is partial; D02 has not run through
-these components.
+## Commands and scope
 
-## Implemented
+- `check-bindings` checks source/plan pins and the explicit UTC window only.
+- `preflight` holds the original `INTERNAL/download.lock`, checks actual resources,
+  reads canonical receipts, inventories every frozen row, and writes a new session
+  manifest. It performs no archive hashing or HTTP request.
+- `reconcile` additionally hashes existing receipt-matched archives. It never
+  downloads. `--max-reuse-archives` bounds this independent work.
+- `run` additionally admits genuinely absent rows in frozen relative order with
+  two HTTP workers. One optional reconciliation worker runs concurrently; the
+  missing-row queue does not wait for all legacy archive hashes. Setting
+  `--max-reuse-archives 0` defers all legacy hashing. `--max-new-archives` bounds
+  newly admitted rows. Limits do not imply completion of the full roster.
 
-`scripts/nlst_resume_core.py` provides:
+All commands require `--original-downloader`, `--plan`, `--cutoff-utc`, and
+`--deadline-utc`. Other commands also require `--research-root`, `--backing-image`,
+`--theia-uuid`, `--research-uuid`, `--reserve-theia-bytes`,
+`--reserve-research-bytes`, `--reserve-internal-bytes`, and `--session-dir`.
+The session directory must be new, under an existing external THEIA parent.
+`--mirror-root` adds small private receipts and summaries on the guarded internal
+volume. `--receipt` may add explicit earlier journals. Prior successor transfer
+and reconciliation journals under sibling session directories are discovered
+alongside both original canonical receipt copies.
 
-- A nonblocking exclusive `flock`, held on a stable lock inode.
-- Strict JSONL parsing and provenance hashes for input receipt journals.
-- Exact agreement between a normalized frozen-plan row and every successful
-  receipt for that series; conflicting successes require review.
-- A full archive SHA-256 on every reuse, plus size, canonical pathname, and
-  stable file identity checks before and after reading. Successor receipts also
-  bind the full raw plan row digest and full plan digest.
-- Refusal of symlinks, unknown archives, mismatches, missing files associated
-  with successes, malformed journals, and unresolved partials. Bytes are
-  preserved in place; `review_required` is a logical quarantine decision.
-- Atomic, no-clobber publication using a same-volume hard link. It binds the
-  previously verified identity, rehashes the linked destination, and keeps the
-  partial until validation succeeds; suspect bytes and names remain preserved.
-  Preexisting destinations are never replaced.
-- Exact partial-name matching for `<UID>.part[.*]` and `<UID>.zip.part[.*]`,
-  without confusing a longer UID with a shorter prefix.
-- Exclusive JSON creation and durable, append-only JSONL journals.
+Production `run` requires the existing pinned `pydicom==3.0.2`; it installs nothing.
+Use `python3 scripts/nlst_continue.py COMMAND --help` for the full argument list.
+Actual session command lines and measured resource identities belong in private
+execution receipts, not this public source document.
 
-Legacy receipts do not contain a file-stat identity or an explicit unique-SOP
-flag. They are refused by default. The future caller must inspect and verify
-the sealed original validator before passing its known digest to
-`ReceiptIndex(legacy_verifier_sha256=...)`. Only then may successful legacy
-verification evidence be carried forward. The current file identity is bound
-at reconciliation, and that fact is explicit in the successor receipt. This
-does not claim a historical inode was recorded when it was not.
+## Resume and preservation guarantees
 
-`scripts/nlst_resources.py` provides:
+Existing bytes are initially `existing_unverified`, never counted as accepted.
+Reuse requires every successful receipt to match the normalized frozen row,
+canonical path, size and digest; version-2 receipts additionally bind the full
+plan and raw-row hashes and previous device/inode/mtime/ctime identity. Each reuse
+rereads the entire archive SHA-256 and checks stable identity before and after.
+Conflicting, malformed, missing-success, unknown, or mismatched files require
+review and are never silently redownloaded or overwritten.
 
-- Explicit UTC cutoff for starting work and a later deadline for active work.
-- Required measured reserve bytes for both THEIA and its Research backing
-  volume, accounting for simultaneous transfer reservations.
-- Actual mounted external-volume UUID/device checks, and association of THEIA
-  with the supplied backing image through `hdiutil info -plist`.
-- AC-power checks and termination on deadline, backing-capacity exhaustion,
-  device changes, power loss, or a global terminal stop.
-- Stop/time rechecks after resource probes, with power-probe timeouts bounded by
-  the remaining session/admission window. Deadline and resource failures latch
-  a terminal session stop. Admission cutoff alone leaves active transfers free
-  to finish before the deadline.
+Legacy receipts lack a historical stat identity and explicit unique-SOP flag.
+They are permitted only after checking the sealed predecessor hash, whose actual
+validator checks every DICOM PatientID, StudyInstanceUID, SeriesInstanceUID and
+unique SOPInstanceUID. Reconciliation explicitly states when the current file
+identity is first bound; it does not invent historical identity evidence.
 
-Resource fixtures replace host probes with synthetic observations. They do
-not certify current host storage or power. The production resource probe is
-macOS-specific and has not been exercised against the currently unavailable
-external drives.
+Partials from both `<UID>.zip.attemptNN.part` and successor
+`<UID>.zip.part.*` forms are preserved. Exact UID matching prevents a longer UID
+from blocking an unrelated shorter UID. A missing row with a known partial is
+held for review. Failed new attempts use distinct exclusive names and remain on
+disk. Publication uses a no-clobber hard link bound to verified identity, rehashes
+the linked bytes, and only then removes its owned partial name. Mutation or
+publication races preserve suspect names and emit no success.
 
-`scripts/nlst_transfer.py` provides:
+## Genuine source and archive contract
 
-- An explicit `ArchiveExpectation` for source PatientID, SeriesInstanceUID,
-  image count and total uncompressed member bytes. Any non-DICOM file must
-  appear in an exact member-name allowlist supplied by the eventual adapter.
-- Full archive SHA-256, stable file identity, all-file ZIP CRC checks, exact
-  file/image and uncompressed-byte checks, all-DICOM PatientID/SeriesInstanceUID
-  checks, and nonempty unique SOPInstanceUID checks. It reads headers with
-  `stop_before_pixels=True` and never extracts files or decodes pixel arrays.
-- Explicit HTTPS URLs supplied by the adapter; no redirect following,
-  credentials, endpoint guessing, or hidden library retries.
-- At most three attempts for transport failures and HTTP 500/502/503/504.
-  HTTP 401/403/429 stop admission globally and are never retried. Other HTTP
-  failures and verification failures are terminal for their row.
-- Exclusive UUID-named partials, compressed-byte bounds, retention of failed
-  partials, and publication only after successful verification.
-- Two transfer worker slots. Rows enter those slots in supplied order; the two
-  simultaneous requests may reach the server in either order. No later rows are
-  admitted after cutoff or global stop. Socket deadlines also interrupt
-  continuously arriving partial HTTP headers.
+The public source is the original NLST NBIA `getImage` HTTPS endpoint with the
+frozen `SeriesInstanceUID` query parameter. The plan's `expected_bytes` is the
+sum of uncompressed DICOM-member bytes, excluding the exact `LICENSE` member.
+The response bound is the original `2 * expected_bytes + 1,000,000` bytes.
 
-The adapter must validate what the original plan's byte count represents before
-constructing this explicit expectation. Runtime URL/identity records remain
-local. The transport accepts plaintext HTTP only through an explicit loopback
-fixture option, never for public hosts.
+Verification checks full SHA-256, safe ZIP paths, all-member CRC, exact DICOM
+count/bytes, bounded LICENSE bytes, every DICOM PatientID/StudyInstanceUID/
+SeriesInstanceUID, and nonempty unique SOPInstanceUIDs. Headers are read with
+`stop_before_pixels=True`; no files are extracted and no pixel arrays decoded.
+Unrecognized non-DICOM member names are refused.
 
-`scripts/nlst_continue.py check-bindings` is an executable **refusal interface**.
-It checks explicit session timestamps and the recorded original/plan hashes,
-then still exits 2 with `acquisition_enabled: false` until the actual source
-adapter has been integrated. It does not parse plan rows or issue network
-requests. This is intentionally not a download launch command.
+HTTP requests do not follow redirects. Transport failures and HTTP
+500/502/503/504 receive at most three attempts. HTTP 401/403/429 immediately stop
+admission globally and are never retried. Verification and other HTTP errors are
+terminal for their row and stop further queue admission globally. Exhausted
+transport retries and newly appearing conflicting bytes also stop admission.
+Terminal stop is latched before filesystem-stat and journal writes can block.
+A reconciliation mismatch also stops admission before its journal is written.
+Already-owned partials remain preserved. A session with unresolved row errors or abnormal resource
+stops exits nonzero; its remaining queue and failure receipts remain visible.
 
-## Remaining integration
+## Resource and timing controls
 
-1. Read and verify the actual `download_nlst.py` and `NLST_DOWNLOAD_PLAN.json`
-   against their recorded sealed digests. Inspect the actual plan schema,
-   nested subset membership, source URL construction, identity mapping,
-   archive layout, and original full-header/CRC/image-count/unique-SOP checks.
-2. Extend `scripts/nlst_continue.py` with actual schema bindings and the explicit
-   session/resource arguments. Preserve frozen roster order and nested
-   P1k/P3k/P10k membership. Do not relabel acquisition as decoding or molecular
-   eligibility.
-3. Bind the original lock location, archive directory, and all previous terminal
-   receipt journals. Save a complete reconciliation manifest, including
-   unrecognized artifacts and review-required rows, outside the source tree.
-4. Compare the actual original archive/header implementation with the tested
-   primitives and preserve any additional source-specific identity checks.
-   Connect journals, the two-worker scheduler, resource guard and reconciliation.
-5. Verify actual host UUIDs, backing image, free bytes, power, and dependencies;
-   exercise the complete integrated CLI once its genuine input contract exists.
-6. Produce a concrete launch command only after those bindings and checks
-   exist. Reconciliation of the legacy 118.4 GB archive set must actually read
-   and hash its bytes; the receipt mirror alone cannot prove present-day files.
+The guard verifies mounted THEIA and Research UUID/device identities and the
+actual backing-image association. It requires AC power and checks external free
+space against explicit reserves plus both active transfer reservations. Internal
+free space is checked against its separate small-journal reserve. Deadline and
+resource failures latch a global stop. Admission cutoff only stops new work;
+already admitted work may finish before the absolute deadline. Resource probes
+recheck time and stop state before returning; socket shutdown also bounds peers
+that continuously drip response headers. Regular file I/O is cooperative and
+cannot guarantee immediate cancellation of an unresponsive kernel/device call.
 
-## Focused checks
+`RUN.json`, `INVENTORY.json`, durable append-only transfer/reconciliation JSONL,
+`STATE.json`, and `SUMMARY.json` preserve the session's input/source identities,
+resources, outcomes, and exact remaining queue. Full private inventory stays
+external. Journal writes and finalization attempt the internal mirror even when
+external persistence fails. No acquisition result grants molecular eligibility
+or scientific acceptance; all summaries explicitly report zero new evaluable
+EGFR patients and no pixel decoding.
 
-Run from the repository root:
+## Focused verification
 
-```sh
-python3 -m unittest discover -s tests -p test_nlst_resume.py -v
-```
-
-The command above checks receipt and resource primitives with standard-library
-fixtures. For the complete suite, use an environment with the repository's
-pinned `pydicom==3.0.2`:
+From the repository root, with pinned pydicom already available:
 
 ```sh
 python3 -m unittest discover -s tests -p 'test_nlst_*.py' -v
 ```
 
-The complete suite currently has 60 cases. It uses tiny synthetic DICOM
-archives, a loopback HTTP server, and mocked resource probes. It does not
-download public imaging, access patient records, or decode pixels. If pydicom
-is absent, the real DICOM/transfer fixture classes are explicitly skipped;
-such a run must not be reported as complete verification. Raw receipts,
-archives, participant mappings, and real plan rows remain outside public source.
+The 82 focused cases use tiny synthetic DICOM archives, loopback HTTP, and mocked
+resource observations. They cover receipt identity, publication mutation windows,
+original partial forms, real-schema binding, study identity and LICENSE CRC/byte
+scope, simultaneous missing-row admission and legacy hashing, mirrored failure
+evidence, deadlines, retries, resource stops and the two-worker bound. Missing
+pydicom explicitly skips DICOM fixture classes; such a run is not complete
+verification. Fixture success alone does not authorize production acquisition;
+actual plan/source and current host resource preflight are separately recorded.
