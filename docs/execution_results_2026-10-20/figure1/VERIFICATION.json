@@ -1,0 +1,121 @@
+{
+  "verified_utc": "2026-10-20T07:59:27.153889+00:00",
+  "status": "PASS",
+  "checks": {
+    "internal_import": true,
+    "not_imported_components": true,
+    "download_components": true,
+    "internal_build": true,
+    "unbuilt_components": true,
+    "annotation_components": true,
+    "internal_label": true,
+    "external_flow": true,
+    "external_labels": true,
+    "external_positive_sources": true,
+    "approximation_subset": true,
+    "mislocated_labeled_subset": true,
+    "csv_json_identical": true,
+    "required_rendered_counts_present": true,
+    "required_limitations_visible": true,
+    "no_193_union_count": true,
+    "no_unverified_gdcm_claim": true,
+    "no_invented_internal_intermediate": true,
+    "png_3200x3280": true,
+    "exact_source_caption_retained": true,
+    "local_caption_readme_links_resolve": true,
+    "consumed_source_bytes_unchanged": true
+  },
+  "source_checks": {
+    "main": true,
+    "supplement": true,
+    "claim_table": true,
+    "hourly_review": true,
+    "readiness_seal": true,
+    "prior_consumed_sources": true
+  },
+  "rendered_count_bindings": {
+    "i_source": 211,
+    "i_imported": 188,
+    "i_ct_seg": 144,
+    "i_aim_only": 44,
+    "i_scored": 158,
+    "i_labeled": 153,
+    "i_mutant": 40,
+    "i_not_imported": 23,
+    "i_no_download_no_aim": 20,
+    "i_unmatched_aim": 3,
+    "i_unbuilt": 30,
+    "i_unknown_both": 26,
+    "i_air": 4,
+    "i_approx_order": 3,
+    "i_extent": 119,
+    "i_point": 39,
+    "i_egfr_unknown": 5,
+    "e_source": 67,
+    "e_no_location": 11,
+    "e_ineligible_scan": 2,
+    "e_air_adapter": 2,
+    "e_development": 4,
+    "e_unknown": 8,
+    "e_evaluated": 40,
+    "e_positive": 4,
+    "e_research_negative": 36,
+    "e_clinical_positive": 1,
+    "r_paired": 28,
+    "c_chosen": 29,
+    "c_eligible": 28
+  },
+  "png": {
+    "width": 3200,
+    "height": 3280,
+    "bytes": 757366
+  },
+  "artifacts": {
+    "SOURCE_DATA.json": {
+      "sha256": "0f7e8f16f234429a2e271a541373ca3c1403f8cc0d37d6bbdc7febb949e8b8ea",
+      "bytes": 25054
+    },
+    "SOURCE_DATA.csv": {
+      "sha256": "c576553b0fc4ddc3bdb348df334962a096badd612291d23007ab7fab04ff21cc",
+      "bytes": 3992
+    },
+    "SOURCE_EXCERPTS.md": {
+      "sha256": "9be2a224f9678162a8014b0267fca5c2013c488fb16ba1a5bc7ecaacce1ca072",
+      "bytes": 13134
+    },
+    "FIGURE1.svg": {
+      "sha256": "2b26053239af4f74633259083d2832a9d82bdc5c90e80c1be44d4837ad2a079f",
+      "bytes": 11228
+    },
+    "FIGURE1.png": {
+      "sha256": "c4990e9d8adf7970a98720c3f4e91c064a09dbe4f257d978e257b7536f5b9522",
+      "bytes": 757366
+    },
+    "CAPTION.md": {
+      "sha256": "a9ab21b280c4d6b205eb8f3c2d32dcd0859c9d02e3e736c82c4e4823eeead3f4",
+      "bytes": 3641
+    },
+    "README.md": {
+      "sha256": "b9c3be0514ba0a97b7df0ea6d1c61687e59788971eb4ffeb352789009940ffea",
+      "bytes": 3524
+    },
+    "VISUAL_REVIEW.md": {
+      "sha256": "6d73716dfd889887d113916ad6b8f8f6bc4c988514a8d10d3e3e0e813af3a280",
+      "bytes": 1501
+    },
+    "build_figure1.py": {
+      "sha256": "547ac4760cdf8b5d3c429a4e09bc27722a5cf204b4ee5ea10b250c5d3cd9b3cc",
+      "bytes": 20467
+    },
+    "rasterize.mjs": {
+      "sha256": "02eea9165c4d1180abd7aeb153f9dac65942f986d99d4e5d6b3f6d0b19f92cc8",
+      "bytes": 800
+    },
+    "verify_figure1.py": {
+      "sha256": "33d1959ac87faa63fd06f6bd13d3c02b41faedb7cc71d1ed073ab08fa46cf5a2",
+      "bytes": 5529
+    }
+  },
+  "scope": "Deterministic aggregate/artifact verification only; no patient-level scientific replay, clinical adjudication or independent audit.",
+  "visual_review": "Recorded separately in VISUAL_REVIEW.md against the final raster hash."
+}

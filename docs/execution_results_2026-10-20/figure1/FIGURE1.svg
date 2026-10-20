@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1640" viewBox="0 0 1600 1640" role="img" aria-labelledby="title desc">
+<title id="title">Figure 1. Historical cohort flow</title>
+<desc id="desc">Internal source flow 211 to 188 to 158 to 153. Exclusions distinguish unknown selection reasons and reconstructed air-rule replays. External TCGA-LUAD, RIDER and preparation-only CPTAC remain separate. Author-review copy; publication adoption pending.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#51616d"/></marker></defs>
+<style>text{font-family:Arial,Helvetica,sans-serif;fill:#172d3b} .title{font-size:36px;font-weight:700} .panel{font-size:27px;font-weight:700} .head{font-size:24px;font-weight:700} .body{font-size:22px} .small{font-size:20px} .muted{fill:#485a66} .warning{fill:#68451b} .count{font-size:36px;font-weight:700} .rule{stroke:#d7dfe4;stroke-width:1.5}</style>
+<rect width="1600" height="1640" fill="white"/>
+<text x="40" y="58" class="title" text-anchor="start">Figure 1. Historical cohort flow</text>
+<text x="40" y="96" class="body muted" text-anchor="start">Retained evidence through 14 October 2026 · Author-review image prepared 20 October 2026</text>
+<text x="40" y="126" class="small muted" text-anchor="start">Corrected reporting of historical inputs (M0); this figure does not report corrected-input replication.</text>
+<rect x="40" y="154" width="954" height="1098" rx="10" fill="white" stroke="#d7dfe4" stroke-width="1.5"/>
+<rect x="1016" y="154" width="544" height="1098" rx="10" fill="white" stroke="#d7dfe4" stroke-width="1.5"/>
+<text x="62" y="193" class="panel" text-anchor="start">A   Internal · NSCLC-Radiogenomics</text>
+<text x="1038" y="193" class="panel" text-anchor="start">B   External · TCGA-LUAD</text>
+<rect x="64" y="222" width="356" height="120" rx="8" fill="#f3f7fa" stroke="#aabdc9" stroke-width="1.5"/>
+<text x="84" y="266" class="count" text-anchor="start" data-row-id="i_source" data-count="211">211</text>
+<text x="84" y="298" class="head" text-anchor="start">Public source subjects</text>
+<text x="84" y="326" class="small" text-anchor="start">All have a listed CT series</text>
+<rect x="64" y="476" width="356" height="120" rx="8" fill="#f3f7fa" stroke="#aabdc9" stroke-width="1.5"/>
+<text x="84" y="520" class="count" text-anchor="start" data-row-id="i_imported" data-count="188">188</text>
+<text x="84" y="552" class="head" text-anchor="start">Imported locally</text>
+<text x="84" y="578" class="small" text-anchor="start" data-row-id="i_ct_seg" data-count="144">144 CT + SEG</text>
+<text x="246" y="578" class="small" text-anchor="start" data-row-id="i_aim_only" data-count="44">44 AIM-only CT</text>
+<rect x="64" y="817" width="356" height="120" rx="8" fill="#f3f7fa" stroke="#aabdc9" stroke-width="1.5"/>
+<text x="84" y="861" class="count" text-anchor="start" data-row-id="i_scored" data-count="158">158</text>
+<text x="84" y="893" class="head" text-anchor="start">Built and scored</text>
+<text x="84" y="921" class="small" text-anchor="start">Historical input version</text>
+<rect x="64" y="1065" width="356" height="120" rx="8" fill="#e9f3f5" stroke="#6595a2" stroke-width="1.5"/>
+<text x="84" y="1109" class="count" text-anchor="start" data-row-id="i_labeled" data-count="153">153</text>
+<text x="84" y="1141" class="head" text-anchor="start">Clinical EGFR label</text>
+<text x="84" y="1169" class="small" text-anchor="start" data-row-id="i_mutant" data-count="40">40 EGFR-mutant</text>
+<path d="M 242 342 V 476" fill="none" stroke="#51616d" stroke-width="2.3" marker-end="url(#arrow)"/>
+<path d="M 242 596 V 817" fill="none" stroke="#51616d" stroke-width="2.3" marker-end="url(#arrow)"/>
+<path d="M 242 937 V 1065" fill="none" stroke="#51616d" stroke-width="2.3" marker-end="url(#arrow)"/>
+<path d="M 242 394 H 470" fill="none" stroke="#51616d" stroke-width="2.3" marker-end="url(#arrow)"/>
+<path d="M 242 656 H 470" fill="none" stroke="#51616d" stroke-width="2.3" marker-end="url(#arrow)"/>
+<path d="M 242 992 H 470" fill="none" stroke="#51616d" stroke-width="2.3" marker-end="url(#arrow)"/>
+<rect x="480" y="327" width="490" height="194" rx="8" fill="#fff8ee" stroke="#cbb18b" stroke-width="1.5"/>
+<text x="500" y="363" class="head warning" text-anchor="start" data-row-id="i_not_imported" data-count="23">23 not imported</text>
+<text x="500" y="400" class="body" text-anchor="start" data-row-id="i_no_download_no_aim" data-count="20">20 · No local AIM; absent from</text>
+<text x="542" y="428" class="body" text-anchor="start">CT/SEG download</text>
+<text x="500" y="463" class="body" text-anchor="start" data-row-id="i_unmatched_aim" data-count="3">3 · AIM reference matches no listed CT</text>
+<text x="542" y="491" class="small warning" text-anchor="start">Selection reason unrecorded</text>
+<rect x="480" y="615" width="490" height="251" rx="8" fill="#fff8ee" stroke="#cbb18b" stroke-width="1.5"/>
+<text x="500" y="653" class="head warning" text-anchor="start" data-row-id="i_unbuilt" data-count="30">30 imported, no input built</text>
+<text x="500" y="692" class="body" text-anchor="start" data-row-id="i_unknown_both" data-count="26">26 · EGFR and KRAS unknown</text>
+<text x="542" y="722" class="small" text-anchor="start">Skipped before localization</text>
+<text x="500" y="759" class="body" text-anchor="start" data-row-id="i_air" data-count="4">4 · Reconstructed air-rule exclusions</text>
+<text x="542" y="789" class="small" text-anchor="start">Mean HU &lt; −700; frozen-rule replays</text>
+<text x="542" y="821" class="small warning" text-anchor="start" data-row-id="i_approx_order" data-count="3">3 use approximate slice order (IPP)</text>
+<text x="500" y="850" class="small warning" text-anchor="start">No original preprocessing log was saved.</text>
+<text x="480" y="919" class="body" text-anchor="start" data-row-id="i_extent" data-count="119">119 lesion-extent annotations</text>
+<text x="480" y="948" class="body" text-anchor="start" data-row-id="i_point" data-count="39">39 point annotations</text>
+<rect x="480" y="975" width="490" height="128" rx="8" fill="#fff8ee" stroke="#cbb18b" stroke-width="1.5"/>
+<text x="500" y="1014" class="head warning" text-anchor="start" data-row-id="i_egfr_unknown" data-count="5">5 with unknown EGFR</text>
+<text x="500" y="1046" class="small" text-anchor="start">KRAS known; retained among scored inputs</text>
+<text x="500" y="1076" class="small" text-anchor="start">Excluded from EGFR metrics; never negative</text>
+<text x="64" y="1220" class="small muted" text-anchor="start">Known historical input defect: 7 mislocated point inputs (5 EGFR-labelled).</text>
+<rect x="1040" y="222" width="496" height="120" rx="8" fill="#f3f7fa" stroke="#aabdc9" stroke-width="1.5"/>
+<text x="1060" y="266" class="count" text-anchor="start" data-row-id="e_source" data-count="67">67</text>
+<text x="1060" y="298" class="head" text-anchor="start">Subjects with CT</text>
+<path d="M 1070 342 V 850 H 1115" fill="none" stroke="#51616d" stroke-width="2.3" marker-end="url(#arrow)"/>
+<path d="M 1070 426 H 1100" fill="none" stroke="#51616d" stroke-width="2.3" marker-end="url(#arrow)"/>
+<rect x="1110" y="383" width="426" height="363" rx="8" fill="#fff8ee" stroke="#cbb18b" stroke-width="1.5"/>
+<text x="1130" y="421" class="head warning" text-anchor="start">Excluded from evaluation</text>
+<text x="1130" y="466" class="body" text-anchor="start" data-row-id="e_no_location" data-count="11">11 · No lesion location</text>
+<text x="1130" y="509" class="body" text-anchor="start" data-row-id="e_ineligible_scan" data-count="2">2 · Ineligible index scan</text>
+<text x="1130" y="552" class="body" text-anchor="start" data-row-id="e_air_adapter" data-count="2">2 · Air gate or adapter failed</text>
+<text x="1130" y="595" class="body" text-anchor="start" data-row-id="e_development" data-count="4">4 · Development subjects</text>
+<text x="1170" y="624" class="small" text-anchor="start">Used to freeze the adapter</text>
+<text x="1130" y="668" class="body" text-anchor="start" data-row-id="e_unknown" data-count="8">8 · Unknown endpoint</text>
+<text x="1130" y="714" class="small warning" text-anchor="start">Unknown is never negative.</text>
+<rect x="1125" y="795" width="411" height="177" rx="8" fill="#e9f3f5" stroke="#6595a2" stroke-width="1.5"/>
+<text x="1145" y="839" class="count" text-anchor="start" data-row-id="e_evaluated" data-count="40">40</text>
+<text x="1145" y="871" class="head" text-anchor="start">Molecular evaluation</text>
+<text x="1145" y="903" class="small" text-anchor="start" data-row-id="e_positive" data-count="4">4 research-sequencing positive</text>
+<text x="1145" y="942" class="small" text-anchor="start" data-row-id="e_research_negative" data-count="36">36 research-sequencing negative</text>
+<text x="1040" y="1024" class="small" text-anchor="start">Research negative: no qualifying variant</text>
+<text x="1040" y="1055" class="small" text-anchor="start">in the open masked sequencing file.</text>
+<text x="1040" y="1086" class="small" text-anchor="start">No clinical-assay negative is represented.</text>
+<text x="1040" y="1117" class="small" text-anchor="start">Internal and external endpoint definitions</text>
+<text x="1040" y="1148" class="small" text-anchor="start">have not been shown to be equivalent.</text>
+<text x="1040" y="1201" class="small muted" text-anchor="start" data-row-id="e_clinical_positive" data-count="1">1 of the 4 positives is also assay-positive.</text>
+<rect x="40" y="1276" width="744" height="244" rx="10" fill="white" stroke="#d7dfe4" stroke-width="1.5"/>
+<rect x="808" y="1276" width="752" height="244" rx="10" fill="white" stroke="#d7dfe4" stroke-width="1.5"/>
+<text x="62" y="1317" class="panel" text-anchor="start">C   Test–retest · RIDER Lung CT</text>
+<text x="62" y="1374" class="head" text-anchor="start" data-row-id="r_paired" data-count="28">28 patients with paired repeat scans</text>
+<text x="62" y="1418" class="body" text-anchor="start">Manual contours; repeatability / annotation alignment</text>
+<text x="62" y="1452" class="body" text-anchor="start">No molecular label</text>
+<text x="830" y="1317" class="panel" text-anchor="start">D   Preparation only · CPTAC-LUAD</text>
+<text x="830" y="1374" class="head" text-anchor="start" data-row-id="c_chosen" data-count="29">29 index CTs chosen</text>
+<text x="1180" y="1374" class="small" text-anchor="start" data-row-id="c_eligible" data-count="28">28 eligible before reading</text>
+<text x="830" y="1417" class="small" text-anchor="start">Selection rule read no label field; not evaluated.</text>
+<text x="830" y="1446" class="small" text-anchor="start">Labels technically accessible before the lock;</text>
+<text x="830" y="1475" class="small" text-anchor="start">analyst blindness is not demonstrated.</text>
+<text x="40" y="1560" class="head" text-anchor="start">Separate cohorts: these counts do not establish a deduplicated union of persons.</text>
+<text x="40" y="1594" class="small muted" text-anchor="start">Publication adoption pending student / author review. Sources, retained caption and provenance accompany this figure.</text>
+</svg>
