@@ -1,0 +1,75 @@
+{
+  "denominator_reconciliation": {
+    "420": "actual unique processed rows and mask declarations; filename presence only",
+    "421": "actual unique import records and imported directories; also the current stale documentation number",
+    "422": "advertised/historical collection-scale claim; not bound to a local complete source roster",
+    "difference": "The imported-but-unprocessed set exactly equals the no-SEG import set.",
+    "missing_person_identified_for_advertised_count": false
+  },
+  "full_D08_complete": false,
+  "limitations": [
+    "The import log records historical CT selection; current source headers, objects and geometry were not verified.",
+    "Mask presence and empty molecular labels are row declarations; masks and images were not decoded.",
+    "No complete local source roster binding the advertised 422 denominator was supplied.",
+    "Current preprocessing source/config hashes are recorded, but no receipt binds these versions to historical NPZ bytes.",
+    "The current pretrain source derives a NumPy permutation from row order, seed and validation fraction and writes no explicit partition ledger.",
+    "No historical executed partition or checkpoint/input/transform hash chain was established from the exact paths checked.",
+    "Absence of the default checkpoint paths does not establish absence of all historical checkpoints.",
+    "Newer overnight-results/task-ledger metadata checked contained no Radiomics/LUNG1/pretraining reconciliation; no recursive search continued."
+  ],
+  "missing_outputs_or_inputs": [
+    "Complete selected source-release roster and patient/CT-series/SEG-object identities",
+    "Per-row selected tumor segment, referenced CT, frame/geometry, empty-mask and exclusion evidence",
+    "Historical processed-payload manifest and acceptance binding each NPZ to source and transform versions",
+    "Executed pretraining split membership, ordered input-row hash, configuration and seed",
+    "Historical checkpoint location/receipt with payload identity and input/partition/source lineage",
+    "Cross-cohort overlap ledger before pooled use"
+  ],
+  "new_data_downloaded": false,
+  "new_processed_patients": 0,
+  "observed": {
+    "all_processed_npz_paths_use_declared_cache": true,
+    "ct_selection_reason_counts": {
+      "most slices, axial, non-localizer (SEG reference unavailable)": 1,
+      "referenced by SEG": 420
+    },
+    "import_log_directory_sets_equal": true,
+    "import_log_records": 421,
+    "import_patient_directories": 421,
+    "import_status_counts": {
+      "ok": 420,
+      "ok (CT only, no SEG)": 1
+    },
+    "import_unique_patients": 421,
+    "import_with_seg": 420,
+    "import_without_seg": 1,
+    "imported_without_processed_row": 1,
+    "processed_not_in_import_log": 0,
+    "processed_npz_filenames": 420,
+    "processed_rows": 420,
+    "processed_rows_declaring_mask": 420,
+    "processed_rows_with_empty_labels": 420,
+    "processed_unique_patients": 420,
+    "referenced_npz_filenames_absent": 0,
+    "unprocessed_set_equals_no_seg_set": true,
+    "unreferenced_npz_filenames": 0
+  },
+  "reuse": {
+    "default_checkpoint_log_path_present": false,
+    "default_checkpoint_path_present": false,
+    "existing_npz_payload_integrity_rechecked": false,
+    "other_historical_checkpoint_locations_searched": false,
+    "reusable_now": [
+      "unchanged import decision metadata",
+      "unchanged processed row metadata",
+      "historical exposure designation"
+    ],
+    "scientifically_accepted_artifact_reuse_established": false
+  },
+  "role": "historically exposed grounding/segmentation pretraining cohort; not an independent molecular cohort",
+  "schema": "theia.d08.metadata_reconciliation.v1",
+  "scientific_fit_count": 0,
+  "scope": "bounded local metadata only; no image, array, or checkpoint payload reads",
+  "status": "validated_within_metadata_scope",
+  "task": "D08"
+}
