@@ -1,0 +1,50 @@
+{
+  "utc": "2026-10-20T07:59:27.159846+00:00",
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "build_figure1.py"
+      ],
+      "elapsed_seconds": 0.0409,
+      "exit_code": 0,
+      "stdout": "{\n  \"svg\": \"/Users/sathvikloke/.codex/theia_planning/2026-10-15_execution_backlog/publish_repo/docs/execution_results_2026-10-20/figure1/FIGURE1.svg\",\n  \"arithmetic_checks\": {\n    \"internal_import\": true,\n    \"not_imported_components\": true,\n    \"download_components\": true,\n    \"internal_build\": true,\n    \"unbuilt_components\": true,\n    \"annotation_components\": true,\n    \"internal_label\": true,\n    \"external_flow\": true,\n    \"external_labels\": true,\n    \"external_positive_sources\": true,\n    \"approximation_subset\": true,\n    \"mislocated_labeled_subset\": true\n  }\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/Users/sathvikloke/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "rasterize.mjs"
+      ],
+      "elapsed_seconds": 0.7114,
+      "exit_code": 0,
+      "stdout": "{\n  \"output\": \"/Users/sathvikloke/.codex/theia_planning/2026-10-15_execution_backlog/publish_repo/docs/execution_results_2026-10-20/figure1/FIGURE1.png\",\n  \"width\": 3200,\n  \"height\": 3280,\n  \"density\": 144,\n  \"sharp\": \"0.35.5\",\n  \"vips\": \"8.18.7\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "python3",
+        "verify_figure1.py",
+        "--source-root",
+        "/Users/sathvikloke/.codex/theia_campaigns/2026-10-13_nine_hour_210100"
+      ],
+      "elapsed_seconds": 0.046,
+      "exit_code": 0,
+      "stdout": "{\n  \"status\": \"PASS\",\n  \"checks_passed\": 22,\n  \"source_files_unchanged\": 6,\n  \"png\": {\n    \"width\": 3200,\n    \"height\": 3280,\n    \"bytes\": 757366\n  }\n}\n",
+      "stderr": ""
+    }
+  ],
+  "rebuild_sha256_identical": true,
+  "before": {
+    "FIGURE1.svg": "2b26053239af4f74633259083d2832a9d82bdc5c90e80c1be44d4837ad2a079f",
+    "FIGURE1.png": "c4990e9d8adf7970a98720c3f4e91c064a09dbe4f257d978e257b7536f5b9522"
+  },
+  "after": {
+    "FIGURE1.svg": "2b26053239af4f74633259083d2832a9d82bdc5c90e80c1be44d4837ad2a079f",
+    "FIGURE1.png": "c4990e9d8adf7970a98720c3f4e91c064a09dbe4f257d978e257b7536f5b9522"
+  },
+  "initial_verifier_attempt": {
+    "exit_code": 1,
+    "reason": "Verifier checked its own VERIFICATION.json link before writing the first receipt. Fixed output ordering; final verification rerun is above."
+  }
+}

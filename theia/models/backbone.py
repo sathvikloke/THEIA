@@ -53,9 +53,47 @@ class VisionEncoder(nn.Module):
         self.proj = nn.Identity() if self.native_dim == out_dim else nn.Linear(self.native_dim, out_dim)
         self.register_buffer("pix_mean", torch.tensor(mean).view(1, 3, 1, 1), persistent=False)
         self.register_buffer("pix_std", torch.tensor(std).view(1, 3, 1, 1), persistent=False)
+        self._pix_stats = (tuple(float(v) for v in mean), tuple(float(v) for v in std))
+        self._provenance: dict | None = None
         if freeze:
             for p in self.model.parameters():
                 p.requires_grad_(False)
+
+    def provenance(self) -> dict:
+        """What actually loaded, in a form a run archive can carry.
+
+        DEF-0012's other half. Refusing to substitute silently stops the next
+        such run from being ambiguous; it does nothing for the archived ones,
+        which record a *requested* encoder name and nothing else. From here on a
+        result carries the weight digest of the encoder that produced it, so the
+        question "which model was this?" is answerable from the artifact instead
+        of from the configuration's intent.
+
+        The digest is over the backbone's own parameters in name order, before
+        any fine-tuning, and is computed once and cached.
+        """
+        if self._provenance is None:
+            import hashlib
+            h = hashlib.sha256()
+            n = 0
+            for pname, p in sorted(self.model.state_dict().items()):
+                h.update(pname.encode("utf-8"))
+                arr = p.detach().to("cpu")
+                h.update(str(tuple(arr.shape)).encode("utf-8"))
+                h.update(arr.contiguous().float().numpy().tobytes())
+                n += int(arr.numel())
+            mean, std = self._pix_stats
+            self._provenance = {
+                "vision_encoder": self.name,
+                "implementation": type(self.model).__module__ + "." + type(self.model).__name__,
+                "native_dim": int(self.native_dim),
+                "grid": list(self.grid),
+                "normalisation_mean": list(mean),
+                "normalisation_std": list(std),
+                "n_backbone_params": n,
+                "weight_sha256": h.hexdigest(),
+            }
+        return dict(self._provenance)
 
     def unfreeze_last_blocks(self, n: int) -> int:
         """Re-enable gradients on the final n transformer blocks.
@@ -116,9 +154,24 @@ class VisionEncoder(nn.Module):
                 # CLIP embedding is post-projection on the pooled CLS only).
                 return visual, 768, (14, 14), mean, std
             except Exception as exc:  # noqa: BLE001
-                # First run downloads weights; needs network access.
-                print(f"[backbone] BiomedCLIP unavailable ({exc}); falling back to timm ViT")
-                name = "timm_vit_b16"
+                # DEF-0012. This used to print a warning, continue under an
+                # ImageNet-pretrained timm ViT, and keep `self.name =
+                # "biomedclip"`. The first run downloads weights and needs
+                # network access, so the most likely time to hit it is also the
+                # least likely time to be watching the log -- and afterwards
+                # nothing in the saved config could establish which of two
+                # different models produced the result. A substitution that
+                # changes the science must be requested, not inferred from a
+                # failure.
+                raise RuntimeError(
+                    f"BiomedCLIP could not be loaded ({type(exc).__name__}: {exc}). "
+                    "This run is declared to use BiomedCLIP and will not silently "
+                    "continue on another encoder. Fix the load -- the first run "
+                    "downloads weights and needs network access -- or, if you "
+                    "genuinely intend a different backbone, say so by setting "
+                    "model.vision_encoder: timm_vit_b16, which is a different "
+                    "experiment and must be reported as one."
+                ) from exc
         if name in ("timm_vit_b16", "open_clip_vit_b16"):
             import timm
 

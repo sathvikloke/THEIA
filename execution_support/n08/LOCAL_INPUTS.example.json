@@ -1,0 +1,13 @@
+{
+  "purpose": "Access manifest only; example paths do not create or supply research inputs",
+  "research_root": "/path/to/THEIA-with-permitted-data",
+  "private_inputs": {
+    "content_manifest": "revamp/campaign/paper_first_activation_2026-10-07_224630-a6ba26/source/manifest_S1_v1/CONTENT_MANIFEST.json",
+    "rows": "revamp/campaign/paper_first_activation_2026-10-07_224630-a6ba26/source/manifest_S1_v1/rows.jsonl",
+    "source_acceptance": "revamp/campaign/paper_first_activation_2026-10-07_224630-a6ba26/compute/M1_ACCEPTANCE_S1A_v1.json",
+    "splits": "revamp/campaign/parallel_expansion_2026-10-02/n08/SPLITS.json",
+    "processed_arrays": "Referenced individually by content_manifest and rows"
+  },
+  "model": "Original locally cached BiomedCLIP vision encoder; offline load digest24064fdbf02384327d1af5e3e1e7fb25106fd60b9f9812c03140a46077f7fbb3",
+  "constraints": "Use actual acquired inputs and genuine source acceptance; no fixture or historical M0 substitution."
+}

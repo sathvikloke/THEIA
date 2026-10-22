@@ -1,0 +1,34 @@
+id,cohort,count,kind,parent,label,source_excerpt,certainty
+i_source,internal,211,stage,,Public source subjects with listed CT,attrition,retained_report_count
+i_imported,internal,188,stage,i_source,Imported locally,attrition,retained_report_count
+i_not_imported,internal,23,excluded,i_source,Not imported locally,attrition,retained_report_count
+i_no_download_no_aim,internal,20,exclusion_component,i_not_imported,No local AIM and absent from CT/SEG download,main_data,retained_report_count
+i_unmatched_aim,internal,3,exclusion_component,i_not_imported,AIM reference matches no listed CT series; selection reason unrecorded,attrition,selection_reason_unknown
+i_ct_seg,internal,144,download_component,i_imported,CT + SEG download,attrition,retained_report_count
+i_aim_only,internal,44,download_component,i_imported,AIM-only CT download,attrition,retained_report_count
+i_unbuilt,internal,30,excluded,i_imported,Imported but no model input built,attrition,retained_report_count
+i_unknown_both,internal,26,exclusion_component,i_unbuilt,EGFR and KRAS unknown; skipped before localization,attrition,reconstructed_under_frozen_skip_order
+i_air,internal,4,exclusion_component,i_unbuilt,Air-rule exclusions; mean HU < -700,attrition,reconstructed_rule_replay_not_execution_log
+i_approx_order,internal,3,nested_subset,i_air,Historical slice order approximated using image position (IPP),hourly,approximate_reconstruction
+i_scored,internal,158,stage,i_imported,Built and scored historical inputs,attrition,retained_report_count
+i_extent,internal,119,annotation_component,i_scored,Lesion-extent annotation,main_data,retained_report_count
+i_point,internal,39,annotation_component,i_scored,Point annotation,attrition,retained_report_count
+i_egfr_unknown,internal,5,metric_excluded,i_scored,EGFR unknown; KRAS known; excluded from EGFR metrics,attrition,retained_report_count
+i_labeled,internal,153,stage,i_scored,Clinical EGFR label,main_data,retained_report_count
+i_mutant,internal,40,label_subset,i_labeled,EGFR mutant,main_data,retained_report_count
+i_mislocated,internal,7,limitation_subset,i_scored,Known mislocated point-annotated inputs in historical results,attrition,retained_report_count
+i_mislocated_labeled,internal,5,nested_subset,i_mislocated,Mislocated inputs with EGFR labels,attrition,retained_report_count
+e_source,external,67,stage,,TCGA-LUAD subjects with CT,external_flow,retained_report_count
+e_no_location,external,11,exclusion_component,e_source,No resolvable lesion location,external_flow,retained_report_count
+e_ineligible_scan,external,2,exclusion_component,e_source,Ineligible index scan,external_flow,retained_report_count
+e_air_adapter,external,2,exclusion_component,e_source,Air gate or input adapter failed,external_flow,retained_report_count
+e_development,external,4,exclusion_component,e_source,Development subjects used to freeze adapter,external_flow,retained_report_count
+e_unknown,external,8,exclusion_component,e_source,Unknown endpoint,external_flow,retained_report_count
+e_evaluated,external,40,stage,e_source,External molecular evaluation,external_flow,retained_report_count
+e_positive,external,4,label_component,e_evaluated,Research-sequencing positive,main_external,retained_report_count
+e_research_negative,external,36,label_component,e_evaluated,Research-sequencing negative; not clinical-assay negative,external_endpoint,retained_report_count
+e_clinical_positive,external,1,nested_subset,e_positive,Assay-positive and research-positive,external_endpoint,retained_report_count
+e_research_only_positive,external,3,nested_subset,e_positive,Research-positive only,external_endpoint,retained_report_count
+r_paired,rider,28,stage,,Paired test–retest scans; no molecular label,main_external,retained_report_count
+c_chosen,cptac,29,preparation,,Index CTs chosen by a rule that read no label field,cptac,retained_report_count
+c_eligible,cptac,28,preparation,c_chosen,Eligible before reading; not evaluated,cptac,retained_report_count
