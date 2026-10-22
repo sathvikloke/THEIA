@@ -52,6 +52,13 @@ validator checks every DICOM PatientID, StudyInstanceUID, SeriesInstanceUID and
 unique SOPInstanceUID. Reconciliation explicitly states when the current file
 identity is first bound; it does not invent historical identity evidence.
 
+Device numbers (`st_dev`) are assigned per volume attachment and change across
+remounts and reboots, so cross-session receipt identity compares inode, size,
+mtime and ctime exactly and not the device number; the guard separately verifies
+the mounted THEIA volume UUID, and every reuse still rereads the full SHA-256.
+Reconciliation records `receipt_attachment_device_differs` when the device changed.
+Within one process (hashing, publication) the device is still compared.
+
 Partials from both `<UID>.zip.attemptNN.part` and successor
 `<UID>.zip.part.*` forms are preserved. Exact UID matching prevents a longer UID
 from blocking an unrelated shorter UID. A missing row with a known partial is
@@ -111,7 +118,7 @@ From the repository root, with pinned pydicom already available:
 python3 -m unittest discover -s tests -p 'test_nlst_*.py' -v
 ```
 
-The 82 focused cases use tiny synthetic DICOM archives, loopback HTTP, and mocked
+The 84 focused cases use tiny synthetic DICOM archives, loopback HTTP, and mocked
 resource observations. They cover receipt identity, publication mutation windows,
 original partial forms, real-schema binding, study identity and LICENSE CRC/byte
 scope, simultaneous missing-row admission and legacy hashing, mirrored failure

@@ -143,6 +143,22 @@ class ResumeFixtures(unittest.TestCase):
         result = self.reconcile(self.index(first))
         self.assertEqual(result["reason"], "archive_file_identity_mismatch")
 
+    def test_device_number_change_alone_is_reused_and_recorded(self):
+        # Remounting a volume assigns a new st_dev; the same file keeps inode/size/times.
+        self.path.write_bytes(self.payload)
+        first = self.reconcile(self.index(self.receipt()))
+        moved = {**first, "file_identity": {**first["file_identity"], "device": first["file_identity"]["device"] + 1}}
+        result = self.reconcile(self.index(moved))
+        self.assertEqual(result["status"], "reused_verified")
+        self.assertIs(result["receipt_attachment_device_differs"], True)
+
+    def test_changed_mtime_is_still_rejected(self):
+        self.path.write_bytes(self.payload)
+        first = self.reconcile(self.index(self.receipt()))
+        os.utime(self.path, ns=(first["file_identity"]["mtime_ns"] + 10**9,) * 2)
+        result = self.reconcile(self.index(first))
+        self.assertEqual(result["reason"], "archive_file_identity_mismatch")
+
     def test_changed_unprojected_plan_field_refuses_successor_receipt(self):
         self.path.write_bytes(self.payload)
         first = self.reconcile(self.index(self.receipt()))

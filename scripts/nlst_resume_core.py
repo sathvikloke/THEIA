@@ -63,6 +63,22 @@ def file_identity(path: Path) -> dict:
     }
 
 
+PERSISTENT_IDENTITY_FIELDS = ("inode", "size", "mtime_ns", "ctime_ns")
+
+
+def same_persistent_identity(current: dict, recorded) -> bool:
+    """Compare a file with a receipt from an earlier attachment of the same volume.
+
+    st_dev is assigned per attachment and changes across remounts and reboots, so it
+    cannot identify a file across sessions; the guard separately verifies the mounted
+    THEIA volume UUID and that archives live on it. Inode, size, mtime and ctime must
+    still match exactly, and reuse always rereads the full SHA-256.
+    """
+    return isinstance(recorded, dict) and all(
+        current.get(k) == recorded.get(k) for k in PERSISTENT_IDENTITY_FIELDS
+    )
+
+
 def stable_sha256(path: Path, tick: Callable[[], None] = lambda: None) -> tuple[str, dict]:
     before = file_identity(path)
     digest = hashlib.sha256()
@@ -243,8 +259,12 @@ def reconcile_archive(
         identity = file_identity(path)
         if identity["size"] != receipt["bytes"]:
             raise Refusal("archive_size_mismatch")
-        if receipt.get("schema_version") == 2 and identity != receipt["file_identity"]:
+        if receipt.get("schema_version") == 2 and not same_persistent_identity(
+            identity, receipt["file_identity"]
+        ):
             raise Refusal("archive_file_identity_mismatch")
+        device_differs = (receipt.get("schema_version") == 2
+                          and identity["device"] != receipt["file_identity"].get("device"))
         digest, identity = stable_sha256(path, tick)
         if digest != receipt["sha256"]:
             raise Refusal("archive_sha256_mismatch")
@@ -255,6 +275,7 @@ def reconcile_archive(
             "all_header_identities_match": True, "unique_sop_pass": True,
             "prior_receipt": receipt["_source"],
             "legacy_file_identity_bound_now": receipt.get("schema_version") is None,
+            "receipt_attachment_device_differs": device_differs,
             "legacy_verifier_sha256": (
                 receipts.legacy_verifier_sha256 if receipt.get("schema_version") is None else None
             ),

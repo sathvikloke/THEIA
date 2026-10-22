@@ -21,7 +21,7 @@ import uuid
 try:
     from .nlst_resume_core import (
         Journal, ReceiptIndex, Refusal, SEALED_LEGACY_SHA256, SUCCESS, exclusive_json,
-        exclusive_lock, file_identity, iso_now, json_digest, parse_utc,
+        exclusive_lock, file_identity, iso_now, json_digest, parse_utc, same_persistent_identity,
         reconcile_archive, stable_sha256, utcnow,
     )
     from .nlst_resources import ResourceGuard, StopSession
@@ -29,7 +29,7 @@ try:
 except ImportError:
     from nlst_resume_core import (
         Journal, ReceiptIndex, Refusal, SEALED_LEGACY_SHA256, SUCCESS, exclusive_json,
-        exclusive_lock, file_identity, iso_now, json_digest, parse_utc,
+        exclusive_lock, file_identity, iso_now, json_digest, parse_utc, same_persistent_identity,
         reconcile_archive, stable_sha256, utcnow,
     )
     from nlst_resources import ResourceGuard, StopSession
@@ -184,7 +184,9 @@ def inventory(archive_dir: Path, items: list[dict], receipts: ReceiptIndex) -> d
                 identity = file_identity(finals[uid])
                 if identity["size"] != prior["bytes"]:
                     raise Refusal("archive_size_mismatch")
-                if prior.get("schema_version") == 2 and identity != prior["file_identity"]:
+                if prior.get("schema_version") == 2 and not same_persistent_identity(
+                    identity, prior["file_identity"]
+                ):
                     raise Refusal("archive_file_identity_mismatch")
                 status = "existing_unverified"
                 reason = "awaiting_full_archive_hash"
